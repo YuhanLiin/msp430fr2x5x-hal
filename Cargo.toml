@@ -1,0 +1,40 @@
+cargo-features = ["profile-overrides"]
+
+[package]
+name = "msp430fr2x5x-hal"
+version = "0.1.0"
+authors = ["YuhanLiin <linyuhan0315@hotmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+msp430 = "0.1.0"
+nb = "0.1.2"
+
+[dependencies.embedded-hal]
+version = "0.2.3"
+features = ["unproven"]
+
+[dependencies.msp430-rt]
+git = "https://github.com/rust-embedded/msp430-rt"
+
+[dependencies.msp430fr2355]
+features = ["rt"]
+git = "https://github.com/YuhanLiin/msp430fr2355"
+
+[dev-dependencies]
+panic-msp430 = "0.1.0"
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
+opt-level = "z"
+
+[profile.dev]
+opt-level = "s"
+codegen-units = 1
+debug = true
+
+[profile.dev.overrides."*"]
+opt-level = "z"
