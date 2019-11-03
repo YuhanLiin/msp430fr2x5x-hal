@@ -18,9 +18,9 @@ fn main() {
         .write(|w| unsafe { w.wdtpw().bits(0x5A) }.wdthold().hold());
 
     let pmm = periph.PMM.freeze();
-    let mut p1 = periph.P1.constrain();
-    let mut p2 = periph.P2.constrain();
-    let mut p6 = periph.P6.constrain();
+    let mut p1 = periph.P1.split();
+    let mut p2 = periph.P2.split();
+    let mut p6 = periph.P6.split();
 
     let mut p1_0 = p1.pin0.to_output(&mut p1.pxdir).unlock(&pmm);
     let p2_3 = p2

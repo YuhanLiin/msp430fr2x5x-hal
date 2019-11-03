@@ -1,8 +1,11 @@
 use msp430fr2355::PMM;
 
+/// PMM type
 pub struct Pmm(());
 
+/// Extension for PMM peripheral
 pub trait PmmExt {
+    /// Sets the LOCKLPM5 bit and returns a `Pmm`
     fn freeze(self) -> Pmm;
 }
 
