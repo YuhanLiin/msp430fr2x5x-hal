@@ -63,6 +63,7 @@ dependencies = [
  "msp430fr2355 0.2.1 (git+https://github.com/YuhanLiin/msp430fr2355)",
  "nb 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "panic-msp430 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "void 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

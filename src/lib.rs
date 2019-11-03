@@ -3,3 +3,4 @@
 
 pub mod gpio;
 mod hw_traits;
+pub mod pmm;

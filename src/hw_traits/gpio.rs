@@ -1,5 +1,19 @@
 use msp430fr2355 as pac;
 
+macro_rules! modify {
+    ($rd:ident, $wr:ident, $mod:ident, $num:ty) => {
+        fn $mod<F: Fn($num) -> $num>(&self, f: F) -> $num {
+            let n = f(self.$rd());
+            self.$wr(n);
+            n
+        }
+    };
+
+    ($rd:ident, $wr:ident, $mod:ident) => {
+        modify!($rd, $wr, $mod, u8);
+    }
+}
+
 pub trait GpioPeriph {
     fn steal<'a>() -> &'a Self;
 
@@ -7,32 +21,41 @@ pub trait GpioPeriph {
 
     fn pxout_rd(&self) -> u8;
     fn pxout_wr(&self, bits: u8);
+    modify!(pxout_rd, pxout_wr, pxout_mod);
 
     fn pxdir_rd(&self) -> u8;
     fn pxdir_wr(&self, bits: u8);
+    modify!(pxdir_rd, pxdir_wr, pxdir_mod);
 
     fn pxren_rd(&self) -> u8;
     fn pxren_wr(&self, bits: u8);
+    modify!(pxren_rd, pxren_wr, pxren_mod);
 
     fn pxselc_rd(&self) -> u8;
     fn pxselc_wr(&self, bits: u8);
+    modify!(pxselc_rd, pxselc_wr, pxselc_mod);
 
     fn pxsel0_rd(&self) -> u8;
     fn pxsel0_wr(&self, bits: u8);
+    modify!(pxsel0_rd, pxsel0_wr, pxsel0_mod);
 
     fn pxsel1_rd(&self) -> u8;
     fn pxsel1_wr(&self, bits: u8);
+    modify!(pxsel1_rd, pxsel1_wr, pxsel1_mod);
 }
 
-trait IntrPeriph: GpioPeriph {
+pub trait IntrPeriph: GpioPeriph {
     fn pxies_rd(&self) -> u8;
     fn pxies_wr(&self, bits: u8);
+    modify!(pxies_rd, pxies_wr, pxies_mod);
 
     fn pxie_rd(&self) -> u8;
     fn pxie_wr(&self, bits: u8);
+    modify!(pxie_rd, pxie_wr, pxie_mod);
 
     fn pxifg_rd(&self) -> u8;
     fn pxifg_wr(&self, bits: u8);
+    modify!(pxifg_rd, pxifg_wr, pxifg_mod);
 
     fn pxiv_rd(&self) -> u16;
 }
