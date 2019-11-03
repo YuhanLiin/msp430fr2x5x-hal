@@ -1,9 +1,9 @@
 use crate::hw_traits::gpio::{GpioPeriph, IntrPeriph};
 use crate::pmm::Pmm;
 use core::marker::PhantomData;
-use embedded_hal::digital::v2::{InputPin, OutputPin, StatefulOutputPin};
+use embedded_hal::digital::v2::{InputPin, OutputPin, StatefulOutputPin, ToggleableOutputPin};
 use msp430fr2355 as pac;
-use pac::{p1, p2, p3, p4, p5, p6};
+use pac::{p1, p2, p3, p4, p5, p6, P1, P2, P3, P4, P5, P6};
 
 trait BitsExt {
     fn set(self, shift: u8) -> Self;
@@ -272,7 +272,7 @@ impl<PIN: GpioPin, DIR: ConvertToOutput, LOCK> Pin<PIN, DIR, LOCK> {
 }
 
 impl<PIN: GpioPin, DIR: ConvertToInput, LOCK> Pin<PIN, DIR, LOCK> {
-    pub fn to_input(self, _pxdir: &mut Pxdir<PIN::Periph>) -> Pin<PIN, Output, LOCK> {
+    pub fn to_input(self, _pxdir: &mut Pxdir<PIN::Periph>) -> Pin<PIN, Input<Unknown>, LOCK> {
         let p = PIN::Periph::steal();
         p.pxdir_mod(|b| b.clear(PIN::pin()));
         make_pin!()
@@ -303,8 +303,7 @@ impl<PIN: GpioPin, PULL: Known> InputPin for Pin<PIN, Input<PULL>, Unlocked> {
     }
 
     fn is_low(&self) -> Result<bool, Self::Error> {
-        let p = PIN::Periph::steal();
-        Ok(p.pxin_rd().check(PIN::pin()) == 0)
+        self.is_high().map(|r| !r)
     }
 }
 
@@ -333,8 +332,17 @@ impl<'out, PIN: GpioPin> StatefulOutputPin for OutputPinProxy<'out, PIN> {
     }
 
     fn is_set_low(&self) -> Result<bool, Self::Error> {
+        self.is_set_high().map(|r| !r)
+    }
+}
+
+impl<'out, PIN: GpioPin> ToggleableOutputPin for OutputPinProxy<'out, PIN> {
+    type Error = void::Void;
+
+    fn toggle(&mut self) -> Result<(), Self::Error> {
         let p = PIN::Periph::steal();
-        Ok(p.pxout_rd().check(PIN::pin()) == 0)
+        p.pxout_mod(|b| b ^ (1 << PIN::pin()));
+        Ok(())
     }
 }
 
@@ -345,35 +353,43 @@ pub trait GpioExt {
 }
 
 macro_rules! impl_gpio_ext {
-    ($px:ident, $PxParts:ident, $Portx:ident) => {
+    ($Px:ident, $px:ident, $PxParts:ident, $Portx:ident $(, [$pin5:ident, $pin6:ident $(, $pin7:ident)?])?) => {
         pub struct $PxParts {
-            pub pin0: $Portx<Pin0>,
-            pub pin1: $Portx<Pin1>,
-            pub pin2: $Portx<Pin2>,
-            pub pin3: $Portx<Pin3>,
-            pub pin4: $Portx<Pin4>,
-            pub pin5: $Portx<Pin5>,
-            pub pin6: $Portx<Pin6>,
-            pub pin7: $Portx<Pin7>,
+            pub pin0: Pin<$Portx<Pin0>, Unknown, Locked>,
+            pub pin1: Pin<$Portx<Pin1>, Unknown, Locked>,
+            pub pin2: Pin<$Portx<Pin2>, Unknown, Locked>,
+            pub pin3: Pin<$Portx<Pin3>, Unknown, Locked>,
+            pub pin4: Pin<$Portx<Pin4>, Unknown, Locked>,
+            $(
+                pub $pin5: Pin<$Portx<Pin5>, Unknown, Locked>,
+                pub $pin6: Pin<$Portx<Pin6>, Unknown, Locked>,
+                $(
+                    pub $pin7: Pin<$Portx<Pin7>, Unknown, Locked>,
+                )?
+            )?
 
             pub pxint: Pxint<$px::RegisterBlock>,
             pub pxout: Pxout<$px::RegisterBlock>,
             pub pxdir: Pxdir<$px::RegisterBlock>,
         }
 
-        impl GpioExt for $px::RegisterBlock {
+        impl GpioExt for $Px {
             type Parts = $PxParts;
 
             fn constrain(self) -> Self::Parts {
                 Self::Parts {
-                    pin0: $Portx(PhantomData),
-                    pin1: $Portx(PhantomData),
-                    pin2: $Portx(PhantomData),
-                    pin3: $Portx(PhantomData),
-                    pin4: $Portx(PhantomData),
-                    pin5: $Portx(PhantomData),
-                    pin6: $Portx(PhantomData),
-                    pin7: $Portx(PhantomData),
+                    pin0: make_pin!(),
+                    pin1: make_pin!(),
+                    pin2: make_pin!(),
+                    pin3: make_pin!(),
+                    pin4: make_pin!(),
+                    $(
+                        $pin5: make_pin!(),
+                        $pin6: make_pin!(),
+                        $(
+                            $pin7: make_pin!(),
+                        )?
+                    )?
 
                     pxint: Pxint(PhantomData),
                     pxout: Pxout(PhantomData),
@@ -384,9 +400,9 @@ macro_rules! impl_gpio_ext {
     };
 }
 
-impl_gpio_ext!(p1, P1Parts, Port1);
-impl_gpio_ext!(p2, P2Parts, Port2);
-impl_gpio_ext!(p3, P3Parts, Port3);
-impl_gpio_ext!(p4, P4Parts, Port4);
-impl_gpio_ext!(p5, P5Parts, Port5);
-impl_gpio_ext!(p6, P6Parts, Port6);
+impl_gpio_ext!(P1, p1, P1Parts, Port1, [pin5, pin6, pin7]);
+impl_gpio_ext!(P2, p2, P2Parts, Port2, [pin5, pin6, pin7]);
+impl_gpio_ext!(P3, p3, P3Parts, Port3, [pin5, pin6, pin7]);
+impl_gpio_ext!(P4, p4, P4Parts, Port4, [pin5, pin6, pin7]);
+impl_gpio_ext!(P5, p5, P5Parts, Port5);
+impl_gpio_ext!(P6, p6, P6Parts, Port6, [pin5, pin6]);
