@@ -1,39 +1,10 @@
+use crate::bits::BitsExt;
 use crate::hw_traits::gpio::{GpioPeriph, IntrPeriph};
 use crate::pmm::Pmm;
 use core::marker::PhantomData;
 use embedded_hal::digital::v2::{InputPin, OutputPin, StatefulOutputPin, ToggleableOutputPin};
 use msp430fr2355 as pac;
 use pac::{p1, p2, p3, p4, p5, p6, P1, P2, P3, P4, P5, P6};
-
-trait BitsExt {
-    fn set(self, shift: u8) -> Self;
-    fn clear(self, shift: u8) -> Self;
-    fn check(self, shift: u8) -> Self;
-    fn set_mask(self, mask: Self) -> Self;
-    fn clear_mask(self, mask: Self) -> Self;
-}
-
-impl BitsExt for u8 {
-    fn set(self, shift: u8) -> Self {
-        self | (1 << shift)
-    }
-
-    fn clear(self, shift: u8) -> Self {
-        self & !(1 << shift)
-    }
-
-    fn check(self, shift: u8) -> Self {
-        self & (1 << shift)
-    }
-
-    fn set_mask(self, mask: Self) -> Self {
-        self | mask
-    }
-
-    fn clear_mask(self, mask: Self) -> Self {
-        self & !mask
-    }
-}
 
 /// Trait that encompasses all `Portx<Pinx>` types for specifying a pin number on a GPIO port.
 /// Use `Pin<P: PortPinNum, DIR>` to specify any GPIO pin on the chip.
@@ -131,6 +102,23 @@ impl PinNum for Pin7 {
     fn num() -> u8 {
         7
     }
+}
+
+pub trait Port5 {
+    type pin0: PortPinNum;
+    type pin1: PortPinNum;
+    type pin2: PortPinNum;
+    type pin3: PortPinNum;
+    type pin4: PortPinNum;
+}
+
+pub trait Port7: Port5 {
+    type pin5: PortPinNum;
+    type pin6: PortPinNum;
+}
+
+pub trait Port: Port7 {
+    type pin7: PortPinNum;
 }
 
 /// `PortPin` type for GPIO port P1, which contain pins 0 to 7.
@@ -235,10 +223,9 @@ pub struct Locked;
 pub struct Unlocked;
 
 /// A single GPIO pin on the chip.
-pub struct Pin<PIN: PortPinNum, DIR, LOCK> {
+pub struct Pin<PIN: PortPinNum, DIR> {
     _pin: PhantomData<PIN>,
     _dir: PhantomData<DIR>,
-    _lock: PhantomData<LOCK>,
 }
 
 macro_rules! make_pin {
@@ -246,7 +233,6 @@ macro_rules! make_pin {
         Pin {
             _pin: PhantomData,
             _dir: PhantomData,
-            _lock: PhantomData,
         }
     };
 }
@@ -263,11 +249,11 @@ pub struct Pxdir<P: GpioPeriph>(PhantomData<P>);
 /// Used to prevent races when accessing the inerrupt registers from different pins on the same port.
 pub struct Pxint<P: GpioPeriph>(PhantomData<P>);
 
-impl<PIN: PortPinNum, PULL, LOCK> Pin<PIN, Input<PULL>, LOCK> {
+impl<PIN: PortPinNum, PULL> Pin<PIN, Input<PULL>> {
     /// Configures pin as pulldown input
     /// This method requires a `Pxout` token because configuring pull direction requires setting
     /// the PxOUT register, which can race with setting an output pin on the same port.
-    pub fn pulldown(self, _pxout: &mut Pxout<PIN::Periph>) -> Pin<PIN, Input<Pulldown>, LOCK> {
+    pub fn pulldown(self, _pxout: &mut Pxout<PIN::Periph>) -> Pin<PIN, Input<Pulldown>> {
         let p = PIN::Periph::steal();
         p.pxout_mod(|b| b.clear(PIN::pin()));
         p.pxren_mod(|b| b.set(PIN::pin()));
@@ -277,7 +263,7 @@ impl<PIN: PortPinNum, PULL, LOCK> Pin<PIN, Input<PULL>, LOCK> {
     /// Configures pin as pullup input
     /// This method requires a `Pxout` token because configuring pull direction requires setting
     /// the PxOUT register, which can race with setting an output pin on the same port.
-    pub fn pullup(self, _pxout: &mut Pxout<PIN::Periph>) -> Pin<PIN, Input<Pullup>, LOCK> {
+    pub fn pullup(self, _pxout: &mut Pxout<PIN::Periph>) -> Pin<PIN, Input<Pullup>> {
         let p = PIN::Periph::steal();
         p.pxout_mod(|b| b.set(PIN::pin()));
         p.pxren_mod(|b| b.set(PIN::pin()));
@@ -285,14 +271,14 @@ impl<PIN: PortPinNum, PULL, LOCK> Pin<PIN, Input<PULL>, LOCK> {
     }
 
     /// Configures pin as floating input
-    pub fn float(self, _pxout: &mut Pxout<PIN::Periph>) -> Pin<PIN, Input<Floating>, LOCK> {
+    pub fn float(self, _pxout: &mut Pxout<PIN::Periph>) -> Pin<PIN, Input<Floating>> {
         let p = PIN::Periph::steal();
         p.pxren_mod(|b| b.clear(PIN::pin()));
         make_pin!()
     }
 }
 
-impl<PIN: PortPinNum, PULL: Known> Pin<PIN, Input<PULL>, Unlocked>
+impl<PIN: PortPinNum, PULL: Known> Pin<PIN, Input<PULL>>
 where
     PIN::Periph: IntrPeriph,
 {
@@ -323,34 +309,34 @@ where
     }
 }
 
-impl<PIN: PortPinNum, DIR: ConvertToOutput, LOCK> Pin<PIN, DIR, LOCK> {
+impl<PIN: PortPinNum, DIR: ConvertToOutput> Pin<PIN, DIR> {
     /// Configures pin as output
-    pub fn to_output(self, _pxdir: &mut Pxdir<PIN::Periph>) -> Pin<PIN, Output, LOCK> {
+    pub fn to_output(self, _pxdir: &mut Pxdir<PIN::Periph>) -> Pin<PIN, Output> {
         let p = PIN::Periph::steal();
         p.pxdir_mod(|b| b.set(PIN::pin()));
         make_pin!()
     }
 }
 
-impl<PIN: PortPinNum, DIR: ConvertToInput, LOCK> Pin<PIN, DIR, LOCK> {
+impl<PIN: PortPinNum, DIR: ConvertToInput> Pin<PIN, DIR> {
     /// Configures pin as input
-    pub fn to_input(self, _pxdir: &mut Pxdir<PIN::Periph>) -> Pin<PIN, Input<Unknown>, LOCK> {
+    pub fn to_input(self, _pxdir: &mut Pxdir<PIN::Periph>) -> Pin<PIN, Input<Unknown>> {
         let p = PIN::Periph::steal();
         p.pxdir_mod(|b| b.clear(PIN::pin()));
         make_pin!()
     }
 }
 
-impl<PIN: PortPinNum, DIR> Pin<PIN, DIR, Locked> {
+impl<PIN: PortPinNum, DIR> Pin<PIN, DIR> {
     /// "Unlocks" the pin so that I/O can be performed on it.
     /// Unlocking with a `Pmm` ensures that I/O is only done on the pin after the LOCKLPM5 pin has
     /// been set. Otherwise I/O operations won't even work without setting LOCKLPM5.
-    pub fn unlock(self, _pmm: &Pmm) -> Pin<PIN, DIR, Unlocked> {
+    pub fn unlock(self, _pmm: &Pmm) -> Pin<PIN, DIR> {
         make_pin!()
     }
 }
 
-impl<PIN: PortPinNum> Pin<PIN, Output, Unlocked> {
+impl<PIN: PortPinNum> Pin<PIN, Output> {
     /// Use the `Pxout` token to create a output pin "proxy" on which output operations can be
     /// done. The token ensures that different output pin writes on the same port don't race with
     /// each other. We need to do this because unlike ARM, output writes on MSP430 require
@@ -363,7 +349,7 @@ impl<PIN: PortPinNum> Pin<PIN, Output, Unlocked> {
     }
 }
 
-impl<PIN: PortPinNum, PULL: Known> InputPin for Pin<PIN, Input<PULL>, Unlocked> {
+impl<PIN: PortPinNum, PULL: Known> InputPin for Pin<PIN, Input<PULL>> {
     type Error = void::Void;
 
     fn is_high(&self) -> Result<bool, Self::Error> {
@@ -416,37 +402,28 @@ impl<'out, PIN: PortPinNum> ToggleableOutputPin for OutputPinProxy<'out, PIN> {
     }
 }
 
-/// Extension trait to split GPIO peripheral into separate pins and register contention tokens.
-pub trait GpioExt {
-    /// The parts to split the GPIO into.
-    type Parts;
-
-    /// Split the GPIO into pins and contention tokens
-    fn split(self) -> Self::Parts;
-}
-
 macro_rules! impl_gpio_ext {
-    ($Px:ident, $px:ident, $PxParts:ident, $Portx:ident $(, [$pin5:ident, $pin6:ident $(, $pin7:ident)?])?) => {
+    ($Px:ident, $px:ident, $PxParts:ident, $Portx:ident $(, [$pin5:ident: $dir5:ident, $pin6:ident: $dir6:ident $(, $pin7:ident: $dir7:ident)?])?) => {
         /// GPIO parts
-        pub struct $PxParts {
+        pub struct $PxParts<DIR0, DIR1, DIR2, DIR3, DIR4 $(, $dir5, $dir6 $(, $dir7)?)?> {
             /// Pin0
-            pub pin0: Pin<$Portx<Pin0>, Unknown, Locked>,
+            pub pin0: Pin<$Portx<Pin0>, DIR0>,
             /// Pin1
-            pub pin1: Pin<$Portx<Pin1>, Unknown, Locked>,
+            pub pin1: Pin<$Portx<Pin1>, DIR1>,
             /// Pin2
-            pub pin2: Pin<$Portx<Pin2>, Unknown, Locked>,
+            pub pin2: Pin<$Portx<Pin2>, DIR2>,
             /// Pin3
-            pub pin3: Pin<$Portx<Pin3>, Unknown, Locked>,
+            pub pin3: Pin<$Portx<Pin3>, DIR3>,
             /// Pin4
-            pub pin4: Pin<$Portx<Pin4>, Unknown, Locked>,
+            pub pin4: Pin<$Portx<Pin4>, DIR4>,
             $(
                 /// Pin5
-                pub $pin5: Pin<$Portx<Pin5>, Unknown, Locked>,
+                pub $pin5: Pin<$Portx<Pin5>, DIR5>,
                 /// Pin6
-                pub $pin6: Pin<$Portx<Pin6>, Unknown, Locked>,
+                pub $pin6: Pin<$Portx<Pin6>, DIR6>,
                 $(
                     /// Pin7
-                    pub $pin7: Pin<$Portx<Pin7>, Unknown, Locked>,
+                    pub $pin7: Pin<$Portx<Pin7>, DIR7>,
                 )?
             )?
 
@@ -458,11 +435,9 @@ macro_rules! impl_gpio_ext {
             pub pxdir: Pxdir<$px::RegisterBlock>,
         }
 
-        impl GpioExt for $Px {
-            type Parts = $PxParts;
-
-            fn split(self) -> Self::Parts {
-                Self::Parts {
+        impl<DIR0, DIR1, DIR2, DIR3, DIR4 $(, $dir5, $dir6 $(, $dir7)?)?> $PxParts<DIR0, DIR1, DIR2, DIR3, DIR4 $(, $dir5, $dir6 $(, $dir7)?)?> {
+            pub fn new() -> Self {
+                Self {
                     pin0: make_pin!(),
                     pin1: make_pin!(),
                     pin2: make_pin!(),
@@ -485,9 +460,9 @@ macro_rules! impl_gpio_ext {
     };
 }
 
-impl_gpio_ext!(P1, p1, P1Parts, Port1, [pin5, pin6, pin7]);
-impl_gpio_ext!(P2, p2, P2Parts, Port2, [pin5, pin6, pin7]);
-impl_gpio_ext!(P3, p3, P3Parts, Port3, [pin5, pin6, pin7]);
-impl_gpio_ext!(P4, p4, P4Parts, Port4, [pin5, pin6, pin7]);
+impl_gpio_ext!(P1, p1, P1Parts, Port1, [pin5: DIR5, pin6: DIR6, pin7: DIR7]);
+impl_gpio_ext!(P2, p2, P2Parts, Port2, [pin5: DIR5, pin6: DIR6, pin7: DIR7]);
+impl_gpio_ext!(P3, p3, P3Parts, Port3, [pin5: DIR5, pin6: DIR6, pin7: DIR7]);
+impl_gpio_ext!(P4, p4, P4Parts, Port4, [pin5: DIR5, pin6: DIR6, pin7: DIR7]);
 impl_gpio_ext!(P5, p5, P5Parts, Port5);
-impl_gpio_ext!(P6, p6, P6Parts, Port6, [pin5, pin6]);
+impl_gpio_ext!(P6, p6, P6Parts, Port6, [pin5: DIR5, pin6: DIR6]);
