@@ -31,9 +31,7 @@ pub trait GpioPeriph {
     fn pxren_wr(&self, bits: u8);
     modify!(pxren_rd, pxren_wr, pxren_mod);
 
-    fn pxselc_rd(&self) -> u8;
     fn pxselc_wr(&self, bits: u8);
-    modify!(pxselc_rd, pxselc_wr, pxselc_mod);
 
     fn pxsel0_rd(&self) -> u8;
     fn pxsel0_wr(&self, bits: u8);
@@ -98,9 +96,6 @@ macro_rules! gpio_impl {
                     self.$pxren.write(|w| unsafe { w.bits(bits) })
                 }
 
-                fn pxselc_rd(&self) -> u8 {
-                    self.$pxselc.read().bits()
-                }
                 fn pxselc_wr(&self, bits: u8) {
                     self.$pxselc.write(|w| unsafe { w.bits(bits) })
                 }

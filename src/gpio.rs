@@ -1,7 +1,6 @@
 pub use crate::batch_gpio::*;
 use crate::bits::BitsExt;
 use crate::hw_traits::gpio::{GpioPeriph, IntrPeriph};
-use crate::pmm::Pmm;
 use core::marker::PhantomData;
 use embedded_hal::digital::v2::{InputPin, OutputPin, StatefulOutputPin, ToggleableOutputPin};
 use msp430fr2355 as pac;
@@ -144,25 +143,31 @@ impl GpioPort for P6 {
 }
 
 #[doc(hidden)]
+pub trait GpioFunction {}
+#[doc(hidden)]
 pub trait ConvertToOutput {}
 #[doc(hidden)]
 pub trait ConvertToInput {}
 #[doc(hidden)]
 pub trait Known {}
 
-/// Typestate for an unknown state
+/// Typestate for an unknown state.
+/// When used as directional typestate, this signifies a non-alternate (GPIO) pin.
 pub struct Unknown;
 impl ConvertToInput for Unknown {}
 impl ConvertToOutput for Unknown {}
+impl GpioFunction for Unknown {}
 
 /// Direction typestate for GPIO output
 pub struct Output;
 impl ConvertToInput for Output {}
+impl GpioFunction for Output {}
 
 /// Direction typestate for GPIO input.
 /// The type parameter specifies pull direction of input.
 pub struct Input<PULL>(PhantomData<PULL>);
 impl<PULL> ConvertToOutput for Input<PULL> {}
+impl<PULL> GpioFunction for Input<PULL> {}
 
 /// Pull typestate for pullup inputs
 pub struct Pullup;
@@ -175,12 +180,6 @@ impl Known for Pulldown {}
 /// Pull typestate for floating inputs
 pub struct Floating;
 impl Known for Floating {}
-
-/// PMM lock typestate for a locked GPIO
-pub struct Locked;
-
-/// PMM lock typestate for an unlocked GPIO
-pub struct Unlocked;
 
 /// A single GPIO pin on the chip.
 pub struct Pin<PORT: PortNum, PIN: PinNum, DIR> {
@@ -285,15 +284,6 @@ impl<PORT: PortNum, PIN: PinNum, DIR: ConvertToInput> Pin<PORT, PIN, DIR> {
     pub fn to_input(self, _pxdir: &mut Pxdir<PORT::Port>) -> Pin<PORT, PIN, Input<Unknown>> {
         let p = PORT::Port::steal();
         p.pxdir_mod(|b| b.clear(PIN::pin()));
-        make_pin!()
-    }
-}
-
-impl<PORT: PortNum, PIN: PinNum, DIR> Pin<PORT, PIN, DIR> {
-    /// "Unlocks" the pin so that I/O can be performed on it.
-    /// Unlocking with a `Pmm` ensures that I/O is only done on the pin after the LOCKLPM5 pin has
-    /// been set. Otherwise I/O operations won't even work without setting LOCKLPM5.
-    pub fn unlock(self, _pmm: &Pmm) -> Pin<PORT, PIN, DIR> {
         make_pin!()
     }
 }
@@ -423,3 +413,236 @@ impl<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
         }
     }
 }
+
+// Methods for managing sel1, sel0, and selc registers
+impl<PORT: PortNum, PIN: PinNum, DIR> Pin<PORT, PIN, DIR> {
+    fn set_sel0(&mut self) {
+        let p = PORT::Port::steal();
+        p.pxsel0_mod(|b| b.set(PIN::pin()));
+    }
+
+    fn set_sel1(&mut self) {
+        let p = PORT::Port::steal();
+        p.pxsel1_mod(|b| b.set(PIN::pin()));
+    }
+
+    fn clear_sel0(&mut self) {
+        let p = PORT::Port::steal();
+        p.pxsel0_mod(|b| b.clear(PIN::pin()));
+    }
+
+    fn clear_sel1(&mut self) {
+        let p = PORT::Port::steal();
+        p.pxsel1_mod(|b| b.clear(PIN::pin()));
+    }
+
+    fn flip_selc(&mut self) {
+        let p = PORT::Port::steal();
+        // Change both sel0 and sel1 bits at once
+        p.pxselc_wr(0u8.set(PIN::pin()));
+    }
+}
+
+/// Typestate for GPIO alternate function 1
+pub struct Alternate1;
+
+/// Typestate for GPIO alternate function 2
+pub struct Alternate2;
+
+/// Typestate for GPIO alternate function 3
+pub struct Alternate3;
+
+#[doc(hidden)]
+pub trait ToAlternate1 {}
+#[doc(hidden)]
+pub trait ToAlternate2 {}
+#[doc(hidden)]
+pub trait ToAlternate3 {}
+
+impl<PORT: PortNum, PIN: PinNum, DIR: GpioFunction> Pin<PORT, PIN, DIR>
+where
+    Self: ToAlternate1,
+{
+    /// Convert pin to GPIO alternate function 1
+    pub fn to_alternate1(mut self) -> Pin<PORT, PIN, Alternate1> {
+        self.set_sel0();
+        make_pin!()
+    }
+}
+
+impl<PORT: PortNum, PIN: PinNum, DIR: GpioFunction> Pin<PORT, PIN, DIR>
+where
+    Self: ToAlternate2,
+{
+    /// Convert pin to GPIO alternate function 2
+    pub fn to_alternate2(mut self) -> Pin<PORT, PIN, Alternate2> {
+        self.set_sel1();
+        make_pin!()
+    }
+}
+
+impl<PORT: PortNum, PIN: PinNum, DIR: GpioFunction> Pin<PORT, PIN, DIR>
+where
+    Self: ToAlternate3,
+{
+    /// Convert pin to GPIO alternate function 3
+    pub fn to_alternate3(mut self) -> Pin<PORT, PIN, Alternate3> {
+        self.flip_selc();
+        make_pin!()
+    }
+}
+
+// sel0 = 1, sel1 = 0
+impl<PORT: PortNum, PIN: PinNum> Pin<PORT, PIN, Alternate1> {
+    /// Convert pin to GPIO function
+    pub fn to_gpio(mut self) -> Pin<PORT, PIN, Unknown> {
+        self.clear_sel0();
+        make_pin!()
+    }
+}
+
+impl<PORT: PortNum, PIN: PinNum> Pin<PORT, PIN, Alternate1>
+where
+    Self: ToAlternate2,
+{
+    /// Convert pin to alternate function 2
+    pub fn to_alternate2(mut self) -> Pin<PORT, PIN, Alternate2> {
+        self.flip_selc();
+        make_pin!()
+    }
+}
+
+impl<PORT: PortNum, PIN: PinNum> Pin<PORT, PIN, Alternate1>
+where
+    Self: ToAlternate3,
+{
+    /// Convert pin to alternate function 3
+    pub fn to_alternate3(mut self) -> Pin<PORT, PIN, Alternate3> {
+        self.set_sel1();
+        make_pin!()
+    }
+}
+
+// sel0 = 0, sel1 = 1
+impl<PORT: PortNum, PIN: PinNum> Pin<PORT, PIN, Alternate2> {
+    /// Convert pin to GPIO function
+    pub fn to_gpio(mut self) -> Pin<PORT, PIN, Unknown> {
+        self.clear_sel1();
+        make_pin!()
+    }
+}
+
+impl<PORT: PortNum, PIN: PinNum> Pin<PORT, PIN, Alternate2>
+where
+    Self: ToAlternate1,
+{
+    /// Convert pin to alternate function 1
+    pub fn to_alternate1(mut self) -> Pin<PORT, PIN, Alternate1> {
+        self.flip_selc();
+        make_pin!()
+    }
+}
+
+impl<PORT: PortNum, PIN: PinNum> Pin<PORT, PIN, Alternate2>
+where
+    Self: ToAlternate3,
+{
+    /// Convert pin to alternate function 3
+    pub fn to_alternate3(mut self) -> Pin<PORT, PIN, Alternate3> {
+        self.set_sel0();
+        make_pin!()
+    }
+}
+
+// sel0 = 1, sel1 = 1
+impl<PORT: PortNum, PIN: PinNum> Pin<PORT, PIN, Alternate3> {
+    /// Convert pin to GPIO function
+    pub fn to_gpio(mut self) -> Pin<PORT, PIN, Unknown> {
+        self.flip_selc();
+        make_pin!()
+    }
+}
+
+impl<PORT: PortNum, PIN: PinNum> Pin<PORT, PIN, Alternate3>
+where
+    Self: ToAlternate1,
+{
+    /// Convert pin to alternate function 1
+    pub fn to_alternate1(mut self) -> Pin<PORT, PIN, Alternate1> {
+        self.clear_sel1();
+        make_pin!()
+    }
+}
+
+impl<PORT: PortNum, PIN: PinNum> Pin<PORT, PIN, Alternate3>
+where
+    Self: ToAlternate2,
+{
+    /// Convert pin to alternate function 2
+    pub fn to_alternate2(mut self) -> Pin<PORT, PIN, Alternate2> {
+        self.clear_sel0();
+        make_pin!()
+    }
+}
+
+// P1 alternate 1
+impl<PIN: PinNum, DIR> ToAlternate1 for Pin<Port1, PIN, DIR> {}
+// P1 alternate 2
+impl<DIR> ToAlternate2 for Pin<Port1, Pin0, DIR> {}
+impl<DIR> ToAlternate2 for Pin<Port1, Pin1, DIR> {}
+impl<PULL> ToAlternate2 for Pin<Port1, Pin2, Input<PULL>> {}
+impl<DIR> ToAlternate2 for Pin<Port1, Pin6, DIR> {}
+impl<DIR> ToAlternate2 for Pin<Port1, Pin7, DIR> {}
+// P1 alternate 3
+impl<PIN: PinNum, DIR> ToAlternate3 for Pin<Port1, PIN, DIR> {}
+
+// P2 alternate 1
+impl<DIR> ToAlternate1 for Pin<Port2, Pin0, DIR> {}
+impl<DIR> ToAlternate1 for Pin<Port2, Pin1, DIR> {}
+impl<PULL> ToAlternate1 for Pin<Port2, Pin2, Input<PULL>> {}
+impl<DIR> ToAlternate1 for Pin<Port2, Pin3, DIR> {}
+impl<DIR> ToAlternate1 for Pin<Port2, Pin6, DIR> {}
+impl<DIR> ToAlternate1 for Pin<Port2, Pin7, DIR> {}
+// P2 alternate 2
+impl ToAlternate2 for Pin<Port2, Pin0, Output> {}
+impl ToAlternate2 for Pin<Port2, Pin1, Output> {}
+impl<DIR> ToAlternate2 for Pin<Port2, Pin6, DIR> {}
+impl<DIR> ToAlternate2 for Pin<Port2, Pin7, DIR> {}
+// P2 alternate 3
+impl<DIR> ToAlternate3 for Pin<Port2, Pin4, DIR> {}
+impl<DIR> ToAlternate3 for Pin<Port2, Pin5, DIR> {}
+
+// P3 alternate 1
+impl<DIR> ToAlternate1 for Pin<Port3, Pin0, DIR> {}
+impl<DIR> ToAlternate1 for Pin<Port3, Pin4, DIR> {}
+// P3 alternate 3
+impl<DIR> ToAlternate3 for Pin<Port3, Pin1, DIR> {}
+impl<DIR> ToAlternate3 for Pin<Port3, Pin2, DIR> {}
+impl<DIR> ToAlternate3 for Pin<Port3, Pin3, DIR> {}
+impl<DIR> ToAlternate3 for Pin<Port3, Pin5, DIR> {}
+impl<DIR> ToAlternate3 for Pin<Port3, Pin6, DIR> {}
+impl<DIR> ToAlternate3 for Pin<Port3, Pin7, DIR> {}
+
+// P4 alternate 1
+impl<PIN: PinNum, DIR> ToAlternate1 for Pin<Port4, PIN, DIR> {}
+// P4 alternate 2
+impl<DIR> ToAlternate2 for Pin<Port4, Pin0, DIR> {}
+impl<DIR> ToAlternate2 for Pin<Port4, Pin2, DIR> {}
+impl<DIR> ToAlternate2 for Pin<Port4, Pin3, DIR> {}
+
+// P5 alternate 1
+impl<DIR> ToAlternate1 for Pin<Port5, Pin0, DIR> {}
+impl<DIR> ToAlternate1 for Pin<Port5, Pin1, DIR> {}
+impl<DIR> ToAlternate1 for Pin<Port5, Pin2, DIR> {}
+impl<DIR> ToAlternate1 for Pin<Port5, Pin3, DIR> {}
+// P5 alternate 2
+impl<DIR> ToAlternate2 for Pin<Port5, Pin0, DIR> {}
+impl<DIR> ToAlternate2 for Pin<Port5, Pin1, DIR> {}
+// P5 alternate 3
+impl<DIR> ToAlternate3 for Pin<Port5, Pin0, DIR> {}
+impl<DIR> ToAlternate3 for Pin<Port5, Pin1, DIR> {}
+impl<DIR> ToAlternate3 for Pin<Port5, Pin2, DIR> {}
+impl<DIR> ToAlternate3 for Pin<Port5, Pin3, DIR> {}
+
+// P6 alternate 1
+impl<PIN: PinNum, DIR> ToAlternate1 for Pin<Port6, PIN, DIR> {}
