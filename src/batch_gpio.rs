@@ -83,6 +83,26 @@ impl<PORT: PortNum, PIN: PinNum, DIR> WritePxren for PinProxy<PORT, PIN, DIR> {
     }
 }
 
+trait WritePxsel0 {
+    fn pxsel0_on(&self) -> bool;
+}
+
+impl<PORT: PortNum, PIN: PinNum, DIR> WritePxsel0 for PinProxy<PORT, PIN, DIR> {
+    default fn pxsel0_on(&self) -> bool {
+        false
+    }
+}
+
+trait WritePxsel1 {
+    fn pxsel1_on(&self) -> bool;
+}
+
+impl<PORT: PortNum, PIN: PinNum, DIR> WritePxsel1 for PinProxy<PORT, PIN, DIR> {
+    default fn pxsel1_on(&self) -> bool {
+        false
+    }
+}
+
 // Register value trait implementations
 impl<PORT: PortNum, PIN: PinNum> WritePxdir for PinProxy<PORT, PIN, Output> {
     fn pxdir_on(&self) -> bool {
@@ -100,16 +120,42 @@ impl<PORT: PortNum, PIN: PinNum> WritePxren for PinProxy<PORT, PIN, Input<Pulldo
         true
     }
 }
+
 impl<PORT: PortNum, PIN: PinNum> WritePxout for PinProxy<PORT, PIN, Input<Pullup>> {
     fn pxout_on(&self) -> bool {
         true
     }
 }
 
+impl<PORT: PortNum, PIN: PinNum> WritePxsel0 for PinProxy<PORT, PIN, Alternate1> {
+    fn pxsel0_on(&self) -> bool {
+        true
+    }
+}
+impl<PORT: PortNum, PIN: PinNum> WritePxsel0 for PinProxy<PORT, PIN, Alternate3> {
+    fn pxsel0_on(&self) -> bool {
+        true
+    }
+}
+
+impl<PORT: PortNum, PIN: PinNum> WritePxsel1 for PinProxy<PORT, PIN, Alternate2> {
+    fn pxsel1_on(&self) -> bool {
+        true
+    }
+}
+impl<PORT: PortNum, PIN: PinNum> WritePxsel1 for PinProxy<PORT, PIN, Alternate3> {
+    fn pxsel1_on(&self) -> bool {
+        true
+    }
+}
+
+// Derive bitmasks for different GPIO registers from pin numbers and register trait implementations
 trait MaskRegisters {
     fn pxout_mask(&self) -> u8;
     fn pxdir_mask(&self) -> u8;
     fn pxren_mask(&self) -> u8;
+    fn pxsel0_mask(&self) -> u8;
+    fn pxsel1_mask(&self) -> u8;
 }
 
 impl<PORT: PortNum, PIN: PinNum, DIR> MaskRegisters for PinProxy<PORT, PIN, DIR> {
@@ -123,6 +169,14 @@ impl<PORT: PortNum, PIN: PinNum, DIR> MaskRegisters for PinProxy<PORT, PIN, DIR>
 
     fn pxren_mask(&self) -> u8 {
         (self.pxren_on() as u8) << PIN::pin()
+    }
+
+    fn pxsel0_mask(&self) -> u8 {
+        (self.pxsel0_on() as u8) << PIN::pin()
+    }
+
+    fn pxsel1_mask(&self) -> u8 {
+        (self.pxsel1_on() as u8) << PIN::pin()
     }
 }
 
@@ -222,10 +276,32 @@ impl<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
             .set_mask(self.pin6.pxren_mask())
             .set_mask(self.pin7.pxren_mask());
 
+        let pxsel0 = 0u8
+            .set_mask(self.pin0.pxsel0_mask())
+            .set_mask(self.pin1.pxsel0_mask())
+            .set_mask(self.pin2.pxsel0_mask())
+            .set_mask(self.pin3.pxsel0_mask())
+            .set_mask(self.pin4.pxsel0_mask())
+            .set_mask(self.pin5.pxsel0_mask())
+            .set_mask(self.pin6.pxsel0_mask())
+            .set_mask(self.pin7.pxsel0_mask());
+
+        let pxsel1 = 0u8
+            .set_mask(self.pin0.pxsel1_mask())
+            .set_mask(self.pin1.pxsel1_mask())
+            .set_mask(self.pin2.pxsel1_mask())
+            .set_mask(self.pin3.pxsel1_mask())
+            .set_mask(self.pin4.pxsel1_mask())
+            .set_mask(self.pin5.pxsel1_mask())
+            .set_mask(self.pin6.pxsel1_mask())
+            .set_mask(self.pin7.pxsel1_mask());
+
         let p = PORT::Port::steal();
         p.pxout_wr(pxout);
         p.pxdir_wr(pxdir);
         p.pxren_wr(pxren);
+        p.pxsel0_wr(pxsel0);
+        p.pxsel1_wr(pxsel1);
         // Clear interrupts
         p.maybe_clear();
     }
