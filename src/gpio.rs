@@ -5,6 +5,7 @@ use crate::pmm::Pmm;
 use core::marker::PhantomData;
 use embedded_hal::digital::v2::{InputPin, OutputPin, StatefulOutputPin, ToggleableOutputPin};
 use msp430fr2355 as pac;
+use pac::{P1, P2, P3, P4, P5, P6};
 
 /// Trait that encompasses all `Pinx` types for specifying a pin number.
 pub trait PinNum {
@@ -19,7 +20,7 @@ pub trait PortNum {
 }
 
 /// Trait implemented on PAC GPIO types to map the PAC type to its respective port number type
-pub trait GpioPort: GpioPeriph {
+pub trait GpioPort {
     /// Port number
     type PortNum: PortNum;
 }
@@ -93,7 +94,7 @@ pub struct Port1;
 impl PortNum for Port1 {
     type Port = pac::p1::RegisterBlock;
 }
-impl GpioPort for pac::p1::RegisterBlock {
+impl GpioPort for P1 {
     type PortNum = Port1;
 }
 
@@ -102,7 +103,7 @@ pub struct Port2;
 impl PortNum for Port2 {
     type Port = pac::p2::RegisterBlock;
 }
-impl GpioPort for pac::p2::RegisterBlock {
+impl GpioPort for P2 {
     type PortNum = Port2;
 }
 
@@ -111,7 +112,7 @@ pub struct Port3;
 impl PortNum for Port3 {
     type Port = pac::p3::RegisterBlock;
 }
-impl GpioPort for pac::p3::RegisterBlock {
+impl GpioPort for P3 {
     type PortNum = Port3;
 }
 
@@ -120,7 +121,7 @@ pub struct Port4;
 impl PortNum for Port4 {
     type Port = pac::p4::RegisterBlock;
 }
-impl GpioPort for pac::p4::RegisterBlock {
+impl GpioPort for P4 {
     type PortNum = Port4;
 }
 
@@ -129,7 +130,7 @@ pub struct Port5;
 impl PortNum for Port5 {
     type Port = pac::p5::RegisterBlock;
 }
-impl GpioPort for pac::p5::RegisterBlock {
+impl GpioPort for P5 {
     type PortNum = Port5;
 }
 
@@ -138,7 +139,7 @@ pub struct Port6;
 impl PortNum for Port6 {
     type Port = pac::p6::RegisterBlock;
 }
-impl GpioPort for pac::p6::RegisterBlock {
+impl GpioPort for P6 {
     type PortNum = Port6;
 }
 

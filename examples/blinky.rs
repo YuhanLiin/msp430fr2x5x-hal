@@ -18,17 +18,17 @@ fn main() {
         .write(|w| unsafe { w.wdtpw().bits(0x5A) }.wdthold().hold());
 
     let pmm = periph.PMM.freeze();
-    let mut p1 = periph.P1.split();
-    let mut p2 = periph.P2.split();
-    let mut p6 = periph.P6.split();
+    let mut p1 = periph.P1.batch().split(&pmm);
+    let p2 = periph
+        .P2
+        .batch()
+        .config_pin3(|p| p.to_input().pullup())
+        .split(&pmm);
+    let mut p6 = periph.P6.batch().config_pin6(|p| p.to_output()).split(&pmm);
 
-    let mut p1_0 = p1.pin0.to_output(&mut p1.pxdir).unlock(&pmm);
-    let p2_3 = p2
-        .pin3
-        .to_input(&mut p2.pxdir)
-        .pullup(&mut p2.pxout)
-        .unlock(&pmm);
-    let mut p6_6 = p6.pin6.to_output(&mut p6.pxdir).unlock(&pmm);
+    let mut p1_0 = p1.pin0.to_output(&mut p1.pxdir);
+    let p2_3 = p2.pin3;
+    let mut p6_6 = p6.pin6;
 
     loop {
         p1_0.proxy(&mut p1.pxout).toggle().ok();
