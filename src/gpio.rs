@@ -142,44 +142,26 @@ impl GpioPort for P6 {
     type PortNum = Port6;
 }
 
-#[doc(hidden)]
+/// Marker trait for GPIO typestates representing pins in GPIO (non-alternate) state
 pub trait GpioFunction {}
-#[doc(hidden)]
-pub trait ConvertToOutput {}
-#[doc(hidden)]
-pub trait ConvertToInput {}
-#[doc(hidden)]
-pub trait Known {}
-
-/// Typestate for an unknown state.
-/// When used as directional typestate, this signifies a non-alternate (GPIO) pin.
-pub struct Unknown;
-impl ConvertToInput for Unknown {}
-impl ConvertToOutput for Unknown {}
-impl GpioFunction for Unknown {}
 
 /// Direction typestate for GPIO output
 pub struct Output;
-impl ConvertToInput for Output {}
 impl GpioFunction for Output {}
 
 /// Direction typestate for GPIO input.
 /// The type parameter specifies pull direction of input.
 pub struct Input<PULL>(PhantomData<PULL>);
-impl<PULL> ConvertToOutput for Input<PULL> {}
 impl<PULL> GpioFunction for Input<PULL> {}
 
 /// Pull typestate for pullup inputs
 pub struct Pullup;
-impl Known for Pullup {}
 
 /// Pull typestate for pulldown inputs
 pub struct Pulldown;
-impl Known for Pulldown {}
 
 /// Pull typestate for floating inputs
 pub struct Floating;
-impl Known for Floating {}
 
 /// A single GPIO pin on the chip.
 pub struct Pin<PORT: PortNum, PIN: PinNum, DIR> {
@@ -236,14 +218,14 @@ impl<PORT: PortNum, PIN: PinNum, PULL> Pin<PORT, PIN, Input<PULL>> {
     }
 
     /// Configures pin as floating input
-    pub fn float(self, _pxout: &mut PxOut<PORT::Port>) -> Pin<PORT, PIN, Input<Floating>> {
+    pub fn floating(self, _pxout: &mut PxOut<PORT::Port>) -> Pin<PORT, PIN, Input<Floating>> {
         let p = PORT::Port::steal();
         p.pxren_mod(|b| b.clear(PIN::pin()));
         make_pin!()
     }
 }
 
-impl<PORT: PortNum, PIN: PinNum, PULL: Known> Pin<PORT, PIN, Input<PULL>>
+impl<PORT: PortNum, PIN: PinNum, PULL> Pin<PORT, PIN, Input<PULL>>
 where
     PORT::Port: IntrPeriph,
 {
@@ -274,7 +256,7 @@ where
     }
 }
 
-impl<PORT: PortNum, PIN: PinNum, DIR: ConvertToOutput> Pin<PORT, PIN, DIR> {
+impl<PORT: PortNum, PIN: PinNum, PULL> Pin<PORT, PIN, Input<PULL>> {
     /// Configures pin as output
     pub fn to_output(self, _pxdir: &mut PxDir<PORT::Port>) -> Pin<PORT, PIN, Output> {
         let p = PORT::Port::steal();
@@ -283,9 +265,11 @@ impl<PORT: PortNum, PIN: PinNum, DIR: ConvertToOutput> Pin<PORT, PIN, DIR> {
     }
 }
 
-impl<PORT: PortNum, PIN: PinNum, DIR: ConvertToInput> Pin<PORT, PIN, DIR> {
-    /// Configures pin as input
-    pub fn to_input(self, _pxdir: &mut PxDir<PORT::Port>) -> Pin<PORT, PIN, Input<Unknown>> {
+impl<PORT: PortNum, PIN: PinNum> Pin<PORT, PIN, Output> {
+    /// Configures pin as input. Note that the pull state of the pin is actually unknown at this
+    /// point, despite the type being `Input<Floating>`, so call `floating()` if you actually need
+    /// a floating GPIO.
+    pub fn to_input(self, _pxdir: &mut PxDir<PORT::Port>) -> Pin<PORT, PIN, Input<Floating>> {
         let p = PORT::Port::steal();
         p.pxdir_mod(|b| b.clear(PIN::pin()));
         make_pin!()
@@ -309,7 +293,7 @@ impl<PORT: PortNum, PIN: PinNum> Pin<PORT, PIN, Output> {
     }
 }
 
-impl<PORT: PortNum, PIN: PinNum, PULL: Known> InputPin for Pin<PORT, PIN, Input<PULL>> {
+impl<PORT: PortNum, PIN: PinNum, PULL> InputPin for Pin<PORT, PIN, Input<PULL>> {
     type Error = void::Void;
 
     fn is_high(&self) -> Result<bool, Self::Error> {
@@ -451,13 +435,13 @@ impl<PORT: PortNum, PIN: PinNum, DIR> Pin<PORT, PIN, DIR> {
 }
 
 /// Typestate for GPIO alternate function 1
-pub struct Alternate1;
+pub struct Alternate1<DIR>(PhantomData<DIR>);
 
 /// Typestate for GPIO alternate function 2
-pub struct Alternate2;
+pub struct Alternate2<DIR>(PhantomData<DIR>);
 
 /// Typestate for GPIO alternate function 3
-pub struct Alternate3;
+pub struct Alternate3<DIR>(PhantomData<DIR>);
 
 #[doc(hidden)]
 pub trait ToAlternate1 {}
@@ -471,7 +455,10 @@ where
     Self: ToAlternate1,
 {
     /// Convert pin to GPIO alternate function 1
-    pub fn to_alternate1(mut self, _pxsel: &mut Pxsel<PORT::Port>) -> Pin<PORT, PIN, Alternate1> {
+    pub fn to_alternate1(
+        mut self,
+        _pxsel: &mut Pxsel<PORT::Port>,
+    ) -> Pin<PORT, PIN, Alternate1<DIR>> {
         self.set_sel0();
         make_pin!()
     }
@@ -482,7 +469,10 @@ where
     Self: ToAlternate2,
 {
     /// Convert pin to GPIO alternate function 2
-    pub fn to_alternate2(mut self, _pxsel: &mut Pxsel<PORT::Port>) -> Pin<PORT, PIN, Alternate2> {
+    pub fn to_alternate2(
+        mut self,
+        _pxsel: &mut Pxsel<PORT::Port>,
+    ) -> Pin<PORT, PIN, Alternate2<DIR>> {
         self.set_sel1();
         make_pin!()
     }
@@ -493,100 +483,121 @@ where
     Self: ToAlternate3,
 {
     /// Convert pin to GPIO alternate function 3
-    pub fn to_alternate3(mut self, _pxsel: &mut Pxsel<PORT::Port>) -> Pin<PORT, PIN, Alternate3> {
+    pub fn to_alternate3(
+        mut self,
+        _pxsel: &mut Pxsel<PORT::Port>,
+    ) -> Pin<PORT, PIN, Alternate3<DIR>> {
         self.flip_selc();
         make_pin!()
     }
 }
 
 // sel0 = 1, sel1 = 0
-impl<PORT: PortNum, PIN: PinNum> Pin<PORT, PIN, Alternate1> {
+impl<PORT: PortNum, PIN: PinNum, DIR> Pin<PORT, PIN, Alternate1<DIR>> {
     /// Convert pin to GPIO function
-    pub fn to_gpio(mut self, _pxsel: &mut Pxsel<PORT::Port>) -> Pin<PORT, PIN, Unknown> {
+    pub fn to_gpio(mut self, _pxsel: &mut Pxsel<PORT::Port>) -> Pin<PORT, PIN, DIR> {
         self.clear_sel0();
         make_pin!()
     }
 }
 
-impl<PORT: PortNum, PIN: PinNum> Pin<PORT, PIN, Alternate1>
+impl<PORT: PortNum, PIN: PinNum, DIR> Pin<PORT, PIN, Alternate1<DIR>>
 where
     Self: ToAlternate2,
 {
     /// Convert pin to alternate function 2
-    pub fn to_alternate2(mut self, _pxsel: &mut Pxsel<PORT::Port>) -> Pin<PORT, PIN, Alternate2> {
+    pub fn to_alternate2(
+        mut self,
+        _pxsel: &mut Pxsel<PORT::Port>,
+    ) -> Pin<PORT, PIN, Alternate2<DIR>> {
         self.flip_selc();
         make_pin!()
     }
 }
 
-impl<PORT: PortNum, PIN: PinNum> Pin<PORT, PIN, Alternate1>
+impl<PORT: PortNum, PIN: PinNum, DIR> Pin<PORT, PIN, Alternate1<DIR>>
 where
     Self: ToAlternate3,
 {
     /// Convert pin to alternate function 3
-    pub fn to_alternate3(mut self, _pxsel: &mut Pxsel<PORT::Port>) -> Pin<PORT, PIN, Alternate3> {
+    pub fn to_alternate3(
+        mut self,
+        _pxsel: &mut Pxsel<PORT::Port>,
+    ) -> Pin<PORT, PIN, Alternate3<DIR>> {
         self.set_sel1();
         make_pin!()
     }
 }
 
 // sel0 = 0, sel1 = 1
-impl<PORT: PortNum, PIN: PinNum> Pin<PORT, PIN, Alternate2> {
+impl<PORT: PortNum, PIN: PinNum, DIR> Pin<PORT, PIN, Alternate2<DIR>> {
     /// Convert pin to GPIO function
-    pub fn to_gpio(mut self, _pxsel: &mut Pxsel<PORT::Port>) -> Pin<PORT, PIN, Unknown> {
+    pub fn to_gpio(mut self, _pxsel: &mut Pxsel<PORT::Port>) -> Pin<PORT, PIN, DIR> {
         self.clear_sel1();
         make_pin!()
     }
 }
 
-impl<PORT: PortNum, PIN: PinNum> Pin<PORT, PIN, Alternate2>
+impl<PORT: PortNum, PIN: PinNum, DIR> Pin<PORT, PIN, Alternate2<DIR>>
 where
     Self: ToAlternate1,
 {
     /// Convert pin to alternate function 1
-    pub fn to_alternate1(mut self, _pxsel: &mut Pxsel<PORT::Port>) -> Pin<PORT, PIN, Alternate1> {
+    pub fn to_alternate1(
+        mut self,
+        _pxsel: &mut Pxsel<PORT::Port>,
+    ) -> Pin<PORT, PIN, Alternate1<DIR>> {
         self.flip_selc();
         make_pin!()
     }
 }
 
-impl<PORT: PortNum, PIN: PinNum> Pin<PORT, PIN, Alternate2>
+impl<PORT: PortNum, PIN: PinNum, DIR> Pin<PORT, PIN, Alternate2<DIR>>
 where
     Self: ToAlternate3,
 {
     /// Convert pin to alternate function 3
-    pub fn to_alternate3(mut self, _pxsel: &mut Pxsel<PORT::Port>) -> Pin<PORT, PIN, Alternate3> {
+    pub fn to_alternate3(
+        mut self,
+        _pxsel: &mut Pxsel<PORT::Port>,
+    ) -> Pin<PORT, PIN, Alternate3<DIR>> {
         self.set_sel0();
         make_pin!()
     }
 }
 
 // sel0 = 1, sel1 = 1
-impl<PORT: PortNum, PIN: PinNum> Pin<PORT, PIN, Alternate3> {
+impl<PORT: PortNum, PIN: PinNum, DIR> Pin<PORT, PIN, Alternate3<DIR>> {
     /// Convert pin to GPIO function
-    pub fn to_gpio(mut self, _pxsel: &mut Pxsel<PORT::Port>) -> Pin<PORT, PIN, Unknown> {
+    pub fn to_gpio(mut self, _pxsel: &mut Pxsel<PORT::Port>) -> Pin<PORT, PIN, DIR> {
         self.flip_selc();
         make_pin!()
     }
 }
 
-impl<PORT: PortNum, PIN: PinNum> Pin<PORT, PIN, Alternate3>
+impl<PORT: PortNum, PIN: PinNum, DIR> Pin<PORT, PIN, Alternate3<DIR>>
 where
     Self: ToAlternate1,
 {
     /// Convert pin to alternate function 1
-    pub fn to_alternate1(mut self, _pxsel: &mut Pxsel<PORT::Port>) -> Pin<PORT, PIN, Alternate1> {
+    pub fn to_alternate1(
+        mut self,
+        _pxsel: &mut Pxsel<PORT::Port>,
+    ) -> Pin<PORT, PIN, Alternate1<DIR>> {
         self.clear_sel1();
         make_pin!()
     }
 }
 
-impl<PORT: PortNum, PIN: PinNum> Pin<PORT, PIN, Alternate3>
+impl<PORT: PortNum, PIN: PinNum, DIR> Pin<PORT, PIN, Alternate3<DIR>>
 where
     Self: ToAlternate2,
 {
     /// Convert pin to alternate function 2
-    pub fn to_alternate2(mut self, _pxsel: &mut Pxsel<PORT::Port>) -> Pin<PORT, PIN, Alternate2> {
+    pub fn to_alternate2(
+        mut self,
+        _pxsel: &mut Pxsel<PORT::Port>,
+    ) -> Pin<PORT, PIN, Alternate2<DIR>> {
         self.clear_sel0();
         make_pin!()
     }

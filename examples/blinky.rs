@@ -5,12 +5,6 @@ use msp430::asm;
 use msp430fr2x5x_hal::{gpio::*, pmm::*};
 use panic_msp430 as _;
 
-fn delay() {
-    for _ in 0..30000 {
-        asm::nop();
-    }
-}
-
 fn main() {
     let periph = msp430fr2355::Peripherals::take().unwrap();
     let wdt = periph.WDT_A;
@@ -33,11 +27,12 @@ fn main() {
     loop {
         p1_0.proxy(&mut p1.pxout).toggle().ok();
 
-        if p2_3.is_high().unwrap() {
-            p6_6.proxy(&mut p6.pxout).set_low().ok();
-        } else {
-            p6_6.proxy(&mut p6.pxout).set_high().ok();
+        for _ in 0..5000 {
+            if p2_3.is_high().unwrap() {
+                p6_6.proxy(&mut p6.pxout).set_low().ok();
+            } else {
+                p6_6.proxy(&mut p6.pxout).set_high().ok();
+            }
         }
-        delay();
     }
 }

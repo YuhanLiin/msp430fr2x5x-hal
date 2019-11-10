@@ -53,101 +53,107 @@ impl<PORT: PortNum, PIN: PinNum, DIR> PinProxy<PORT, PIN, DIR> {
 }
 
 // Traits for deciding the value of a pin's registers
+trait PxdirOn {}
+trait PxoutOn {}
+trait PxrenOn {}
+trait Pxsel0On {}
+trait Pxsel1On {}
+
 trait WritePxdir {
     fn pxdir_on(&self) -> bool;
 }
-
 impl<T> WritePxdir for T {
     default fn pxdir_on(&self) -> bool {
         false
+    }
+}
+impl<T: PxdirOn> WritePxdir for T {
+    fn pxdir_on(&self) -> bool {
+        true
     }
 }
 
 trait WritePxout {
     fn pxout_on(&self) -> bool;
 }
-
-impl<PORT: PortNum, PIN: PinNum, DIR> WritePxout for PinProxy<PORT, PIN, DIR> {
+impl<T> WritePxout for T {
     default fn pxout_on(&self) -> bool {
         false
+    }
+}
+impl<T: PxoutOn> WritePxout for T {
+    fn pxout_on(&self) -> bool {
+        true
     }
 }
 
 trait WritePxren {
     fn pxren_on(&self) -> bool;
 }
-
-impl<PORT: PortNum, PIN: PinNum, DIR> WritePxren for PinProxy<PORT, PIN, DIR> {
+impl<T> WritePxren for T {
     default fn pxren_on(&self) -> bool {
         false
+    }
+}
+impl<T: PxrenOn> WritePxren for T {
+    fn pxren_on(&self) -> bool {
+        true
     }
 }
 
 trait WritePxsel0 {
     fn pxsel0_on(&self) -> bool;
 }
-
-impl<PORT: PortNum, PIN: PinNum, DIR> WritePxsel0 for PinProxy<PORT, PIN, DIR> {
+impl<T> WritePxsel0 for T {
     default fn pxsel0_on(&self) -> bool {
         false
+    }
+}
+impl<T: Pxsel0On> WritePxsel0 for T {
+    fn pxsel0_on(&self) -> bool {
+        true
     }
 }
 
 trait WritePxsel1 {
     fn pxsel1_on(&self) -> bool;
 }
-
-impl<PORT: PortNum, PIN: PinNum, DIR> WritePxsel1 for PinProxy<PORT, PIN, DIR> {
+impl<T> WritePxsel1 for T {
     default fn pxsel1_on(&self) -> bool {
         false
     }
 }
-
-// Register value trait implementations
-impl<PORT: PortNum, PIN: PinNum> WritePxdir for PinProxy<PORT, PIN, Output> {
-    fn pxdir_on(&self) -> bool {
-        true
-    }
-}
-
-impl<PORT: PortNum, PIN: PinNum> WritePxren for PinProxy<PORT, PIN, Input<Pullup>> {
-    fn pxren_on(&self) -> bool {
-        true
-    }
-}
-impl<PORT: PortNum, PIN: PinNum> WritePxren for PinProxy<PORT, PIN, Input<Pulldown>> {
-    fn pxren_on(&self) -> bool {
-        true
-    }
-}
-
-impl<PORT: PortNum, PIN: PinNum> WritePxout for PinProxy<PORT, PIN, Input<Pullup>> {
-    fn pxout_on(&self) -> bool {
-        true
-    }
-}
-
-impl<PORT: PortNum, PIN: PinNum> WritePxsel0 for PinProxy<PORT, PIN, Alternate1> {
-    fn pxsel0_on(&self) -> bool {
-        true
-    }
-}
-impl<PORT: PortNum, PIN: PinNum> WritePxsel0 for PinProxy<PORT, PIN, Alternate3> {
-    fn pxsel0_on(&self) -> bool {
-        true
-    }
-}
-
-impl<PORT: PortNum, PIN: PinNum> WritePxsel1 for PinProxy<PORT, PIN, Alternate2> {
+impl<T: Pxsel1On> WritePxsel1 for T {
     fn pxsel1_on(&self) -> bool {
         true
     }
 }
-impl<PORT: PortNum, PIN: PinNum> WritePxsel1 for PinProxy<PORT, PIN, Alternate3> {
-    fn pxsel1_on(&self) -> bool {
-        true
-    }
-}
+
+// Register marker trait implementations
+impl<PORT: PortNum, PIN: PinNum> PxdirOn for PinProxy<PORT, PIN, Output> {}
+impl<PORT: PortNum, PIN: PinNum> PxdirOn for PinProxy<PORT, PIN, Alternate1<Output>> {}
+impl<PORT: PortNum, PIN: PinNum> PxdirOn for PinProxy<PORT, PIN, Alternate2<Output>> {}
+impl<PORT: PortNum, PIN: PinNum> PxdirOn for PinProxy<PORT, PIN, Alternate3<Output>> {}
+
+impl<PORT: PortNum, PIN: PinNum> PxrenOn for PinProxy<PORT, PIN, Input<Pullup>> {}
+impl<PORT: PortNum, PIN: PinNum> PxrenOn for PinProxy<PORT, PIN, Input<Pulldown>> {}
+impl<PORT: PortNum, PIN: PinNum> PxrenOn for PinProxy<PORT, PIN, Alternate1<Input<Pullup>>> {}
+impl<PORT: PortNum, PIN: PinNum> PxrenOn for PinProxy<PORT, PIN, Alternate1<Input<Pulldown>>> {}
+impl<PORT: PortNum, PIN: PinNum> PxrenOn for PinProxy<PORT, PIN, Alternate2<Input<Pullup>>> {}
+impl<PORT: PortNum, PIN: PinNum> PxrenOn for PinProxy<PORT, PIN, Alternate2<Input<Pulldown>>> {}
+impl<PORT: PortNum, PIN: PinNum> PxrenOn for PinProxy<PORT, PIN, Alternate3<Input<Pullup>>> {}
+impl<PORT: PortNum, PIN: PinNum> PxrenOn for PinProxy<PORT, PIN, Alternate3<Input<Pulldown>>> {}
+
+impl<PORT: PortNum, PIN: PinNum> PxoutOn for PinProxy<PORT, PIN, Input<Pullup>> {}
+impl<PORT: PortNum, PIN: PinNum> PxoutOn for PinProxy<PORT, PIN, Alternate1<Input<Pullup>>> {}
+impl<PORT: PortNum, PIN: PinNum> PxoutOn for PinProxy<PORT, PIN, Alternate2<Input<Pullup>>> {}
+impl<PORT: PortNum, PIN: PinNum> PxoutOn for PinProxy<PORT, PIN, Alternate3<Input<Pullup>>> {}
+
+impl<PORT: PortNum, PIN: PinNum, DIR> Pxsel0On for PinProxy<PORT, PIN, Alternate1<DIR>> {}
+impl<PORT: PortNum, PIN: PinNum, DIR> Pxsel0On for PinProxy<PORT, PIN, Alternate3<DIR>> {}
+
+impl<PORT: PortNum, PIN: PinNum, DIR> Pxsel1On for PinProxy<PORT, PIN, Alternate2<DIR>> {}
+impl<PORT: PortNum, PIN: PinNum, DIR> Pxsel1On for PinProxy<PORT, PIN, Alternate3<DIR>> {}
 
 // Derive bitmasks for different GPIO registers from pin numbers and register trait implementations
 trait MaskRegisters {
@@ -297,11 +303,11 @@ impl<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
             .set_mask(self.pin7.pxsel1_mask());
 
         let p = PORT::Port::steal();
+        p.pxsel0_wr(pxsel0);
+        p.pxsel1_wr(pxsel1);
         p.pxout_wr(pxout);
         p.pxdir_wr(pxdir);
         p.pxren_wr(pxren);
-        p.pxsel0_wr(pxsel0);
-        p.pxsel1_wr(pxsel1);
         // Clear interrupts
         p.maybe_clear();
     }
