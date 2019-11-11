@@ -13,3 +13,5 @@ pub mod gpio;
 mod hw_traits;
 /// Power management module
 pub mod pmm;
+/// Watchdog timer
+pub mod watchdog;

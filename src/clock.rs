@@ -90,7 +90,7 @@ impl SmclkState for SmclkDisabled {
 /// Builder object containing system clock configuration. Configuring MCLK must happen before SMCLK
 /// is configured. SMCLK can be optionally disabled, in which case a `Smclk` object will not be
 /// produced. Configuring ACLK select is optional, with its default being REFOCLK.
-pub struct ClocksConfig<MODE> {
+pub struct ClockConfig<MODE> {
     periph: pac::CS,
     mclk_sel: MclkSel,
     mclk_div: MclkDiv,
@@ -100,7 +100,7 @@ pub struct ClocksConfig<MODE> {
 
 macro_rules! make_clkconf {
     ($conf:expr, $mode:expr) => {
-        ClocksConfig {
+        ClockConfig {
             periph: $conf.periph,
             mclk_sel: $conf.mclk_sel,
             mclk_div: $conf.mclk_div,
@@ -114,13 +114,13 @@ macro_rules! make_clkconf {
 /// builder object.
 pub trait CsExt {
     /// Converts CS into clock configuration builder object
-    fn constrain(self) -> ClocksConfig<Undefined>;
+    fn constrain(self) -> ClockConfig<Undefined>;
 }
 
 impl CsExt for pac::CS {
-    fn constrain(self) -> ClocksConfig<Undefined> {
+    fn constrain(self) -> ClockConfig<Undefined> {
         // These are the microcontroller default settings
-        ClocksConfig {
+        ClockConfig {
             periph: self,
             mode: Undefined,
             mclk_div: MclkDiv::_1,
@@ -130,7 +130,7 @@ impl CsExt for pac::CS {
     }
 }
 
-impl<MODE> ClocksConfig<MODE> {
+impl<MODE> ClockConfig<MODE> {
     /// Select REFOCLK for ACLK
     pub const fn aclk_refoclk(mut self) -> Self {
         self.aclk_sel = AclkSel::Refoclk;
@@ -144,10 +144,10 @@ impl<MODE> ClocksConfig<MODE> {
     }
 }
 
-impl ClocksConfig<Undefined> {
+impl ClockConfig<Undefined> {
     /// Select REFOCLK for MCLK and set the MCLK divider
-    pub const fn mclk_refoclk(self, mclk_div: MclkDiv) -> ClocksConfig<MclkDefined> {
-        ClocksConfig {
+    pub const fn mclk_refoclk(self, mclk_div: MclkDiv) -> ClockConfig<MclkDefined> {
+        ClockConfig {
             mclk_div,
             mclk_sel: MclkSel::Refoclk,
             ..make_clkconf!(self, MclkDefined)
@@ -155,8 +155,8 @@ impl ClocksConfig<Undefined> {
     }
 
     /// Select VLOCLK for MCLK and set the MCLK divider
-    pub const fn mclk_vcoclk(self, mclk_div: MclkDiv) -> ClocksConfig<MclkDefined> {
-        ClocksConfig {
+    pub const fn mclk_vcoclk(self, mclk_div: MclkDiv) -> ClockConfig<MclkDefined> {
+        ClockConfig {
             mclk_div,
             mclk_sel: MclkSel::Vloclk,
             ..make_clkconf!(self, MclkDefined)
@@ -164,19 +164,19 @@ impl ClocksConfig<Undefined> {
     }
 }
 
-impl ClocksConfig<MclkDefined> {
+impl ClockConfig<MclkDefined> {
     /// Enable SMCLK and set SMCLK divider, which divides the MCLK frequency
-    pub const fn smclk_on(self, div: SmclkDiv) -> ClocksConfig<SmclkDefined> {
+    pub const fn smclk_on(self, div: SmclkDiv) -> ClockConfig<SmclkDefined> {
         make_clkconf!(self, SmclkDefined(div))
     }
 
     /// Disable SMCLK
-    pub const fn smclk_off(self) -> ClocksConfig<SmclkDisabled> {
+    pub const fn smclk_off(self) -> ClockConfig<SmclkDisabled> {
         make_clkconf!(self, SmclkDisabled)
     }
 }
 
-impl<MODE: SmclkState> ClocksConfig<MODE> {
+impl<MODE: SmclkState> ClockConfig<MODE> {
     fn configure_periph(&self) {
         self.periph.csctl4.write(|w| {
             w.sela()
@@ -195,7 +195,7 @@ impl<MODE: SmclkState> ClocksConfig<MODE> {
     }
 }
 
-impl ClocksConfig<SmclkDefined> {
+impl ClockConfig<SmclkDefined> {
     /// Apply clock configuration and return MCLK, SMCLK, and ACLK clock objects
     pub fn freeze(self) -> (Mclk, Smclk, Aclk) {
         self.configure_periph();
@@ -210,7 +210,7 @@ impl ClocksConfig<SmclkDefined> {
     }
 }
 
-impl ClocksConfig<SmclkDisabled> {
+impl ClockConfig<SmclkDisabled> {
     /// Apply clock configuration and return MCLK and ACLK clock objects, as SMCLK is disabled
     pub fn freeze(self) -> (Mclk, Aclk) {
         self.configure_periph();
