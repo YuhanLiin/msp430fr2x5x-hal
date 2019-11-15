@@ -11,11 +11,8 @@ pub const VLOCLK: u16 = 10000;
 const MCLK_DIV_EXP: u8 = 7;
 const MAX_DCO_MUL_EXP: u8 = 10;
 
-/// Clock sources for MCLK
-pub enum MclkSel {
-    /// REFOCLK
+enum MclkSel {
     Refoclk,
-    /// VLOCLK
     Vloclk,
     //Dcoclk { multiplier: u16, range: DCORSEL_A },
 }
@@ -36,12 +33,9 @@ impl MclkSel {
     }
 }
 
-/// Clock sources for ACLK
 #[derive(Clone, Copy)]
-pub enum AclkSel {
-    /// VLOCLK
+enum AclkSel {
     Vloclk,
-    /// REFOCLK
     Refoclk,
 }
 
@@ -238,6 +232,10 @@ pub trait Clock {
 impl Clock for Mclk {
     type Freq = u32;
 
+    /// Returning a 32-bit frequency may seem suspect, since we're on a 16-bit system, but it is
+    /// required as MCLK can go up to 24 MHz. Clock frequencies are usually for initialization
+    /// tasks such as computing baud rates, which should be optimized away, avoiding the extra cost
+    /// of 32-bit computations.
     fn freq(&self) -> u32 {
         self.0
     }
@@ -246,6 +244,7 @@ impl Clock for Mclk {
 impl Clock for Smclk {
     type Freq = u32;
 
+    /// SMCLK frequency can go as high as MCLK, so we need a 32-bit value to store it.
     fn freq(&self) -> u32 {
         self.0
     }

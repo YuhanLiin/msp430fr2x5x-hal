@@ -12,26 +12,19 @@ pub use pac::wdt_a::wdtctl::WDTIS_A as WdtClkPeriods;
 
 /// Extension trait to constrain watchdog peripheral into HAL watchdog
 pub trait WdtExt {
-    /// Constrain watchdog PAC peripheral into HAL watchdog
+    /// Constrain watchdog PAC peripheral into HAL watchdog and disable watchdog.
     fn constrain(self) -> Wdt<WatchdogMode>;
-
-    /// Disable watchdog before constraining it
-    fn disable_and_constrain(self) -> Wdt<WatchdogMode>;
 }
 
 impl WdtExt for pac::WDT_A {
     fn constrain(self) -> Wdt<WatchdogMode> {
+        // Disable first
+        self.wdtctl
+            .write(|w| unsafe { w.wdtpw().bits(PASSWORD) }.wdthold().hold());
         Wdt {
             _mode: PhantomData,
             periph: self,
         }
-    }
-
-    fn disable_and_constrain(self) -> Wdt<WatchdogMode> {
-        // Disable first
-        self.wdtctl
-            .write(|w| unsafe { w.wdtpw().bits(PASSWORD) }.wdthold().hold());
-        self.constrain()
     }
 }
 
@@ -203,7 +196,7 @@ impl Wdt<WatchdogMode> {
 
 impl Wdt<IntervalMode> {
     /// Convert to watchdog mode and pause timer
-    pub fn to_interval(self) -> Wdt<WatchdogMode> {
+    pub fn to_watchdog(self) -> Wdt<WatchdogMode> {
         let mut wdt = Wdt {
             _mode: PhantomData,
             periph: self.periph,
