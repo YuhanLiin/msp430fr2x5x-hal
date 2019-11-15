@@ -25,7 +25,7 @@ git = "https://github.com/rust-embedded/msp430-rt"
 
 [dependencies.msp430fr2355]
 features = ["rt"]
-git = "https://github.com/YuhanLiin/msp430fr2355"
+path = "../msp430fr2355"
 
 [dev-dependencies]
 panic-msp430 = "0.1.0"

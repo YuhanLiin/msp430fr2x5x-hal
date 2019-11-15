@@ -166,23 +166,23 @@ trait MaskRegisters {
 
 impl<PORT: PortNum, PIN: PinNum, DIR> MaskRegisters for PinProxy<PORT, PIN, DIR> {
     fn pxout_mask(&self) -> u8 {
-        (self.pxout_on() as u8) << PIN::pin()
+        (self.pxout_on() as u8) << PIN::NUM
     }
 
     fn pxdir_mask(&self) -> u8 {
-        (self.pxdir_on() as u8) << PIN::pin()
+        (self.pxdir_on() as u8) << PIN::NUM
     }
 
     fn pxren_mask(&self) -> u8 {
-        (self.pxren_on() as u8) << PIN::pin()
+        (self.pxren_on() as u8) << PIN::NUM
     }
 
     fn pxsel0_mask(&self) -> u8 {
-        (self.pxsel0_on() as u8) << PIN::pin()
+        (self.pxsel0_on() as u8) << PIN::NUM
     }
 
     fn pxsel1_mask(&self) -> u8 {
-        (self.pxsel1_on() as u8) << PIN::pin()
+        (self.pxsel1_on() as u8) << PIN::NUM
     }
 }
 
