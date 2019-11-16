@@ -14,7 +14,7 @@ fn main() {
     let wdt = periph.WDT_A.constrain();
 
     let pmm = periph.PMM.freeze();
-    let mut p1 = periph.P1.batch().config_pin0(|p| p.to_output()).split(&pmm);
+    let p1 = periph.P1.batch().config_pin0(|p| p.to_output()).split(&pmm);
     let mut p1_0 = p1.pin0;
 
     let (_mclk, smclk, _aclk) = periph
@@ -31,7 +31,7 @@ fn main() {
     wdt.start(WdtClkPeriods::_32K);
 
     block!(wdt.wait()).ok();
-    p1_0.proxy(&mut p1.pxout).set_high().ok();
+    p1_0.set_high().ok();
 
     let mut wdt = wdt.to_watchdog();
     wdt.start(WdtClkPeriods::_32K);
