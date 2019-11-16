@@ -210,24 +210,31 @@ impl<PORT: PortNum, PIN: PinNum, PULL> Pin<PORT, PIN, Input<PULL>>
 where
     PORT::Port: IntrPeriph,
 {
-    /// Enable rising edge interrupts on the input pin.
+    /// Enable rising edge interrupts on the input pin after clearing IFGs.
     /// Note that changing other GPIO configurations while interrupts are enabled can cause
     /// spurious interrupts.
     pub fn enable_interrupt_rising_edge(&mut self) {
+        self.enable_interrupts();
         let p = PORT::Port::steal();
-        p.pxies_clear(PIN::CLR_MASK);
-        p.pxifg_clear(PIN::CLR_MASK);
         p.pxie_set(PIN::SET_MASK);
     }
 
-    /// Enable falling edge interrupts on the input pin.
+    /// Enable falling edge interrupts on the input pin after clearing IFGs.
     /// Note that changing other GPIO configurations while interrupts are enabled can cause
     /// spurious interrupts.
     pub fn enable_interrupt_falling_edge(&mut self) {
+        self.enable_interrupts();
         let p = PORT::Port::steal();
-        p.pxies_set(PIN::SET_MASK);
-        p.pxifg_clear(PIN::CLR_MASK);
         p.pxie_set(PIN::SET_MASK);
+    }
+
+    /// Enable interrupts after clearing IFGs without modifying rising/falling edge trigger.
+    /// Note that changing other GPIO configurations while interrupts are enabled can cause
+    /// spurious interrupts.
+    pub fn enable_interrupts(&mut self) {
+        let p = PORT::Port::steal();
+        p.pxifg_clear(PIN::CLR_MASK);
+        p.pxies_set(PIN::SET_MASK);
     }
 
     /// Disable interrupts on input pin.
@@ -235,6 +242,64 @@ where
         let p = PORT::Port::steal();
         p.pxie_clear(PIN::CLR_MASK);
     }
+
+    /// Set interrupt flag high, triggering an ISR if interrupts are enabled.
+    pub fn set_ifg(&mut self) {
+        let p = PORT::Port::steal();
+        p.pxifg_set(PIN::SET_MASK);
+    }
+
+    /// Wait for interrupt flag to go high nonblockingly. Clear the flag if high.
+    pub fn wait_for_ifg(&mut self) -> nb::Result<(), void::Void> {
+        let p = PORT::Port::steal();
+        if p.pxifg_rd().check(PIN::NUM) != 0 {
+            p.pxifg_clear(PIN::CLR_MASK);
+            Ok(())
+        } else {
+            Err(nb::Error::WouldBlock)
+        }
+    }
+
+    /// When called inside an ISR, returns the pin number of the highest priority interrupt flag
+    /// that's currently enabled. Automatically clears the same flag. For a given port, the lowest
+    /// numbered pin has the highest interrupt priority.
+    pub fn get_interrupt_vector(&mut self) -> InterruptVector {
+        let p = PORT::Port::steal();
+        match p.pxiv_rd() {
+            0 => InterruptVector::NoIsr,
+            2 => InterruptVector::Pin0Isr,
+            4 => InterruptVector::Pin1Isr,
+            6 => InterruptVector::Pin2Isr,
+            8 => InterruptVector::Pin3Isr,
+            10 => InterruptVector::Pin4Isr,
+            12 => InterruptVector::Pin5Isr,
+            14 => InterruptVector::Pin6Isr,
+            16 => InterruptVector::Pin7Isr,
+            _ => unreachable!(),
+        }
+    }
+}
+
+/// Indicates which pin on the GPIO port caused the ISR.
+pub enum InterruptVector {
+    /// No ISR
+    NoIsr,
+    /// ISR caused by pin 0
+    Pin0Isr,
+    /// ISR caused by pin 1
+    Pin1Isr,
+    /// ISR caused by pin 2
+    Pin2Isr,
+    /// ISR caused by pin 3
+    Pin3Isr,
+    /// ISR caused by pin 4
+    Pin4Isr,
+    /// ISR caused by pin 5
+    Pin5Isr,
+    /// ISR caused by pin 6
+    Pin6Isr,
+    /// ISR caused by pin 7
+    Pin7Isr,
 }
 
 impl<PORT: PortNum, PIN: PinNum, PULL> Pin<PORT, PIN, Input<PULL>> {

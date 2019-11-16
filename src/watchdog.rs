@@ -100,11 +100,12 @@ impl<MODE: WatchdogSelect> Wdt<MODE> {
         self.set_clk(WDTSSEL_A::SMCLK)
     }
 
-    /// Enable interrupts for watchdog, which fires when the watchdog interrupt flag is set in
-    /// interval mode. This setting does nothing in watchdog mode, but will carry over when
-    /// switching to interval mode.
+    /// Enable interrupts for watchdog after clearing the interrupt flag, which fires when the
+    /// watchdog interrupt flag is set in interval mode. This setting does nothing in watchdog
+    /// mode, but will carry over when switching to interval mode.
     pub fn enable_interrupts(&mut self) {
         let sfr = unsafe { &*pac::SFR::ptr() };
+        unsafe { sfr.sfrifg1.clear_bits(|w| w.wdtifg().clear_bit()) };
         unsafe { sfr.sfrie1.set_bits(|w| w.wdtie().set_bit()) };
     }
 
