@@ -196,26 +196,26 @@ impl<PORT: PortNum, PIN: PinNum, DIR> MaskRegisters for PinProxy<PORT, PIN, DIR>
     }
 }
 
-trait MaybeClearInterrupts {
-    fn maybe_clear(&self);
+trait InterruptOperations {
+    fn maybe_set_pxie(&self, b: u8);
 }
 
-impl<P: GpioPeriph> MaybeClearInterrupts for P {
-    default fn maybe_clear(&self) {}
+impl<P: GpioPeriph> InterruptOperations for P {
+    default fn maybe_set_pxie(&self, _b: u8) {}
 }
 
-impl<P: IntrPeriph> MaybeClearInterrupts for P {
-    fn maybe_clear(&self) {
-        self.pxifg_wr(0x00);
+impl<P: IntrPeriph> InterruptOperations for P {
+    fn maybe_set_pxie(&self, b: u8) {
+        self.pxie_set(b);
     }
 }
 
-/// Extension trait to split GPIO peripheral
+/// Extension trait to split the GPIO object
 pub trait GpioExt {
-    /// The parts to split the GPIO into.
+    /// The struct to split the GPIO into.
     type Batch;
 
-    /// Split the GPIO into pins and contention tokens
+    /// Split into a batch of individual GPIO pin proxies
     fn batch(self) -> Self::Batch;
 }
 
@@ -313,13 +313,13 @@ impl<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
             .set_mask(self.pin7.pxsel1_mask());
 
         let p = PORT::Port::steal();
+        // Turn off interrupts first so nothing fires during subsequent register writes
+        p.maybe_set_pxie(0);
         p.pxsel0_wr(pxsel0);
         p.pxsel1_wr(pxsel1);
         p.pxout_wr(pxout);
         p.pxdir_wr(pxdir);
         p.pxren_wr(pxren);
-        // Clear interrupts
-        p.maybe_clear();
     }
 
     pub(super) fn new() -> Self {
@@ -335,7 +335,9 @@ impl<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
         }
     }
 
-    /// Commits all pin configurations to GPIO registers and returns GPIO parts.
+    /// Commits all pin configurations to GPIO registers and returns GPIO parts. Turns off all
+    /// interrupt enable bits. Note that the pin's interrupt flags may become set as a result of
+    /// this operation.
     /// GPIO input/output operations only work after the LOCKLPM5 bit has been set, which is
     /// ensured when passing `&Pmm` into the method, since a `Pmm` is created only be setting
     /// LOCKLPM5.

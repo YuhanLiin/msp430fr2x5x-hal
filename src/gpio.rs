@@ -210,43 +210,50 @@ impl<PORT: PortNum, PIN: PinNum, PULL> Pin<PORT, PIN, Input<PULL>>
 where
     PORT::Port: IntrPeriph,
 {
-    /// Enable rising edge interrupts on the input pin after clearing IFGs.
-    /// Note that changing other GPIO configurations while interrupts are enabled can cause
-    /// spurious interrupts.
-    pub fn enable_interrupt_rising_edge(&mut self) {
-        self.enable_interrupts();
+    /// Set interrupt trigger to rising edge and clear interrupt flag.
+    pub fn select_rising_edge_trigger(&mut self) -> &mut Self {
         let p = PORT::Port::steal();
-        p.pxie_set(PIN::SET_MASK);
-    }
-
-    /// Enable falling edge interrupts on the input pin after clearing IFGs.
-    /// Note that changing other GPIO configurations while interrupts are enabled can cause
-    /// spurious interrupts.
-    pub fn enable_interrupt_falling_edge(&mut self) {
-        self.enable_interrupts();
-        let p = PORT::Port::steal();
-        p.pxie_set(PIN::SET_MASK);
-    }
-
-    /// Enable interrupts after clearing IFGs without modifying rising/falling edge trigger.
-    /// Note that changing other GPIO configurations while interrupts are enabled can cause
-    /// spurious interrupts.
-    pub fn enable_interrupts(&mut self) {
-        let p = PORT::Port::steal();
-        p.pxifg_clear(PIN::CLR_MASK);
         p.pxies_set(PIN::SET_MASK);
+        p.pxifg_clear(PIN::CLR_MASK);
+        self
+    }
+
+    /// Set interrupt trigger to falling edge, the default, and clear interrupt flag.
+    pub fn select_falling_edge_trigger(&mut self) -> &mut Self {
+        let p = PORT::Port::steal();
+        p.pxies_clear(PIN::CLR_MASK);
+        p.pxifg_clear(PIN::CLR_MASK);
+        self
+    }
+
+    /// Enable interrupts on input pin.
+    /// Note that changing other GPIO configurations while interrupts are enabled can cause
+    /// spurious interrupts.
+    pub fn enable_interrupts(&mut self) -> &mut Self {
+        let p = PORT::Port::steal();
+        p.pxie_set(PIN::SET_MASK);
+        self
     }
 
     /// Disable interrupts on input pin.
-    pub fn disable_interrupt(&mut self) {
+    pub fn disable_interrupt(&mut self) -> &mut Self {
         let p = PORT::Port::steal();
         p.pxie_clear(PIN::CLR_MASK);
+        self
     }
 
     /// Set interrupt flag high, triggering an ISR if interrupts are enabled.
-    pub fn set_ifg(&mut self) {
+    pub fn set_ifg(&mut self) -> &mut Self {
         let p = PORT::Port::steal();
         p.pxifg_set(PIN::SET_MASK);
+        self
+    }
+
+    /// Clear interrupt flag.
+    pub fn clear_ifg(&mut self) -> &mut Self {
+        let p = PORT::Port::steal();
+        p.pxifg_clear(PIN::CLR_MASK);
+        self
     }
 
     /// Wait for interrupt flag to go high nonblockingly. Clear the flag if high.
@@ -384,7 +391,7 @@ impl<PORT: PortNum, PIN: PinNum> ToggleableOutputPin for Pin<PORT, PIN, Output> 
     }
 }
 
-/// GPIO parts for a specific port, including all 8 pins and register contention tokens
+/// GPIO parts for a specific port, including all 8 pins.
 pub struct Parts<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7> {
     /// Pin0
     pub pin0: Pin<PORT, Pin0, DIR0>,
