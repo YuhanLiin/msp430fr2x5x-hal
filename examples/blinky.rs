@@ -1,14 +1,12 @@
 #![no_std]
 
 use embedded_hal::digital::v2::*;
-use msp430fr2x5x_hal::{gpio::*, pmm::*};
+use msp430fr2x5x_hal::{gpio::*, pmm::*, watchdog::*};
 use panic_msp430 as _;
 
 fn main() {
     let periph = msp430fr2355::Peripherals::take().unwrap();
-    let wdt = periph.WDT_A;
-    wdt.wdtctl
-        .write(|w| unsafe { w.wdtpw().bits(0x5A) }.wdthold().hold());
+    let _wdt = periph.WDT_A.constrain();
 
     let pmm = periph.PMM.freeze();
     let p1 = periph.P1.batch().split(&pmm);

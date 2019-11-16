@@ -266,12 +266,23 @@ where
             Err(nb::Error::WouldBlock)
         }
     }
+}
 
+/// Trait for getting the interrupt vector info for a port with interrupt capabilities
+pub trait GetInterruptVector {
     /// When called inside an ISR, returns the pin number of the highest priority interrupt flag
     /// that's currently enabled. Automatically clears the same flag. For a given port, the lowest
     /// numbered pin has the highest interrupt priority.
-    pub fn get_interrupt_vector(&mut self) -> InterruptVector {
-        let p = PORT::Port::steal();
+    fn get_interrupt_vector() -> InterruptVector;
+}
+
+impl<P: PortNum> GetInterruptVector for P
+where
+    P::Port: IntrPeriph,
+{
+    // Since all we do here are reg reads, this function is re-entrant
+    fn get_interrupt_vector() -> InterruptVector {
+        let p = P::Port::steal();
         match p.pxiv_rd() {
             0 => InterruptVector::NoIsr,
             2 => InterruptVector::Pin0Isr,
