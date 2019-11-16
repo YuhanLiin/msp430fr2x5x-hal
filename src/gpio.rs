@@ -167,6 +167,14 @@ macro_rules! make_pin {
             _dir: PhantomData,
         }
     };
+
+    ($dir:ty) => {
+        Pin::<_, _, $dir> {
+            _port: PhantomData,
+            _pin: PhantomData,
+            _dir: PhantomData,
+        }
+    };
 }
 
 impl<PORT: PortNum, PIN: PinNum, PULL> Pin<PORT, PIN, Input<PULL>> {
@@ -239,13 +247,25 @@ impl<PORT: PortNum, PIN: PinNum, PULL> Pin<PORT, PIN, Input<PULL>> {
 }
 
 impl<PORT: PortNum, PIN: PinNum> Pin<PORT, PIN, Output> {
-    /// Configures pin as input. Note that the pull state of the pin is actually unknown at this
-    /// point, despite the type being `Input<Floating>`, so call `floating()` if you actually need
-    /// a floating GPIO.
-    pub fn to_input(self) -> Pin<PORT, PIN, Input<Floating>> {
+    /// Configures pin as floating input
+    pub fn to_input_floating(self) -> Pin<PORT, PIN, Input<Floating>> {
         let p = PORT::Port::steal();
         p.pxdir_clear(PIN::CLR_MASK);
-        make_pin!()
+        make_pin!(Input<Floating>).floating()
+    }
+
+    /// Configures pin as floating input
+    pub fn to_input_pullup(self) -> Pin<PORT, PIN, Input<Pullup>> {
+        let p = PORT::Port::steal();
+        p.pxdir_clear(PIN::CLR_MASK);
+        make_pin!(Input<Floating>).pullup()
+    }
+
+    /// Configures pin as floating input
+    pub fn to_input_pulldown(self) -> Pin<PORT, PIN, Input<Pulldown>> {
+        let p = PORT::Port::steal();
+        p.pxdir_clear(PIN::CLR_MASK);
+        make_pin!(Input<Floating>).pulldown()
     }
 }
 

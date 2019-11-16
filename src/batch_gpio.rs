@@ -46,8 +46,18 @@ impl<PORT: PortNum, PIN: PinNum, DIR> PinProxy<PORT, PIN, DIR> {
         make_proxy!()
     }
 
-    /// Configures pin as output
-    pub fn to_input(self) -> PinProxy<PORT, PIN, Input<Floating>> {
+    /// Configures pin as floating input
+    pub fn to_input_floating(self) -> PinProxy<PORT, PIN, Input<Floating>> {
+        make_proxy!()
+    }
+
+    /// Configures pin as floating pullup
+    pub fn to_input_pullup(self) -> PinProxy<PORT, PIN, Input<Pullup>> {
+        make_proxy!()
+    }
+
+    /// Configures pin as floating pulldown
+    pub fn to_input_pulldown(self) -> PinProxy<PORT, PIN, Input<Pulldown>> {
         make_proxy!()
     }
 }
