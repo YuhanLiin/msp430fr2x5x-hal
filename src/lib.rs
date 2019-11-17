@@ -1,6 +1,7 @@
 //! TODO replace
 #![no_std]
 #![feature(specialization)]
+#![feature(asm)]
 #![deny(missing_docs)]
 
 /// GPIO batch configuration

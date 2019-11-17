@@ -20,8 +20,8 @@ fn main() {
     let (_mclk, smclk, _aclk) = periph
         .CS
         .constrain()
-        .mclk_dcoclk(90, MclkDiv::_1)
-        // 32 KHz SMCLK
+        // Pumping this to 20MHz or higher makes erasing flash a problem
+        .mclk_dcoclk(DcoclkFreqSel::_8MHz, MclkDiv::_1)
         .smclk_on(SmclkDiv::_1)
         .aclk_vloclk()
         .freeze();

@@ -8,12 +8,10 @@ pub const REFOCLK: u16 = 32768;
 /// VLOCLK frequency
 pub const VLOCLK: u16 = 10000;
 
-const FLL_MAX_MUL: u16 = 732;
-
 enum MclkSel {
     Refoclk,
     Vloclk,
-    Dcoclk { flln: u16, range: DCORSEL_A },
+    Dcoclk(DcoclkFreqSel),
 }
 
 impl MclkSel {
@@ -21,7 +19,7 @@ impl MclkSel {
         match self {
             MclkSel::Refoclk => SELMS_A::REFOCLK,
             MclkSel::Vloclk => SELMS_A::VLOCLK,
-            MclkSel::Dcoclk { flln: _, range: _ } => SELMS_A::DCOCLKDIV,
+            MclkSel::Dcoclk(_) => SELMS_A::DCOCLKDIV,
         }
     }
 
@@ -29,7 +27,7 @@ impl MclkSel {
         match self {
             MclkSel::Vloclk => VLOCLK as u32,
             MclkSel::Refoclk => REFOCLK as u32,
-            MclkSel::Dcoclk { flln, range: _ } => (REFOCLK as u32) * (*flln as u32),
+            MclkSel::Dcoclk(fsel) => fsel.freq(),
         }
     }
 }
@@ -53,6 +51,61 @@ impl AclkSel {
             AclkSel::Vloclk => VLOCLK,
             AclkSel::Refoclk => REFOCLK,
         }
+    }
+}
+
+/// Selectable DCOCLK frequencies when using factory trim settings.
+/// Actual frequencies may be slightly higher.
+#[derive(Clone, Copy)]
+pub enum DcoclkFreqSel {
+    /// 1 MHz
+    _1MHz,
+    /// 2 MHz
+    _2MHz,
+    /// 4 MHz
+    _4MHz,
+    /// 8 MHz
+    _8MHz,
+    /// 12 MHz
+    _12MHz,
+    /// 16 MHz
+    _16MHz,
+    /// 20 MHz
+    _20MHz,
+    /// 24 MHz
+    _24MHz,
+}
+
+impl DcoclkFreqSel {
+    fn dcorsel(self) -> DCORSEL_A {
+        match self {
+            DcoclkFreqSel::_1MHz => DCORSEL_A::DCORSEL_0,
+            DcoclkFreqSel::_2MHz => DCORSEL_A::DCORSEL_1,
+            DcoclkFreqSel::_4MHz => DCORSEL_A::DCORSEL_2,
+            DcoclkFreqSel::_8MHz => DCORSEL_A::DCORSEL_3,
+            DcoclkFreqSel::_12MHz => DCORSEL_A::DCORSEL_4,
+            DcoclkFreqSel::_16MHz => DCORSEL_A::DCORSEL_5,
+            DcoclkFreqSel::_20MHz => DCORSEL_A::DCORSEL_6,
+            DcoclkFreqSel::_24MHz => DCORSEL_A::DCORSEL_7,
+        }
+    }
+
+    fn multiplier(self) -> u16 {
+        match self {
+            DcoclkFreqSel::_1MHz => 32,
+            DcoclkFreqSel::_2MHz => 64,
+            DcoclkFreqSel::_4MHz => 128,
+            DcoclkFreqSel::_8MHz => 256,
+            DcoclkFreqSel::_12MHz => 384,
+            DcoclkFreqSel::_16MHz => 512,
+            DcoclkFreqSel::_20MHz => 640,
+            DcoclkFreqSel::_24MHz => 738,
+        }
+    }
+
+    /// Numerical frequency
+    pub fn freq(self) -> u32 {
+        (self.multiplier() as u32) * (REFOCLK as u32)
     }
 }
 
@@ -158,38 +211,17 @@ impl ClockConfig<Undefined> {
         }
     }
 
-    /// Select DCOCLK for MCLK with FLL for stabilization. Frequency is `32768 * mutiplier / mclk_div` Hz.
-    /// Multiplier must be higher than 1 and lower or equal to 732, which brings the maximum
-    /// frequency to around 24 MHz.
-    pub fn mclk_dcoclk(self, mut mutiplier: u16, mclk_div: MclkDiv) -> ClockConfig<MclkDefined> {
-        if mutiplier < 1 {
-            mutiplier = 1
-        } else if mutiplier > FLL_MAX_MUL {
-            mutiplier = FLL_MAX_MUL;
-        }
-        let flln = mutiplier - 1;
-
-        let range = if mutiplier < 32 {
-            DCORSEL_A::DCORSEL_0
-        } else if mutiplier < 64 {
-            DCORSEL_A::DCORSEL_1
-        } else if mutiplier < 128 {
-            DCORSEL_A::DCORSEL_2
-        } else if mutiplier < 256 {
-            DCORSEL_A::DCORSEL_3
-        } else if mutiplier < 384 {
-            DCORSEL_A::DCORSEL_4
-        } else if mutiplier < 512 {
-            DCORSEL_A::DCORSEL_5
-        } else if mutiplier < 640 {
-            DCORSEL_A::DCORSEL_6
-        } else {
-            DCORSEL_A::DCORSEL_7
-        };
-
+    /// Select DCOCLK for MCLK with FLL for stabilization. Frequency is `target_freq / mclk_div` Hz.
+    /// This setting selects the default factory trim for DCO trimming and performs no extra
+    /// calibration, so only a select few frequency targets can be selected.
+    pub const fn mclk_dcoclk(
+        self,
+        target_freq: DcoclkFreqSel,
+        mclk_div: MclkDiv,
+    ) -> ClockConfig<MclkDefined> {
         ClockConfig {
             mclk_div,
-            mclk_sel: MclkSel::Dcoclk { flln, range },
+            mclk_sel: MclkSel::Dcoclk(target_freq),
             ..make_clkconf!(self, MclkDefined)
         }
     }
@@ -207,22 +239,37 @@ impl ClockConfig<MclkDefined> {
     }
 }
 
+fn fll_off() {
+    const FLAG: u8 = 1 << 6;
+    unsafe { asm!("bis.b $0, SR" :: "i"(FLAG) : "memory" : "volatile") };
+}
+
+fn fll_on() {
+    const FLAG: u8 = 1 << 6;
+    unsafe { asm!("bic.b $0, SR" :: "i"(FLAG) : "memory" : "volatile") };
+}
+
 impl<MODE: SmclkState> ClockConfig<MODE> {
     fn configure_periph(&self) {
         // FLL configuration procedure from the user's guide
-        if let MclkSel::Dcoclk { flln, range } = self.mclk_sel {
-            // Turn off FLL if it were possible
+        if let MclkSel::Dcoclk(target_freq) = self.mclk_sel {
+            fll_off();
             self.periph.csctl3.write(|w| w.selref().refoclk());
             self.periph.csctl0.write(|w| unsafe { w.bits(0) });
-            self.periph.csctl1.write(|w| w.dcorsel().variant(range));
             self.periph
-                .csctl2
-                .write(|w| unsafe { w.flln().bits(flln) }.flld()._1());
-            // Turn on FLL if it were possible
+                .csctl1
+                .write(|w| w.dcorsel().variant(target_freq.dcorsel()));
+            self.periph.csctl2.write(|w| {
+                unsafe { w.flln().bits(target_freq.multiplier() - 1) }
+                    .flld()
+                    ._1()
+            });
 
             msp430::asm::nop();
             msp430::asm::nop();
             msp430::asm::nop();
+            fll_on();
+
             while !self.periph.csctl7.read().fllunlock().is_fllunlock_0() {}
         }
 
