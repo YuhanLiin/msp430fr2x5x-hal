@@ -8,13 +8,12 @@ pub const REFOCLK: u16 = 32768;
 /// VLOCLK frequency
 pub const VLOCLK: u16 = 10000;
 
-const MCLK_DIV_EXP: u8 = 7;
-const MAX_DCO_MUL_EXP: u8 = 10;
+const FLL_MAX_MUL: u16 = 732;
 
 enum MclkSel {
     Refoclk,
     Vloclk,
-    //Dcoclk { multiplier: u16, range: DCORSEL_A },
+    Dcoclk { flln: u16, range: DCORSEL_A },
 }
 
 impl MclkSel {
@@ -22,6 +21,7 @@ impl MclkSel {
         match self {
             MclkSel::Refoclk => SELMS_A::REFOCLK,
             MclkSel::Vloclk => SELMS_A::VLOCLK,
+            MclkSel::Dcoclk { flln: _, range: _ } => SELMS_A::DCOCLKDIV,
         }
     }
 
@@ -29,6 +29,7 @@ impl MclkSel {
         match self {
             MclkSel::Vloclk => VLOCLK as u32,
             MclkSel::Refoclk => REFOCLK as u32,
+            MclkSel::Dcoclk { flln, range: _ } => (REFOCLK as u32) * (*flln as u32),
         }
     }
 }
@@ -40,7 +41,7 @@ enum AclkSel {
 }
 
 impl AclkSel {
-    fn to_sela(self) -> SELA_A {
+    fn sela(self) -> SELA_A {
         match self {
             AclkSel::Vloclk => SELA_A::VLOCLK,
             AclkSel::Refoclk => SELA_A::REFOCLK,
@@ -139,7 +140,7 @@ impl<MODE> ClockConfig<MODE> {
 }
 
 impl ClockConfig<Undefined> {
-    /// Select REFOCLK for MCLK and set the MCLK divider
+    /// Select REFOCLK for MCLK and set the MCLK divider. Frequency is `10000 / mclk_div` Hz.
     pub const fn mclk_refoclk(self, mclk_div: MclkDiv) -> ClockConfig<MclkDefined> {
         ClockConfig {
             mclk_div,
@@ -148,11 +149,47 @@ impl ClockConfig<Undefined> {
         }
     }
 
-    /// Select VLOCLK for MCLK and set the MCLK divider
+    /// Select VLOCLK for MCLK and set the MCLK divider. Frequency is `32768 / mclk_div` Hz.
     pub const fn mclk_vcoclk(self, mclk_div: MclkDiv) -> ClockConfig<MclkDefined> {
         ClockConfig {
             mclk_div,
             mclk_sel: MclkSel::Vloclk,
+            ..make_clkconf!(self, MclkDefined)
+        }
+    }
+
+    /// Select DCOCLK for MCLK with FLL for stabilization. Frequency is `32768 * mutiplier / mclk_div` Hz.
+    /// Multiplier must be higher than 1 and lower or equal to 732, which brings the maximum
+    /// frequency to around 24 MHz.
+    pub fn mclk_dcoclk(self, mut mutiplier: u16, mclk_div: MclkDiv) -> ClockConfig<MclkDefined> {
+        if mutiplier < 1 {
+            mutiplier = 1
+        } else if mutiplier > FLL_MAX_MUL {
+            mutiplier = FLL_MAX_MUL;
+        }
+        let flln = mutiplier - 1;
+
+        let range = if mutiplier < 32 {
+            DCORSEL_A::DCORSEL_0
+        } else if mutiplier < 64 {
+            DCORSEL_A::DCORSEL_1
+        } else if mutiplier < 128 {
+            DCORSEL_A::DCORSEL_2
+        } else if mutiplier < 256 {
+            DCORSEL_A::DCORSEL_3
+        } else if mutiplier < 384 {
+            DCORSEL_A::DCORSEL_4
+        } else if mutiplier < 512 {
+            DCORSEL_A::DCORSEL_5
+        } else if mutiplier < 640 {
+            DCORSEL_A::DCORSEL_6
+        } else {
+            DCORSEL_A::DCORSEL_7
+        };
+
+        ClockConfig {
+            mclk_div,
+            mclk_sel: MclkSel::Dcoclk { flln, range },
             ..make_clkconf!(self, MclkDefined)
         }
     }
@@ -172,9 +209,26 @@ impl ClockConfig<MclkDefined> {
 
 impl<MODE: SmclkState> ClockConfig<MODE> {
     fn configure_periph(&self) {
+        // FLL configuration procedure from the user's guide
+        if let MclkSel::Dcoclk { flln, range } = self.mclk_sel {
+            // Turn off FLL if it were possible
+            self.periph.csctl3.write(|w| w.selref().refoclk());
+            self.periph.csctl0.write(|w| unsafe { w.bits(0) });
+            self.periph.csctl1.write(|w| w.dcorsel().variant(range));
+            self.periph
+                .csctl2
+                .write(|w| unsafe { w.flln().bits(flln) }.flld()._1());
+            // Turn on FLL if it were possible
+
+            msp430::asm::nop();
+            msp430::asm::nop();
+            msp430::asm::nop();
+            while !self.periph.csctl7.read().fllunlock().is_fllunlock_0() {}
+        }
+
         self.periph.csctl4.write(|w| {
             w.sela()
-                .variant(self.aclk_sel.to_sela())
+                .variant(self.aclk_sel.sela())
                 .selms()
                 .variant(self.mclk_sel.selms())
         });

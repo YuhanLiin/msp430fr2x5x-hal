@@ -20,21 +20,24 @@ fn main() {
     let (_mclk, smclk, _aclk) = periph
         .CS
         .constrain()
-        .mclk_refoclk(MclkDiv::_1)
+        .mclk_dcoclk(90, MclkDiv::_1)
         // 32 KHz SMCLK
         .smclk_on(SmclkDiv::_1)
         .aclk_vloclk()
         .freeze();
 
+    const DELAY: WdtClkPeriods = WdtClkPeriods::_8192K;
+
     // blinks should be 1 second on, 1 second off
     let mut wdt = wdt.set_smclk(&smclk).to_interval();
-    wdt.start(WdtClkPeriods::_32K);
+    p1_0.set_high().ok();
+    wdt.start(DELAY);
 
     block!(wdt.wait()).ok();
-    p1_0.set_high().ok();
+    p1_0.set_low().ok();
 
     let mut wdt = wdt.to_watchdog();
-    wdt.start(WdtClkPeriods::_32K);
+    wdt.start(DELAY);
 
     loop {
         msp430::asm::nop();
