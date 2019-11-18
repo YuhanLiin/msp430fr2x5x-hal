@@ -181,6 +181,7 @@ impl<PORT: PortNum, PIN: PinNum, PULL> Pin<PORT, PIN, Input<PULL>> {
     /// Configures pin as pulldown input
     /// This method requires a `Pxout` token because configuring pull direction requires setting
     /// the PxOUT register, which can race with setting an output pin on the same port.
+    #[inline(always)]
     pub fn pulldown(self) -> Pin<PORT, PIN, Input<Pulldown>> {
         let p = PORT::Port::steal();
         p.pxout_clear(PIN::CLR_MASK);
@@ -191,6 +192,7 @@ impl<PORT: PortNum, PIN: PinNum, PULL> Pin<PORT, PIN, Input<PULL>> {
     /// Configures pin as pullup input
     /// This method requires a `Pxout` token because configuring pull direction requires setting
     /// the PxOUT register, which can race with setting an output pin on the same port.
+    #[inline(always)]
     pub fn pullup(self) -> Pin<PORT, PIN, Input<Pullup>> {
         let p = PORT::Port::steal();
         p.pxout_set(PIN::SET_MASK);
@@ -199,6 +201,7 @@ impl<PORT: PortNum, PIN: PinNum, PULL> Pin<PORT, PIN, Input<PULL>> {
     }
 
     /// Configures pin as floating input
+    #[inline(always)]
     pub fn floating(self) -> Pin<PORT, PIN, Input<Floating>> {
         let p = PORT::Port::steal();
         p.pxren_clear(PIN::CLR_MASK);
@@ -211,6 +214,7 @@ where
     PORT::Port: IntrPeriph,
 {
     /// Set interrupt trigger to rising edge and clear interrupt flag.
+    #[inline(always)]
     pub fn select_rising_edge_trigger(&mut self) -> &mut Self {
         let p = PORT::Port::steal();
         p.pxies_set(PIN::SET_MASK);
@@ -219,6 +223,7 @@ where
     }
 
     /// Set interrupt trigger to falling edge, the default, and clear interrupt flag.
+    #[inline(always)]
     pub fn select_falling_edge_trigger(&mut self) -> &mut Self {
         let p = PORT::Port::steal();
         p.pxies_clear(PIN::CLR_MASK);
@@ -229,6 +234,7 @@ where
     /// Enable interrupts on input pin.
     /// Note that changing other GPIO configurations while interrupts are enabled can cause
     /// spurious interrupts.
+    #[inline(always)]
     pub fn enable_interrupts(&mut self) -> &mut Self {
         let p = PORT::Port::steal();
         p.pxie_set(PIN::SET_MASK);
@@ -236,6 +242,7 @@ where
     }
 
     /// Disable interrupts on input pin.
+    #[inline(always)]
     pub fn disable_interrupt(&mut self) -> &mut Self {
         let p = PORT::Port::steal();
         p.pxie_clear(PIN::CLR_MASK);
@@ -243,6 +250,7 @@ where
     }
 
     /// Set interrupt flag high, triggering an ISR if interrupts are enabled.
+    #[inline(always)]
     pub fn set_ifg(&mut self) -> &mut Self {
         let p = PORT::Port::steal();
         p.pxifg_set(PIN::SET_MASK);
@@ -250,6 +258,7 @@ where
     }
 
     /// Clear interrupt flag.
+    #[inline(always)]
     pub fn clear_ifg(&mut self) -> &mut Self {
         let p = PORT::Port::steal();
         p.pxifg_clear(PIN::CLR_MASK);
@@ -257,6 +266,7 @@ where
     }
 
     /// Wait for interrupt flag to go high nonblockingly. Clear the flag if high.
+    #[inline(always)]
     pub fn wait_for_ifg(&mut self) -> nb::Result<(), void::Void> {
         let p = PORT::Port::steal();
         if p.pxifg_rd().check(PIN::NUM) != 0 {
@@ -281,6 +291,7 @@ where
     P::Port: IntrPeriph,
 {
     // Since all we do here are reg reads, this function is re-entrant
+    #[inline(always)]
     fn get_interrupt_vector() -> InterruptVector {
         let p = P::Port::steal();
         match p.pxiv_rd() {
@@ -322,6 +333,7 @@ pub enum InterruptVector {
 
 impl<PORT: PortNum, PIN: PinNum, PULL> Pin<PORT, PIN, Input<PULL>> {
     /// Configures pin as output
+    #[inline(always)]
     pub fn to_output(self) -> Pin<PORT, PIN, Output> {
         let p = PORT::Port::steal();
         p.pxdir_set(PIN::SET_MASK);
@@ -331,6 +343,7 @@ impl<PORT: PortNum, PIN: PinNum, PULL> Pin<PORT, PIN, Input<PULL>> {
 
 impl<PORT: PortNum, PIN: PinNum> Pin<PORT, PIN, Output> {
     /// Configures pin as floating input
+    #[inline(always)]
     pub fn to_input_floating(self) -> Pin<PORT, PIN, Input<Floating>> {
         let p = PORT::Port::steal();
         p.pxdir_clear(PIN::CLR_MASK);
@@ -338,6 +351,7 @@ impl<PORT: PortNum, PIN: PinNum> Pin<PORT, PIN, Output> {
     }
 
     /// Configures pin as floating input
+    #[inline(always)]
     pub fn to_input_pullup(self) -> Pin<PORT, PIN, Input<Pullup>> {
         let p = PORT::Port::steal();
         p.pxdir_clear(PIN::CLR_MASK);
@@ -345,6 +359,7 @@ impl<PORT: PortNum, PIN: PinNum> Pin<PORT, PIN, Output> {
     }
 
     /// Configures pin as floating input
+    #[inline(always)]
     pub fn to_input_pulldown(self) -> Pin<PORT, PIN, Input<Pulldown>> {
         let p = PORT::Port::steal();
         p.pxdir_clear(PIN::CLR_MASK);
@@ -355,11 +370,13 @@ impl<PORT: PortNum, PIN: PinNum> Pin<PORT, PIN, Output> {
 impl<PORT: PortNum, PIN: PinNum, PULL> InputPin for Pin<PORT, PIN, Input<PULL>> {
     type Error = void::Void;
 
+    #[inline(always)]
     fn is_high(&self) -> Result<bool, Self::Error> {
         let p = PORT::Port::steal();
         Ok(p.pxin_rd().check(PIN::NUM) != 0)
     }
 
+    #[inline(always)]
     fn is_low(&self) -> Result<bool, Self::Error> {
         self.is_high().map(|r| !r)
     }
@@ -368,12 +385,14 @@ impl<PORT: PortNum, PIN: PinNum, PULL> InputPin for Pin<PORT, PIN, Input<PULL>> 
 impl<PORT: PortNum, PIN: PinNum> OutputPin for Pin<PORT, PIN, Output> {
     type Error = void::Void;
 
+    #[inline(always)]
     fn set_low(&mut self) -> Result<(), Self::Error> {
         let p = PORT::Port::steal();
         p.pxout_clear(PIN::CLR_MASK);
         Ok(())
     }
 
+    #[inline(always)]
     fn set_high(&mut self) -> Result<(), Self::Error> {
         let p = PORT::Port::steal();
         p.pxout_set(PIN::SET_MASK);
@@ -382,11 +401,13 @@ impl<PORT: PortNum, PIN: PinNum> OutputPin for Pin<PORT, PIN, Output> {
 }
 
 impl<PORT: PortNum, PIN: PinNum> StatefulOutputPin for Pin<PORT, PIN, Output> {
+    #[inline(always)]
     fn is_set_high(&self) -> Result<bool, Self::Error> {
         let p = PORT::Port::steal();
         Ok(p.pxout_rd().check(PIN::NUM) != 0)
     }
 
+    #[inline(always)]
     fn is_set_low(&self) -> Result<bool, Self::Error> {
         self.is_set_high().map(|r| !r)
     }
@@ -395,6 +416,7 @@ impl<PORT: PortNum, PIN: PinNum> StatefulOutputPin for Pin<PORT, PIN, Output> {
 impl<PORT: PortNum, PIN: PinNum> ToggleableOutputPin for Pin<PORT, PIN, Output> {
     type Error = void::Void;
 
+    #[inline(always)]
     fn toggle(&mut self) -> Result<(), Self::Error> {
         let p = PORT::Port::steal();
         p.pxout_toggle(PIN::SET_MASK);
@@ -426,10 +448,12 @@ impl<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
     Parts<PORT, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
 {
     /// Converts all parts into a GPIO batch so the entire port can be configured at once
+    #[inline(always)]
     pub fn batch(self) -> Batch<PORT, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7> {
         Batch::new()
     }
 
+    #[inline(always)]
     pub(super) fn new() -> Self {
         Self {
             pin0: make_pin!(),
@@ -446,26 +470,31 @@ impl<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
 
 // Methods for managing sel1, sel0, and selc registers
 impl<PORT: PortNum, PIN: PinNum, DIR> Pin<PORT, PIN, DIR> {
+    #[inline(always)]
     fn set_sel0(&mut self) {
         let p = PORT::Port::steal();
         p.pxsel0_set(PIN::SET_MASK);
     }
 
+    #[inline(always)]
     fn set_sel1(&mut self) {
         let p = PORT::Port::steal();
         p.pxsel1_set(PIN::SET_MASK);
     }
 
+    #[inline(always)]
     fn clear_sel0(&mut self) {
         let p = PORT::Port::steal();
         p.pxsel0_clear(PIN::CLR_MASK);
     }
 
+    #[inline(always)]
     fn clear_sel1(&mut self) {
         let p = PORT::Port::steal();
         p.pxsel1_clear(PIN::CLR_MASK);
     }
 
+    #[inline(always)]
     fn flip_selc(&mut self) {
         let p = PORT::Port::steal();
         // Change both sel0 and sel1 bits at once
@@ -494,6 +523,7 @@ where
     Self: ToAlternate1,
 {
     /// Convert pin to GPIO alternate function 1
+    #[inline(always)]
     pub fn to_alternate1(mut self) -> Pin<PORT, PIN, Alternate1<DIR>> {
         self.set_sel0();
         make_pin!()
@@ -505,6 +535,7 @@ where
     Self: ToAlternate2,
 {
     /// Convert pin to GPIO alternate function 2
+    #[inline(always)]
     pub fn to_alternate2(mut self) -> Pin<PORT, PIN, Alternate2<DIR>> {
         self.set_sel1();
         make_pin!()
@@ -516,6 +547,7 @@ where
     Self: ToAlternate3,
 {
     /// Convert pin to GPIO alternate function 3
+    #[inline(always)]
     pub fn to_alternate3(mut self) -> Pin<PORT, PIN, Alternate3<DIR>> {
         self.flip_selc();
         make_pin!()
@@ -525,6 +557,7 @@ where
 // sel0 = 1, sel1 = 0
 impl<PORT: PortNum, PIN: PinNum, DIR> Pin<PORT, PIN, Alternate1<DIR>> {
     /// Convert pin to GPIO function
+    #[inline(always)]
     pub fn to_gpio(mut self) -> Pin<PORT, PIN, DIR> {
         self.clear_sel0();
         make_pin!()
@@ -536,6 +569,7 @@ where
     Self: ToAlternate2,
 {
     /// Convert pin to alternate function 2
+    #[inline(always)]
     pub fn to_alternate2(mut self) -> Pin<PORT, PIN, Alternate2<DIR>> {
         self.flip_selc();
         make_pin!()
@@ -547,6 +581,7 @@ where
     Self: ToAlternate3,
 {
     /// Convert pin to alternate function 3
+    #[inline(always)]
     pub fn to_alternate3(mut self) -> Pin<PORT, PIN, Alternate3<DIR>> {
         self.set_sel1();
         make_pin!()
@@ -556,6 +591,7 @@ where
 // sel0 = 0, sel1 = 1
 impl<PORT: PortNum, PIN: PinNum, DIR> Pin<PORT, PIN, Alternate2<DIR>> {
     /// Convert pin to GPIO function
+    #[inline(always)]
     pub fn to_gpio(mut self) -> Pin<PORT, PIN, DIR> {
         self.clear_sel1();
         make_pin!()
@@ -567,6 +603,7 @@ where
     Self: ToAlternate1,
 {
     /// Convert pin to alternate function 1
+    #[inline(always)]
     pub fn to_alternate1(mut self) -> Pin<PORT, PIN, Alternate1<DIR>> {
         self.flip_selc();
         make_pin!()
@@ -578,6 +615,7 @@ where
     Self: ToAlternate3,
 {
     /// Convert pin to alternate function 3
+    #[inline(always)]
     pub fn to_alternate3(mut self) -> Pin<PORT, PIN, Alternate3<DIR>> {
         self.set_sel0();
         make_pin!()
@@ -587,6 +625,7 @@ where
 // sel0 = 1, sel1 = 1
 impl<PORT: PortNum, PIN: PinNum, DIR> Pin<PORT, PIN, Alternate3<DIR>> {
     /// Convert pin to GPIO function
+    #[inline(always)]
     pub fn to_gpio(mut self) -> Pin<PORT, PIN, DIR> {
         self.flip_selc();
         make_pin!()
@@ -598,6 +637,7 @@ where
     Self: ToAlternate1,
 {
     /// Convert pin to alternate function 1
+    #[inline(always)]
     pub fn to_alternate1(mut self) -> Pin<PORT, PIN, Alternate1<DIR>> {
         self.clear_sel1();
         make_pin!()
@@ -609,6 +649,7 @@ where
     Self: ToAlternate2,
 {
     /// Convert pin to alternate function 2
+    #[inline(always)]
     pub fn to_alternate2(mut self) -> Pin<PORT, PIN, Alternate2<DIR>> {
         self.clear_sel0();
         make_pin!()

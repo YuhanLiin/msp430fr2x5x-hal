@@ -10,6 +10,7 @@ pub trait PmmExt {
 }
 
 impl PmmExt for PMM {
+    #[inline(always)]
     fn freeze(self) -> Pmm {
         self.pm5ctl0.write(|w| w.locklpm5().locklpm5_0());
         Pmm(())

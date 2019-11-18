@@ -25,16 +25,19 @@ macro_rules! make_proxy {
 
 impl<PORT: PortNum, PIN: PinNum, PULL> PinProxy<PORT, PIN, Input<PULL>> {
     /// Configures pin as pulldown input
+    #[inline(always)]
     pub fn pulldown(self) -> PinProxy<PORT, PIN, Input<Pulldown>> {
         make_proxy!()
     }
 
     /// Configures pin as pullup input
+    #[inline(always)]
     pub fn pullup(self) -> PinProxy<PORT, PIN, Input<Pullup>> {
         make_proxy!()
     }
 
     /// Configures pin as floating input
+    #[inline(always)]
     pub fn floating(self) -> PinProxy<PORT, PIN, Input<Floating>> {
         make_proxy!()
     }
@@ -42,21 +45,25 @@ impl<PORT: PortNum, PIN: PinNum, PULL> PinProxy<PORT, PIN, Input<PULL>> {
 
 impl<PORT: PortNum, PIN: PinNum, DIR> PinProxy<PORT, PIN, DIR> {
     /// Configures pin as output
+    #[inline(always)]
     pub fn to_output(self) -> PinProxy<PORT, PIN, Output> {
         make_proxy!()
     }
 
     /// Configures pin as floating input
+    #[inline(always)]
     pub fn to_input_floating(self) -> PinProxy<PORT, PIN, Input<Floating>> {
         make_proxy!()
     }
 
     /// Configures pin as floating pullup
+    #[inline(always)]
     pub fn to_input_pullup(self) -> PinProxy<PORT, PIN, Input<Pullup>> {
         make_proxy!()
     }
 
     /// Configures pin as floating pulldown
+    #[inline(always)]
     pub fn to_input_pulldown(self) -> PinProxy<PORT, PIN, Input<Pulldown>> {
         make_proxy!()
     }
@@ -73,11 +80,13 @@ trait WritePxdir {
     fn pxdir_on(&self) -> bool;
 }
 impl<T> WritePxdir for T {
+    #[inline(always)]
     default fn pxdir_on(&self) -> bool {
         false
     }
 }
 impl<T: PxdirOn> WritePxdir for T {
+    #[inline(always)]
     fn pxdir_on(&self) -> bool {
         true
     }
@@ -87,11 +96,13 @@ trait WritePxout {
     fn pxout_on(&self) -> bool;
 }
 impl<T> WritePxout for T {
+    #[inline(always)]
     default fn pxout_on(&self) -> bool {
         false
     }
 }
 impl<T: PxoutOn> WritePxout for T {
+    #[inline(always)]
     fn pxout_on(&self) -> bool {
         true
     }
@@ -101,11 +112,13 @@ trait WritePxren {
     fn pxren_on(&self) -> bool;
 }
 impl<T> WritePxren for T {
+    #[inline(always)]
     default fn pxren_on(&self) -> bool {
         false
     }
 }
 impl<T: PxrenOn> WritePxren for T {
+    #[inline(always)]
     fn pxren_on(&self) -> bool {
         true
     }
@@ -115,11 +128,13 @@ trait WritePxsel0 {
     fn pxsel0_on(&self) -> bool;
 }
 impl<T> WritePxsel0 for T {
+    #[inline(always)]
     default fn pxsel0_on(&self) -> bool {
         false
     }
 }
 impl<T: Pxsel0On> WritePxsel0 for T {
+    #[inline(always)]
     fn pxsel0_on(&self) -> bool {
         true
     }
@@ -129,11 +144,13 @@ trait WritePxsel1 {
     fn pxsel1_on(&self) -> bool;
 }
 impl<T> WritePxsel1 for T {
+    #[inline(always)]
     default fn pxsel1_on(&self) -> bool {
         false
     }
 }
 impl<T: Pxsel1On> WritePxsel1 for T {
+    #[inline(always)]
     fn pxsel1_on(&self) -> bool {
         true
     }
@@ -175,22 +192,27 @@ trait MaskRegisters {
 }
 
 impl<PORT: PortNum, PIN: PinNum, DIR> MaskRegisters for PinProxy<PORT, PIN, DIR> {
+    #[inline(always)]
     fn pxout_mask(&self) -> u8 {
         (self.pxout_on() as u8) << PIN::NUM
     }
 
+    #[inline(always)]
     fn pxdir_mask(&self) -> u8 {
         (self.pxdir_on() as u8) << PIN::NUM
     }
 
+    #[inline(always)]
     fn pxren_mask(&self) -> u8 {
         (self.pxren_on() as u8) << PIN::NUM
     }
 
+    #[inline(always)]
     fn pxsel0_mask(&self) -> u8 {
         (self.pxsel0_on() as u8) << PIN::NUM
     }
 
+    #[inline(always)]
     fn pxsel1_mask(&self) -> u8 {
         (self.pxsel1_on() as u8) << PIN::NUM
     }
@@ -201,10 +223,12 @@ trait InterruptOperations {
 }
 
 impl<P: GpioPeriph> InterruptOperations for P {
+    #[inline(always)]
     default fn maybe_set_pxie(&self, _b: u8) {}
 }
 
 impl<P: IntrPeriph> InterruptOperations for P {
+    #[inline(always)]
     fn maybe_set_pxie(&self, b: u8) {
         self.pxie_set(b);
     }
@@ -232,6 +256,7 @@ impl<P: GpioPort> GpioExt for P {
         Input<Floating>,
     >;
 
+    #[inline(always)]
     fn batch(self) -> Self::Batch {
         Self::Batch::new()
     }
@@ -261,6 +286,7 @@ pub struct Batch<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7> 
 impl<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
     Batch<PORT, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
 {
+    #[inline]
     fn write_regs(&self) {
         let pxdir = 0u8
             .set_mask(self.pin0.pxdir_mask())
@@ -322,6 +348,7 @@ impl<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
         p.pxren_wr(pxren);
     }
 
+    #[inline(always)]
     pub(super) fn new() -> Self {
         Self {
             pin0: make_proxy!(),
@@ -341,12 +368,14 @@ impl<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
     /// GPIO input/output operations only work after the LOCKLPM5 bit has been set, which is
     /// ensured when passing `&Pmm` into the method, since a `Pmm` is created only be setting
     /// LOCKLPM5.
+    #[inline(always)]
     pub fn split(self, _pmm: &Pmm) -> Parts<PORT, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7> {
         self.write_regs();
         Parts::new()
     }
 
     /// Edit configuration of pin 0
+    #[inline(always)]
     pub fn config_pin0<NEW, F: FnOnce(PinProxy<PORT, Pin0, DIR0>) -> PinProxy<PORT, Pin0, NEW>>(
         self,
         f: F,
@@ -364,6 +393,7 @@ impl<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
     }
 
     /// Edit configuration of pin 1
+    #[inline(always)]
     pub fn config_pin1<NEW, F: FnOnce(PinProxy<PORT, Pin1, DIR1>) -> PinProxy<PORT, Pin1, NEW>>(
         self,
         f: F,
@@ -381,6 +411,7 @@ impl<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
     }
 
     /// Edit configuration of pin 2
+    #[inline(always)]
     pub fn config_pin2<NEW, F: FnOnce(PinProxy<PORT, Pin2, DIR2>) -> PinProxy<PORT, Pin2, NEW>>(
         self,
         f: F,
@@ -398,6 +429,7 @@ impl<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
     }
 
     /// Edit configuration of pin 3
+    #[inline(always)]
     pub fn config_pin3<NEW, F: FnOnce(PinProxy<PORT, Pin3, DIR3>) -> PinProxy<PORT, Pin3, NEW>>(
         self,
         f: F,
@@ -415,6 +447,7 @@ impl<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
     }
 
     /// Edit configuration of pin 4
+    #[inline(always)]
     pub fn config_pin4<NEW, F: FnOnce(PinProxy<PORT, Pin4, DIR4>) -> PinProxy<PORT, Pin4, NEW>>(
         self,
         f: F,
@@ -432,6 +465,7 @@ impl<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
     }
 
     /// Edit configuration of pin 5
+    #[inline(always)]
     pub fn config_pin5<NEW, F: FnOnce(PinProxy<PORT, Pin5, DIR5>) -> PinProxy<PORT, Pin5, NEW>>(
         self,
         f: F,
@@ -449,6 +483,7 @@ impl<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
     }
 
     /// Edit configuration of pin 6
+    #[inline(always)]
     pub fn config_pin6<NEW, F: FnOnce(PinProxy<PORT, Pin6, DIR6>) -> PinProxy<PORT, Pin6, NEW>>(
         self,
         f: F,
@@ -466,6 +501,7 @@ impl<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
     }
 
     /// Edit configuration of pin 7
+    #[inline(always)]
     pub fn config_pin7<NEW, F: FnOnce(PinProxy<PORT, Pin7, DIR7>) -> PinProxy<PORT, Pin7, NEW>>(
         self,
         f: F,

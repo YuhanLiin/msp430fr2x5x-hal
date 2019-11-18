@@ -55,18 +55,22 @@ pub trait IntrPeriph: GpioPeriph {
 
 macro_rules! reg_methods {
     ($reg:ident, $rd:ident, $wr:ident, $set:ident, $clear:ident) => {
+        #[inline(always)]
         fn $rd(&self) -> u8 {
             self.$reg.read().bits()
         }
 
+        #[inline(always)]
         fn $wr(&self, bits: u8) {
             self.$reg.write(|w| unsafe {w.bits(bits) });
         }
 
+        #[inline(always)]
         fn $set(&self, bits: u8) {
             unsafe { self.$reg.set_bits(|w| w.bits(bits)) }
         }
 
+        #[inline(always)]
         fn $clear(&self, bits: u8) {
             unsafe { self.$reg.clear_bits(|w| w.bits(bits)) }
         }
@@ -82,18 +86,22 @@ macro_rules! gpio_impl {
             use super::*;
 
             impl GpioPeriph for pac::$px::RegisterBlock {
+                #[inline(always)]
                 fn steal<'a>() -> &'a Self {
                     unsafe{ &*pac::$Px::ptr() }
                 }
 
+                #[inline(always)]
                 fn pxin_rd(&self) -> u8 {
                     self.$pxin.read().bits()
                 }
 
+                #[inline(always)]
                 fn pxselc_wr(&self, bits: u8) {
                     self.$pxselc.write(|w| unsafe { w.bits(bits) })
                 }
 
+                #[inline(always)]
                 fn pxout_toggle(&self, bits: u8) {
                     unsafe { self.$pxout.toggle_bits(|w| w.bits(bits)) };
                 }
@@ -111,6 +119,7 @@ macro_rules! gpio_impl {
                     reg_methods!($pxie, pxie_rd, pxie_wr, pxie_set, pxie_clear);
                     reg_methods!($pxifg, pxifg_rd, pxifg_wr, pxifg_set, pxifg_clear);
 
+                    #[inline(always)]
                     fn pxiv_rd(&self) -> u16 {
                         self.$pxiv.read().bits()
                     }

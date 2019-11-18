@@ -60,7 +60,7 @@ fn pin_isr() {
         RED_LED.borrow(&cs).borrow_mut().as_mut().map(|red_led| {
             match Port2::get_interrupt_vector() {
                 InterruptVector::Pin7Isr => red_led.toggle().ok(),
-                _ => unreachable!(),
+                _ => panic!(),
             }
         })
     });
