@@ -368,7 +368,7 @@ impl<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
     /// GPIO input/output operations only work after the LOCKLPM5 bit has been set, which is
     /// ensured when passing `&Pmm` into the method, since a `Pmm` is created only be setting
     /// LOCKLPM5.
-    #[inline(always)]
+    #[inline]
     pub fn split(self, _pmm: &Pmm) -> Parts<PORT, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7> {
         self.write_regs();
         Parts::new()

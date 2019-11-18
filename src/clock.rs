@@ -175,7 +175,7 @@ pub trait CsExt {
 }
 
 impl CsExt for pac::CS {
-    #[inline(always)]
+    #[inline]
     fn constrain(self) -> ClockConfig<Undefined> {
         // These are the microcontroller default settings
         ClockConfig {
@@ -312,7 +312,7 @@ impl<MODE: SmclkState> ClockConfig<MODE> {
 
 impl ClockConfig<SmclkDefined> {
     /// Apply clock configuration and return MCLK, SMCLK, and ACLK clock objects
-    #[inline(always)]
+    #[inline]
     pub fn freeze(self) -> (Mclk, Smclk, Aclk) {
         self.configure_periph();
         // The clock divider enums are ordered such that their numerical values are the log2 values
@@ -328,7 +328,7 @@ impl ClockConfig<SmclkDefined> {
 
 impl ClockConfig<SmclkDisabled> {
     /// Apply clock configuration and return MCLK and ACLK clock objects, as SMCLK is disabled
-    #[inline(always)]
+    #[inline]
     pub fn freeze(self) -> (Mclk, Aclk) {
         self.configure_periph();
         let mclk_freq = self.mclk_sel.freq() >> (self.mclk_div as u32);
@@ -359,7 +359,7 @@ impl Clock for Mclk {
     /// required as MCLK can go up to 24 MHz. Clock frequencies are usually for initialization
     /// tasks such as computing baud rates, which should be optimized away, avoiding the extra cost
     /// of 32-bit computations.
-    #[inline(always)]
+    #[inline]
     fn freq(&self) -> u32 {
         self.0
     }
@@ -369,7 +369,7 @@ impl Clock for Smclk {
     type Freq = u32;
 
     /// SMCLK frequency can go as high as MCLK, so we need a 32-bit value to store it.
-    #[inline(always)]
+    #[inline]
     fn freq(&self) -> u32 {
         self.0
     }
@@ -378,7 +378,7 @@ impl Clock for Smclk {
 impl Clock for Aclk {
     type Freq = u16;
 
-    #[inline(always)]
+    #[inline]
     fn freq(&self) -> u16 {
         self.0
     }
