@@ -18,8 +18,10 @@ pub struct UcxCtl0 {
 pub trait EUsci {
     fn ctl0_reset(&self);
 
+    // only call while in reset state
     fn brw_settings(&self, ucbr: u16);
 
+    // only call while in reset state
     fn loopback(&self, loopback: bool);
 
     fn rx_rd(&self) -> u8;
@@ -38,6 +40,7 @@ pub trait EUsci {
 pub trait EUsciUart: EUsci {
     type Statw: UcaxStatw;
 
+    // only call while in reset state
     fn ctl0_settings(&self, reg: UcxCtl0);
 
     fn mctlw_settings(&self, ucos16: bool, ucbrs: u8, ucbrf: u8);
@@ -66,7 +69,6 @@ macro_rules! eusci_a_impl {
                 self.$ucaxbrw().write(|w| unsafe { w.bits(ucbr) });
             }
 
-            // only call while in reset state
             fn loopback(&self, loopback: bool) {
                 self.$ucaxstatw().write(|w| w.uclisten().bit(loopback));
             }

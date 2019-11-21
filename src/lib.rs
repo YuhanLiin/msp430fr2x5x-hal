@@ -14,5 +14,7 @@ pub mod gpio;
 mod hw_traits;
 /// Power management module
 pub mod pmm;
+/// Serial UART
+pub mod serial;
 /// Watchdog timer
 pub mod watchdog;
