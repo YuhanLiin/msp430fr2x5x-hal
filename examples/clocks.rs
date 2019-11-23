@@ -5,26 +5,26 @@ extern crate panic_msp430;
 use embedded_hal::digital::v2::*;
 use embedded_hal::timer::CountDown;
 use embedded_hal::watchdog::WatchdogEnable;
-use msp430fr2x5x_hal::{clock::*, gpio::*, pmm::*, watchdog::*};
+use msp430fr2x5x_hal::{clock::*, fram::*, gpio::*, pmm::*, watchdog::*};
 use nb::block;
 
 fn main() {
     let periph = msp430fr2355::Peripherals::take().unwrap();
 
+    let mut fram = periph.FRCTL.constrain();
     let wdt = periph.WDT_A.constrain();
 
     let pmm = periph.PMM.freeze();
     let p1 = periph.P1.batch().config_pin0(|p| p.to_output()).split(&pmm);
     let mut p1_0 = p1.pin0;
 
-    let (_mclk, smclk, _aclk) = periph
+    let (smclk, _aclk) = periph
         .CS
         .constrain()
-        // Pumping this to 20MHz or higher makes erasing flash a problem
         .mclk_dcoclk(DcoclkFreqSel::_8MHz, MclkDiv::_1)
         .smclk_on(SmclkDiv::_1)
         .aclk_vloclk()
-        .freeze();
+        .freeze(&mut fram);
 
     const DELAY: WdtClkPeriods = WdtClkPeriods::_8192K;
 
