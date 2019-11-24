@@ -16,6 +16,7 @@ pub enum BitOrder {
 }
 
 impl BitOrder {
+    #[inline(always)]
     fn to_bool(self) -> bool {
         match self {
             BitOrder::LsbFirst => false,
@@ -34,6 +35,7 @@ pub enum BitCount {
 }
 
 impl BitCount {
+    #[inline(always)]
     fn to_bool(self) -> bool {
         match self {
             BitCount::EightBits => false,
@@ -52,6 +54,7 @@ pub enum StopBits {
 }
 
 impl StopBits {
+    #[inline(always)]
     fn to_bool(self) -> bool {
         match self {
             StopBits::OneStopBit => false,
@@ -72,6 +75,7 @@ pub enum Parity {
 }
 
 impl Parity {
+    #[inline(always)]
     fn ucpen(self) -> bool {
         match self {
             Parity::NoParity => false,
@@ -79,11 +83,31 @@ impl Parity {
         }
     }
 
+    #[inline(always)]
     fn ucpar(self) -> bool {
         match self {
             Parity::OddParity => false,
             Parity::EvenParity => true,
             _ => false,
+        }
+    }
+}
+
+/// Loopback enabled
+#[derive(Clone, Copy)]
+pub enum Loopback {
+    /// No loopback
+    NoLoop,
+    /// Tx feeds into Rx
+    Loopback,
+}
+
+impl Loopback {
+    #[inline(always)]
+    fn to_bool(self) -> bool {
+        match self {
+            Loopback::NoLoop => false,
+            Loopback::Loopback => true,
         }
     }
 }
@@ -110,6 +134,7 @@ impl SerialUsci for pac::E_USCI_A0 {
 /// UCLK pin for E_USCI_A0
 pub struct UsciA0ClockPin;
 impl<DIR> Into<UsciA0ClockPin> for Pin<Port1, Pin5, Alternate1<DIR>> {
+    #[inline(always)]
     fn into(self) -> UsciA0ClockPin {
         UsciA0ClockPin
     }
@@ -118,6 +143,7 @@ impl<DIR> Into<UsciA0ClockPin> for Pin<Port1, Pin5, Alternate1<DIR>> {
 /// Tx pin for E_USCI_A0
 pub struct UsciA0TxPin;
 impl<DIR> Into<UsciA0TxPin> for Pin<Port1, Pin7, Alternate1<DIR>> {
+    #[inline(always)]
     fn into(self) -> UsciA0TxPin {
         UsciA0TxPin
     }
@@ -126,6 +152,7 @@ impl<DIR> Into<UsciA0TxPin> for Pin<Port1, Pin7, Alternate1<DIR>> {
 /// Rx pin for E_USCI_A0
 pub struct UsciA0RxPin;
 impl<DIR> Into<UsciA0RxPin> for Pin<Port1, Pin6, Alternate1<DIR>> {
+    #[inline(always)]
     fn into(self) -> UsciA0RxPin {
         UsciA0RxPin
     }
@@ -141,6 +168,7 @@ impl SerialUsci for pac::E_USCI_A1 {
 /// UCLK pin for E_USCI_A1
 pub struct UsciA1ClockPin;
 impl<DIR> Into<UsciA1ClockPin> for Pin<Port4, Pin1, Alternate1<DIR>> {
+    #[inline(always)]
     fn into(self) -> UsciA1ClockPin {
         UsciA1ClockPin
     }
@@ -149,6 +177,7 @@ impl<DIR> Into<UsciA1ClockPin> for Pin<Port4, Pin1, Alternate1<DIR>> {
 /// Tx pin for E_USCI_A1
 pub struct UsciA1TxPin;
 impl<DIR> Into<UsciA1TxPin> for Pin<Port4, Pin3, Alternate1<DIR>> {
+    #[inline(always)]
     fn into(self) -> UsciA1TxPin {
         UsciA1TxPin
     }
@@ -157,6 +186,7 @@ impl<DIR> Into<UsciA1TxPin> for Pin<Port4, Pin3, Alternate1<DIR>> {
 /// Rx pin for E_USCI_A1
 pub struct UsciA1RxPin;
 impl<DIR> Into<UsciA1RxPin> for Pin<Port4, Pin2, Alternate1<DIR>> {
+    #[inline(always)]
     fn into(self) -> UsciA1RxPin {
         UsciA1RxPin
     }
@@ -170,7 +200,7 @@ pub struct SerialConfigNoClock<USCI: SerialUsci> {
     cnt: BitCount,
     stopbits: StopBits,
     parity: Parity,
-    loopback: bool,
+    loopback: Loopback,
     baudrate: u32,
 }
 
@@ -190,20 +220,21 @@ pub trait SerialExt: SerialUsci + Sized {
         cnt: BitCount,
         stopbits: StopBits,
         parity: Parity,
+        loopback: Loopback,
         baudrate: u32,
-        loopback: bool,
     ) -> SerialConfigNoClock<Self>;
 }
 
 impl<USCI: SerialUsci + Sized> SerialExt for USCI {
+    #[inline]
     fn to_serial(
         self,
         order: BitOrder,
         cnt: BitCount,
         stopbits: StopBits,
         parity: Parity,
+        loopback: Loopback,
         baudrate: u32,
-        loopback: bool,
     ) -> SerialConfigNoClock<Self> {
         SerialConfigNoClock {
             order,
@@ -220,6 +251,7 @@ impl<USCI: SerialUsci + Sized> SerialExt for USCI {
 impl<USCI: SerialUsci> SerialConfigNoClock<USCI> {
     /// Configure serial UART to use external UCLK, passing in the appropriately configured pin
     /// used as the clock signal as well as the frequency of the clock.
+    #[inline(always)]
     pub fn use_uclk<P: Into<USCI::ClockPin>>(self, _clk_pin: P, freq: u32) -> SerialConfig<USCI> {
         SerialConfig {
             config: self,
@@ -229,6 +261,7 @@ impl<USCI: SerialUsci> SerialConfigNoClock<USCI> {
     }
 
     /// Configure serial UART to use ACLK.
+    #[inline(always)]
     pub fn use_aclk(self, aclk: &Aclk) -> SerialConfig<USCI> {
         SerialConfig {
             config: self,
@@ -238,6 +271,7 @@ impl<USCI: SerialUsci> SerialConfigNoClock<USCI> {
     }
 
     /// Configure serial UART to use SMCLK.
+    #[inline(always)]
     pub fn use_smclk(self, smclk: &Smclk) -> SerialConfig<USCI> {
         SerialConfig {
             config: self,
@@ -254,6 +288,7 @@ struct BaudConfig {
     ucos16: bool,
 }
 
+#[inline]
 fn calculate_baud_config(clk_freq: u32, bps: u32) -> BaudConfig {
     assert!(bps != 0);
     let n = clk_freq / bps;
@@ -284,6 +319,7 @@ fn calculate_baud_config(clk_freq: u32, bps: u32) -> BaudConfig {
     }
 }
 
+#[inline]
 fn lookup_brs(clk_freq: u32, bps: u32) -> u8 {
     let modulo = clk_freq % bps;
 
@@ -336,6 +372,7 @@ fn lookup_brs(clk_freq: u32, bps: u32) -> u8 {
 }
 
 impl<USCI: SerialUsci> SerialConfig<USCI> {
+    #[inline]
     fn config_hw(self) {
         let SerialConfig {
             config,
@@ -349,7 +386,7 @@ impl<USCI: SerialUsci> SerialConfig<USCI> {
         usci.ctl0_reset();
         usci.brw_settings(baud_config.br);
         usci.mctlw_settings(baud_config.ucos16, baud_config.brs, baud_config.brf);
-        usci.loopback(config.loopback);
+        usci.loopback(config.loopback.to_bool());
         usci.ctl0_settings(UcxCtl0 {
             ucpen: config.parity.ucpen(),
             ucpar: config.parity.ucpar(),
@@ -363,6 +400,7 @@ impl<USCI: SerialUsci> SerialConfig<USCI> {
     }
 
     /// Perform hardware configuration and split into Tx and Rx pins from appropriate GPIOs
+    #[inline(always)]
     pub fn split<T: Into<USCI::TxPin>, R: Into<USCI::RxPin>>(
         self,
         _tx: T,
@@ -373,12 +411,14 @@ impl<USCI: SerialUsci> SerialConfig<USCI> {
     }
 
     /// Perform hardware configuration and create Tx pin from appropriate GPIO
+    #[inline(always)]
     pub fn tx_only<T: Into<USCI::TxPin>>(self, _tx: T) -> (Tx<USCI>) {
         self.config_hw();
         Tx(PhantomData)
     }
 
     /// Perform hardware configuration and create Rx pin from appropriate GPIO
+    #[inline(always)]
     pub fn rx_only<R: Into<USCI::RxPin>>(self, _rx: R) -> (Rx<USCI>) {
         self.config_hw();
         Rx(PhantomData)
@@ -390,12 +430,14 @@ pub struct Tx<USCI: SerialUsci>(PhantomData<USCI>);
 
 impl<USCI: SerialUsci> Tx<USCI> {
     /// Enable Tx interrupts, which fire when ready to send
+    #[inline(always)]
     pub fn enable_tx_interrupts(&mut self) {
         let usci = USCI::Periph::steal();
         usci.txie_set();
     }
 
     /// Disable Tx interrupts
+    #[inline(always)]
     pub fn disable_tx_interrupts(&mut self) {
         let usci = USCI::Periph::steal();
         usci.txie_clear();
@@ -408,6 +450,7 @@ impl<USCI: SerialUsci> Write<u8> for Tx<USCI> {
     /// Due to errata USCI42, UCTXCPTIFG will fire every time a byte is done transmitting,
     /// even if there's still more buffered. Thus, the implementation uses UCTXIFG instead. When
     /// `flush()` completes, the Tx buffer will be empty but the FIFO may still be sending.
+    #[inline]
     fn flush(&mut self) -> nb::Result<(), Self::Error> {
         let usci = USCI::Periph::steal();
         if usci.txifg_rd() {
@@ -417,6 +460,7 @@ impl<USCI: SerialUsci> Write<u8> for Tx<USCI> {
         }
     }
 
+    #[inline]
     fn write(&mut self, data: u8) -> nb::Result<(), Self::Error> {
         let usci = USCI::Periph::steal();
         if usci.txifg_rd() {
@@ -428,17 +472,21 @@ impl<USCI: SerialUsci> Write<u8> for Tx<USCI> {
     }
 }
 
+impl<USCI: SerialUsci> embedded_hal::blocking::serial::write::Default<u8> for Tx<USCI> {}
+
 /// Serial receiver
 pub struct Rx<USCI: SerialUsci>(PhantomData<USCI>);
 
 impl<USCI: SerialUsci> Rx<USCI> {
     /// Enable Rx interrupts, which fire when ready to read
+    #[inline]
     pub fn enable_rx_interrupts(&mut self) {
         let usci = USCI::Periph::steal();
         usci.rxie_set();
     }
 
     /// Disable Rx interrupts
+    #[inline]
     pub fn disable_rx_interrupts(&mut self) {
         let usci = USCI::Periph::steal();
         usci.rxie_clear();
@@ -458,6 +506,7 @@ pub enum RecvError {
 impl<USCI: SerialUsci> Read<u8> for Rx<USCI> {
     type Error = RecvError;
 
+    #[inline]
     fn read(&mut self) -> nb::Result<u8, Self::Error> {
         let usci = USCI::Periph::steal();
 
