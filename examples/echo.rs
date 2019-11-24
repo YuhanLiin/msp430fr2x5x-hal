@@ -31,6 +31,7 @@ fn main() {
             BitOrder::LsbFirst,
             BitCount::EightBits,
             StopBits::OneStopBit,
+            // Launchpad UART-to-USB converter doesn't handle parity, so we don't use it
             Parity::NoParity,
             Loopback::NoLoop,
             9600,
@@ -39,11 +40,18 @@ fn main() {
         .split(p4.pin3.to_alternate1(), p4.pin2.to_alternate1());
 
     led.set_high().ok();
+    tx.bwrite_all(b"HELLO\n").ok();
 
     loop {
         let ch = match block!(rx.read()) {
             Ok(c) => c,
-            Err(_err) => '!' as u8,
+            Err(err) => {
+                (match err {
+                    RecvError::Parity => '!',
+                    RecvError::Overrun(_) => '}',
+                    RecvError::Framing => '?',
+                }) as u8
+            }
         };
         block!(tx.write(ch)).ok();
     }

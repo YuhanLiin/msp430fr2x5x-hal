@@ -113,7 +113,7 @@ impl Loopback {
 }
 
 /// Marks a USCI type that can be used as a serial UART
-pub trait SerialUsci {
+pub trait SerialUsci: Sized {
     /// Peripheral type
     type Periph: EUsciUart;
     /// Pin used for serial UCLK
@@ -122,6 +122,28 @@ pub trait SerialUsci {
     type TxPin;
     /// Pin used for Rx
     type RxPin;
+
+    /// Transform the peripheral into a Serial object
+    #[inline]
+    fn to_serial(
+        self,
+        order: BitOrder,
+        cnt: BitCount,
+        stopbits: StopBits,
+        parity: Parity,
+        loopback: Loopback,
+        baudrate: u32,
+    ) -> SerialConfigNoClock<Self> {
+        SerialConfigNoClock {
+            order,
+            cnt,
+            stopbits,
+            parity,
+            loopback,
+            baudrate,
+            _usci: PhantomData,
+        }
+    }
 }
 
 impl SerialUsci for pac::E_USCI_A0 {
@@ -211,43 +233,6 @@ pub struct SerialConfig<USCI: SerialUsci> {
     freq: u32,
 }
 
-/// Extension trait for converting the proper PAC E_USCI peripherals into Serial objects
-pub trait SerialExt: SerialUsci + Sized {
-    /// Begin configuring the peripheral into a Serial object
-    fn to_serial(
-        self,
-        order: BitOrder,
-        cnt: BitCount,
-        stopbits: StopBits,
-        parity: Parity,
-        loopback: Loopback,
-        baudrate: u32,
-    ) -> SerialConfigNoClock<Self>;
-}
-
-impl<USCI: SerialUsci + Sized> SerialExt for USCI {
-    #[inline]
-    fn to_serial(
-        self,
-        order: BitOrder,
-        cnt: BitCount,
-        stopbits: StopBits,
-        parity: Parity,
-        loopback: Loopback,
-        baudrate: u32,
-    ) -> SerialConfigNoClock<Self> {
-        SerialConfigNoClock {
-            order,
-            cnt,
-            stopbits,
-            parity,
-            loopback,
-            baudrate,
-            _usci: PhantomData,
-        }
-    }
-}
-
 impl<USCI: SerialUsci> SerialConfigNoClock<USCI> {
     /// Configure serial UART to use external UCLK, passing in the appropriately configured pin
     /// used as the clock signal as well as the frequency of the clock.
@@ -319,7 +304,7 @@ fn calculate_baud_config(clk_freq: u32, bps: u32) -> BaudConfig {
     }
 }
 
-#[inline]
+#[inline(always)]
 fn lookup_brs(clk_freq: u32, bps: u32) -> u8 {
     let modulo = clk_freq % bps;
 
@@ -400,7 +385,7 @@ impl<USCI: SerialUsci> SerialConfig<USCI> {
     }
 
     /// Perform hardware configuration and split into Tx and Rx pins from appropriate GPIOs
-    #[inline(always)]
+    #[inline]
     pub fn split<T: Into<USCI::TxPin>, R: Into<USCI::RxPin>>(
         self,
         _tx: T,
@@ -411,14 +396,14 @@ impl<USCI: SerialUsci> SerialConfig<USCI> {
     }
 
     /// Perform hardware configuration and create Tx pin from appropriate GPIO
-    #[inline(always)]
+    #[inline]
     pub fn tx_only<T: Into<USCI::TxPin>>(self, _tx: T) -> (Tx<USCI>) {
         self.config_hw();
         Tx(PhantomData)
     }
 
     /// Perform hardware configuration and create Rx pin from appropriate GPIO
-    #[inline(always)]
+    #[inline]
     pub fn rx_only<R: Into<USCI::RxPin>>(self, _rx: R) -> (Rx<USCI>) {
         self.config_hw();
         Rx(PhantomData)
@@ -479,14 +464,14 @@ pub struct Rx<USCI: SerialUsci>(PhantomData<USCI>);
 
 impl<USCI: SerialUsci> Rx<USCI> {
     /// Enable Rx interrupts, which fire when ready to read
-    #[inline]
+    #[inline(always)]
     pub fn enable_rx_interrupts(&mut self) {
         let usci = USCI::Periph::steal();
         usci.rxie_set();
     }
 
     /// Disable Rx interrupts
-    #[inline]
+    #[inline(always)]
     pub fn disable_rx_interrupts(&mut self) {
         let usci = USCI::Periph::steal();
         usci.rxie_clear();
