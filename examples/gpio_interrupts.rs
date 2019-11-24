@@ -15,7 +15,7 @@ static RED_LED: Mutex<RefCell<Option<Pin<Port1, Pin0, Output>>>> = Mutex::new(Re
 
 fn main() {
     let periph = msp430fr2355::Peripherals::take().unwrap();
-    let (_mclk, _smclk, aclk) = periph
+    let (_smclk, aclk) = periph
         .CS
         .constrain()
         .mclk_refoclk(MclkDiv::_1)

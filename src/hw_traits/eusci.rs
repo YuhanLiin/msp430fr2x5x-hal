@@ -13,9 +13,12 @@ pub struct UcxCtl0 {
     pub uc7bit: bool,
     pub ucspb: bool,
     pub ucssel: Ucssel,
+    pub ucrxeie: bool,
 }
 
 pub trait EUsci {
+    fn steal<'a>() -> &'a Self;
+
     fn ctl0_reset(&self);
 
     // only call while in reset state
@@ -28,8 +31,10 @@ pub trait EUsci {
 
     fn tx_wr(&self, val: u8);
 
-    fn txie_wr(&self, ie: bool);
-    fn rxie_wr(&self, ie: bool);
+    fn txie_set(&self);
+    fn txie_clear(&self);
+    fn rxie_set(&self);
+    fn rxie_clear(&self);
 
     fn txifg_rd(&self) -> bool;
     fn rxifg_rd(&self) -> bool;
@@ -57,55 +62,81 @@ pub trait UcaxStatw {
 }
 
 macro_rules! eusci_a_impl {
-    ($EUsci:ty, $ucaxctlw0:ident, $ucaxctlw1:ident, $ucaxbrw:ident, $ucaxmctlw:ident,
+    ($EUsci:ident, $eusci:ident, $ucaxctlw0:ident, $ucaxctlw1:ident, $ucaxbrw:ident, $ucaxmctlw:ident,
      $ucaxstatw:ident, $ucaxrxbuf:ident, $ucaxtxbuf:ident, $ucaxie:ident, $ucaxifg:ident,
      $ucaxiv:ident, $Statw:ty) => {
-        impl EUsci for $EUsci {
+        impl EUsci for pac::$eusci::RegisterBlock {
+            #[inline(always)]
+            fn steal<'a>() -> &'a Self {
+                unsafe { &*pac::$EUsci::ptr() }
+            }
+
+            #[inline(always)]
             fn ctl0_reset(&self) {
                 self.$ucaxctlw0().write(|w| w.ucswrst().set_bit());
             }
 
+            #[inline(always)]
             fn brw_settings(&self, ucbr: u16) {
                 self.$ucaxbrw().write(|w| unsafe { w.bits(ucbr) });
             }
 
+            #[inline(always)]
             fn loopback(&self, loopback: bool) {
                 self.$ucaxstatw().write(|w| w.uclisten().bit(loopback));
             }
 
+            #[inline(always)]
             fn rx_rd(&self) -> u8 {
                 self.$ucaxrxbuf().read().ucrxbuf().bits()
             }
 
+            #[inline(always)]
             fn tx_wr(&self, bits: u8) {
                 self.$ucaxtxbuf()
                     .write(|w| unsafe { w.uctxbuf().bits(bits) });
             }
 
-            fn txie_wr(&self, ie: bool) {
-                self.$ucaxie().write(|w| w.uctxie().bit(ie));
+            #[inline(always)]
+            fn txie_set(&self) {
+                unsafe { self.$ucaxie().set_bits(|w| w.uctxie().set_bit()) };
             }
 
-            fn rxie_wr(&self, ie: bool) {
-                self.$ucaxie().write(|w| w.ucrxie().bit(ie));
+            #[inline(always)]
+            fn txie_clear(&self) {
+                unsafe { self.$ucaxie().clear_bits(|w| w.uctxie().clear_bit()) };
             }
 
+            #[inline(always)]
+            fn rxie_set(&self) {
+                unsafe { self.$ucaxie().set_bits(|w| w.ucrxie().set_bit()) };
+            }
+
+            #[inline(always)]
+            fn rxie_clear(&self) {
+                unsafe { self.$ucaxie().clear_bits(|w| w.ucrxie().clear_bit()) };
+            }
+
+            #[inline(always)]
             fn txifg_rd(&self) -> bool {
                 self.$ucaxifg().read().uctxifg().bit()
             }
 
+            #[inline(always)]
             fn rxifg_rd(&self) -> bool {
                 self.$ucaxifg().read().ucrxifg().bit()
             }
 
+            #[inline(always)]
             fn iv_rd(&self) -> u16 {
                 self.$ucaxiv().read().bits()
             }
         }
 
-        impl EUsciUart for $EUsci {
+        impl EUsciUart for pac::$eusci::RegisterBlock {
             type Statw = $Statw;
 
+            #[inline(always)]
             fn ctl0_settings(&self, reg: UcxCtl0) {
                 self.$ucaxctlw0().write(|w| {
                     w.ucpen()
@@ -120,9 +151,12 @@ macro_rules! eusci_a_impl {
                         .bit(reg.ucspb)
                         .ucssel()
                         .bits(reg.ucssel as u8)
+                        .ucrxeie()
+                        .bit(reg.ucrxeie)
                 });
             }
 
+            #[inline(always)]
             fn mctlw_settings(&self, ucos16: bool, ucbrs: u8, ucbrf: u8) {
                 self.$ucaxmctlw.write(|w| unsafe {
                     w.ucos16()
@@ -134,28 +168,34 @@ macro_rules! eusci_a_impl {
                 });
             }
 
+            #[inline(always)]
             fn statw_rd(&self) -> Self::Statw {
                 self.$ucaxstatw().read()
             }
         }
 
         impl UcaxStatw for $Statw {
+            #[inline(always)]
             fn ucfe(&self) -> bool {
                 self.ucfe().bit()
             }
 
+            #[inline(always)]
             fn ucoe(&self) -> bool {
                 self.ucoe().bit()
             }
 
+            #[inline(always)]
             fn ucpe(&self) -> bool {
                 self.ucpe().bit()
             }
 
+            #[inline(always)]
             fn ucbrk(&self) -> bool {
                 self.ucbrk().bit()
             }
 
+            #[inline(always)]
             fn ucbusy(&self) -> bool {
                 self.ucbusy().bit()
             }
@@ -164,7 +204,8 @@ macro_rules! eusci_a_impl {
 }
 
 eusci_a_impl!(
-    pac::E_USCI_A0,
+    E_USCI_A0,
+    e_usci_a0,
     uca0ctlw0,
     uca0ctlw1,
     uca0brw,
@@ -179,7 +220,8 @@ eusci_a_impl!(
 );
 
 eusci_a_impl!(
-    pac::E_USCI_A1,
+    E_USCI_A1,
+    e_usci_a1,
     uca1ctlw0,
     uca1ctlw1,
     uca1brw,

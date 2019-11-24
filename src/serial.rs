@@ -1,8 +1,13 @@
 use crate::clock::{Aclk, Clock, Smclk};
-use crate::hw_traits::eusci::{EUsci, EUsciUart, Ucssel};
+use crate::gpio::{Alternate1, Pin, Pin1, Pin2, Pin3, Pin5, Pin6, Pin7, Port1, Port4};
+use crate::hw_traits::eusci::UcxCtl0;
+use crate::hw_traits::eusci::{EUsci, EUsciUart, UcaxStatw, Ucssel};
+use core::marker::PhantomData;
+use embedded_hal::serial::{Read, Write};
 use msp430fr2355 as pac;
 
 /// Bit order of transmit and receive
+#[derive(Clone, Copy)]
 pub enum BitOrder {
     /// LSB first (typically the default)
     LsbFirst,
@@ -10,7 +15,17 @@ pub enum BitOrder {
     MsbFirst,
 }
 
+impl BitOrder {
+    fn to_bool(self) -> bool {
+        match self {
+            BitOrder::LsbFirst => false,
+            BitOrder::MsbFirst => true,
+        }
+    }
+}
+
 /// Number of bits per transaction
+#[derive(Clone, Copy)]
 pub enum BitCount {
     /// 8 bits
     EightBits,
@@ -18,7 +33,17 @@ pub enum BitCount {
     SevenBits,
 }
 
+impl BitCount {
+    fn to_bool(self) -> bool {
+        match self {
+            BitCount::EightBits => false,
+            BitCount::SevenBits => true,
+        }
+    }
+}
+
 /// Number of stop bits at end of each byte
+#[derive(Clone, Copy)]
 pub enum StopBits {
     /// 1 stop bit
     OneStopBit,
@@ -26,7 +51,17 @@ pub enum StopBits {
     TwoStopBits,
 }
 
+impl StopBits {
+    fn to_bool(self) -> bool {
+        match self {
+            StopBits::OneStopBit => false,
+            StopBits::TwoStopBits => true,
+        }
+    }
+}
+
 /// Parity bit for error checking
+#[derive(Clone, Copy)]
 pub enum Parity {
     /// No parity
     NoParity,
@@ -36,34 +71,156 @@ pub enum Parity {
     EvenParity,
 }
 
+impl Parity {
+    fn ucpen(self) -> bool {
+        match self {
+            Parity::NoParity => false,
+            _ => true,
+        }
+    }
+
+    fn ucpar(self) -> bool {
+        match self {
+            Parity::OddParity => false,
+            Parity::EvenParity => true,
+            _ => false,
+        }
+    }
+}
+
+/// Marks a USCI type that can be used as a serial UART
+pub trait SerialUsci {
+    /// Peripheral type
+    type Periph: EUsciUart;
+    /// Pin used for serial UCLK
+    type ClockPin;
+    /// Pin used for Tx
+    type TxPin;
+    /// Pin used for Rx
+    type RxPin;
+}
+
+impl SerialUsci for pac::E_USCI_A0 {
+    type Periph = pac::e_usci_a0::RegisterBlock;
+    type ClockPin = UsciA0ClockPin;
+    type TxPin = UsciA0TxPin;
+    type RxPin = UsciA0RxPin;
+}
+
+/// UCLK pin for E_USCI_A0
+pub struct UsciA0ClockPin;
+impl<DIR> Into<UsciA0ClockPin> for Pin<Port1, Pin5, Alternate1<DIR>> {
+    fn into(self) -> UsciA0ClockPin {
+        UsciA0ClockPin
+    }
+}
+
+/// Tx pin for E_USCI_A0
+pub struct UsciA0TxPin;
+impl<DIR> Into<UsciA0TxPin> for Pin<Port1, Pin7, Alternate1<DIR>> {
+    fn into(self) -> UsciA0TxPin {
+        UsciA0TxPin
+    }
+}
+
+/// Rx pin for E_USCI_A0
+pub struct UsciA0RxPin;
+impl<DIR> Into<UsciA0RxPin> for Pin<Port1, Pin6, Alternate1<DIR>> {
+    fn into(self) -> UsciA0RxPin {
+        UsciA0RxPin
+    }
+}
+
+impl SerialUsci for pac::E_USCI_A1 {
+    type Periph = pac::e_usci_a1::RegisterBlock;
+    type ClockPin = UsciA1ClockPin;
+    type TxPin = UsciA1TxPin;
+    type RxPin = UsciA1RxPin;
+}
+
+/// UCLK pin for E_USCI_A1
+pub struct UsciA1ClockPin;
+impl<DIR> Into<UsciA1ClockPin> for Pin<Port4, Pin1, Alternate1<DIR>> {
+    fn into(self) -> UsciA1ClockPin {
+        UsciA1ClockPin
+    }
+}
+
+/// Tx pin for E_USCI_A1
+pub struct UsciA1TxPin;
+impl<DIR> Into<UsciA1TxPin> for Pin<Port4, Pin3, Alternate1<DIR>> {
+    fn into(self) -> UsciA1TxPin {
+        UsciA1TxPin
+    }
+}
+
+/// Rx pin for E_USCI_A1
+pub struct UsciA1RxPin;
+impl<DIR> Into<UsciA1RxPin> for Pin<Port4, Pin2, Alternate1<DIR>> {
+    fn into(self) -> UsciA1RxPin {
+        UsciA1RxPin
+    }
+}
+
 /// Configuration object for serial UART without clock select info, which is required before a
 /// Serial object can be created.
-pub struct SerialConfigNoClock<USCI: EUsciUart> {
-    usci: USCI,
+pub struct SerialConfigNoClock<USCI: SerialUsci> {
+    _usci: PhantomData<USCI>,
     order: BitOrder,
     cnt: BitCount,
     stopbits: StopBits,
     parity: Parity,
+    loopback: bool,
+    baudrate: u32,
 }
 
 /// Configuration object for serial UART with clock select info.
-pub struct SerialConfig<USCI: EUsciUart> {
+pub struct SerialConfig<USCI: SerialUsci> {
     config: SerialConfigNoClock<USCI>,
     clksel: Ucssel,
     freq: u32,
 }
 
 /// Extension trait for converting the proper PAC E_USCI peripherals into Serial objects
-pub trait SerialExt: EUsciUart + Sized {
+pub trait SerialExt: SerialUsci + Sized {
     /// Begin configuring the peripheral into a Serial object
-    fn to_serial(self) -> SerialConfigNoClock<Self>;
+    fn to_serial(
+        self,
+        order: BitOrder,
+        cnt: BitCount,
+        stopbits: StopBits,
+        parity: Parity,
+        baudrate: u32,
+        loopback: bool,
+    ) -> SerialConfigNoClock<Self>;
 }
 
-impl<USCI: EUsciUart> SerialConfigNoClock<USCI> {
+impl<USCI: SerialUsci + Sized> SerialExt for USCI {
+    fn to_serial(
+        self,
+        order: BitOrder,
+        cnt: BitCount,
+        stopbits: StopBits,
+        parity: Parity,
+        baudrate: u32,
+        loopback: bool,
+    ) -> SerialConfigNoClock<Self> {
+        SerialConfigNoClock {
+            order,
+            cnt,
+            stopbits,
+            parity,
+            loopback,
+            baudrate,
+            _usci: PhantomData,
+        }
+    }
+}
+
+impl<USCI: SerialUsci> SerialConfigNoClock<USCI> {
     /// Configure serial UART to use external UCLK, passing in the appropriately configured pin
     /// used as the clock signal as well as the frequency of the clock.
-    pub fn use_uclk(self, freq: u32) -> SerialConfig<USCI> {
-        // TODO pass in appropriate pin type
+    pub fn use_uclk<P: Into<USCI::ClockPin>>(self, _clk_pin: P, freq: u32) -> SerialConfig<USCI> {
         SerialConfig {
             config: self,
             clksel: Ucssel::Uclk,
@@ -86,6 +243,239 @@ impl<USCI: EUsciUart> SerialConfigNoClock<USCI> {
             config: self,
             clksel: Ucssel::Smclk,
             freq: smclk.freq(),
+        }
+    }
+}
+
+struct BaudConfig {
+    br: u16,
+    brs: u8,
+    brf: u8,
+    ucos16: bool,
+}
+
+fn calculate_baud_config(clk_freq: u32, bps: u32) -> BaudConfig {
+    assert!(bps != 0);
+    let n = clk_freq / bps;
+    assert!(n > 0, "BPS too high");
+    assert!(n <= 0xFFFF, "BPS too low");
+
+    let brs = lookup_brs(clk_freq, bps);
+
+    if n >= 16 {
+        let div = bps * 16;
+        // n / 16, but more precise
+        let br = (clk_freq / div) as u16;
+        // same as n % 16, but more precise
+        let brf = ((clk_freq % div) / bps) as u8;
+        BaudConfig {
+            ucos16: true,
+            br,
+            brf,
+            brs,
+        }
+    } else {
+        BaudConfig {
+            ucos16: false,
+            br: n as u16,
+            brf: 0,
+            brs,
+        }
+    }
+}
+
+fn lookup_brs(clk_freq: u32, bps: u32) -> u8 {
+    let modulo = clk_freq % bps;
+
+    // Fractional part lookup for the baud rate. Not extremely precise
+    if modulo * 19 < bps {
+        0x0
+    } else if modulo * 14 < bps {
+        0x1
+    } else if modulo * 12 < bps {
+        0x2
+    } else if modulo * 10 < bps {
+        0x4
+    } else if modulo * 8 < bps {
+        0x8
+    } else if modulo * 7 < bps {
+        0x10
+    } else if modulo * 6 < bps {
+        0x20
+    } else if modulo * 5 < bps {
+        0x11
+    } else if modulo * 4 < bps {
+        0x22
+    } else if modulo * 3 < bps {
+        0x44
+    } else if modulo * 11 < bps * 4 {
+        0x49
+    } else if modulo * 5 < bps * 2 {
+        0x4A
+    } else if modulo * 7 < bps * 3 {
+        0x92
+    } else if modulo * 2 < bps {
+        0x53
+    } else if modulo * 7 < bps * 4 {
+        0xAA
+    } else if modulo * 13 < bps * 8 {
+        0x6B
+    } else if modulo * 3 < bps * 2 {
+        0xAD
+    } else if modulo * 11 < bps * 8 {
+        0xD6
+    } else if modulo * 4 < bps * 3 {
+        0xBB
+    } else if modulo * 5 < bps * 4 {
+        0xDD
+    } else if modulo * 9 < bps * 8 {
+        0xEF
+    } else {
+        0xFD
+    }
+}
+
+impl<USCI: SerialUsci> SerialConfig<USCI> {
+    fn config_hw(self) {
+        let SerialConfig {
+            config,
+            clksel,
+            freq,
+        } = self;
+        let usci = USCI::Periph::steal();
+
+        let baud_config = calculate_baud_config(freq, config.baudrate);
+
+        usci.ctl0_reset();
+        usci.brw_settings(baud_config.br);
+        usci.mctlw_settings(baud_config.ucos16, baud_config.brs, baud_config.brf);
+        usci.loopback(config.loopback);
+        usci.ctl0_settings(UcxCtl0 {
+            ucpen: config.parity.ucpen(),
+            ucpar: config.parity.ucpar(),
+            ucmsb: config.order.to_bool(),
+            uc7bit: config.cnt.to_bool(),
+            ucspb: config.stopbits.to_bool(),
+            ucssel: clksel,
+            // We want erroneous bytes to trigger RXIFG so all errors can be caught
+            ucrxeie: true,
+        });
+    }
+
+    /// Perform hardware configuration and split into Tx and Rx pins from appropriate GPIOs
+    pub fn split<T: Into<USCI::TxPin>, R: Into<USCI::RxPin>>(
+        self,
+        _tx: T,
+        _rx: R,
+    ) -> (Tx<USCI>, Rx<USCI>) {
+        self.config_hw();
+        (Tx(PhantomData), Rx(PhantomData))
+    }
+
+    /// Perform hardware configuration and create Tx pin from appropriate GPIO
+    pub fn tx_only<T: Into<USCI::TxPin>>(self, _tx: T) -> (Tx<USCI>) {
+        self.config_hw();
+        Tx(PhantomData)
+    }
+
+    /// Perform hardware configuration and create Rx pin from appropriate GPIO
+    pub fn rx_only<R: Into<USCI::RxPin>>(self, _rx: R) -> (Rx<USCI>) {
+        self.config_hw();
+        Rx(PhantomData)
+    }
+}
+
+/// Serial transmitter
+pub struct Tx<USCI: SerialUsci>(PhantomData<USCI>);
+
+impl<USCI: SerialUsci> Tx<USCI> {
+    /// Enable Tx interrupts, which fire when ready to send
+    pub fn enable_tx_interrupts(&mut self) {
+        let usci = USCI::Periph::steal();
+        usci.txie_set();
+    }
+
+    /// Disable Tx interrupts
+    pub fn disable_tx_interrupts(&mut self) {
+        let usci = USCI::Periph::steal();
+        usci.txie_clear();
+    }
+}
+
+impl<USCI: SerialUsci> Write<u8> for Tx<USCI> {
+    type Error = void::Void;
+
+    /// Due to errata USCI42, UCTXCPTIFG will fire every time a byte is done transmitting,
+    /// even if there's still more buffered. Thus, the implementation uses UCTXIFG instead. When
+    /// `flush()` completes, the Tx buffer will be empty but the FIFO may still be sending.
+    fn flush(&mut self) -> nb::Result<(), Self::Error> {
+        let usci = USCI::Periph::steal();
+        if usci.txifg_rd() {
+            Ok(())
+        } else {
+            Err(nb::Error::WouldBlock)
+        }
+    }
+
+    fn write(&mut self, data: u8) -> nb::Result<(), Self::Error> {
+        let usci = USCI::Periph::steal();
+        if usci.txifg_rd() {
+            usci.tx_wr(data);
+            Ok(())
+        } else {
+            Err(nb::Error::WouldBlock)
+        }
+    }
+}
+
+/// Serial receiver
+pub struct Rx<USCI: SerialUsci>(PhantomData<USCI>);
+
+impl<USCI: SerialUsci> Rx<USCI> {
+    /// Enable Rx interrupts, which fire when ready to read
+    pub fn enable_rx_interrupts(&mut self) {
+        let usci = USCI::Periph::steal();
+        usci.rxie_set();
+    }
+
+    /// Disable Rx interrupts
+    pub fn disable_rx_interrupts(&mut self) {
+        let usci = USCI::Periph::steal();
+        usci.rxie_clear();
+    }
+}
+
+/// Serial receive errors
+pub enum RecvError {
+    /// Framing error
+    Framing,
+    /// Parity error
+    Parity,
+    /// Buffer overrun error. Contains the most recently read byte, which is still valid.
+    Overrun(u8),
+}
+
+impl<USCI: SerialUsci> Read<u8> for Rx<USCI> {
+    type Error = RecvError;
+
+    fn read(&mut self) -> nb::Result<u8, Self::Error> {
+        let usci = USCI::Periph::steal();
+
+        if usci.rxifg_rd() {
+            let statw = usci.statw_rd();
+            let data = usci.rx_rd();
+
+            if statw.ucfe() {
+                Err(nb::Error::Other(RecvError::Framing))
+            } else if statw.ucpe() {
+                Err(nb::Error::Other(RecvError::Parity))
+            } else if statw.ucoe() {
+                Err(nb::Error::Other(RecvError::Overrun(data)))
+            } else {
+                Ok(data)
+            }
+        } else {
+            Err(nb::Error::WouldBlock)
         }
     }
 }
