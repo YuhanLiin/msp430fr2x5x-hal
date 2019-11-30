@@ -19,6 +19,7 @@ pub struct Rtc {
 }
 
 impl RtcExt for RTC {
+    #[inline]
     fn use_smclk(self, _smclk: &Smclk) -> Rtc {
         Rtc {
             periph: self,
@@ -26,6 +27,7 @@ impl RtcExt for RTC {
         }
     }
 
+    #[inline]
     fn use_vloclk(self) -> Rtc {
         Rtc {
             periph: self,
@@ -37,6 +39,7 @@ impl RtcExt for RTC {
 impl CountDown for Rtc {
     type Time = u16;
 
+    #[inline]
     fn start<T: Into<Self::Time>>(&mut self, count: T) {
         self.periph
             .rtcmod
@@ -52,6 +55,7 @@ impl CountDown for Rtc {
         });
     }
 
+    #[inline]
     fn wait(&mut self) -> nb::Result<(), Void> {
         if self.periph.rtcctl.read().rtcifg().bit() {
             self.periph.rtciv.read();
@@ -65,6 +69,7 @@ impl CountDown for Rtc {
 impl Cancel for Rtc {
     type Error = Void;
 
+    #[inline]
     fn cancel(&mut self) -> Result<(), Self::Error> {
         unsafe {
             self.periph
@@ -82,6 +87,7 @@ pub use pac::rtc::rtcctl::RTCPS_A as RtcDiv;
 
 impl Rtc {
     /// Set RTC clock frequency divider
+    #[inline]
     pub fn set_clk_div(&mut self, div: RtcDiv) {
         self.periph
             .rtcctl
@@ -89,16 +95,19 @@ impl Rtc {
     }
 
     /// Enable RTC timer interrupts
+    #[inline]
     pub fn enable_interrupts(&mut self) {
         unsafe { self.periph.rtcctl.set_bits(|w| w.rtcie().set_bit()) };
     }
 
     /// Disable RTC timer interrupts
+    #[inline]
     pub fn disable_interrupts(&mut self) {
         unsafe { self.periph.rtcctl.clear_bits(|w| w.rtcie().clear_bit()) };
     }
 
     /// Clear interrupt flag
+    #[inline]
     pub fn clear_interrupt(&mut self) {
         self.periph.rtciv.read();
     }
