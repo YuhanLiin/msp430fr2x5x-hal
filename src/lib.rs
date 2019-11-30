@@ -16,6 +16,8 @@ pub mod gpio;
 mod hw_traits;
 /// Power management module
 pub mod pmm;
+/// Real time clock
+pub mod rtc;
 /// Serial UART
 pub mod serial;
 /// Watchdog timer
