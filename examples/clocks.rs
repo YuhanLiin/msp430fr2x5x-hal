@@ -29,9 +29,9 @@ fn main() {
     const DELAY: WdtClkPeriods = WdtClkPeriods::_8192K;
 
     // blinks should be 1 second on, 1 second off
-    let mut wdt = wdt.set_smclk(&smclk).to_interval();
+    let mut wdt = wdt.to_interval();
     p1_0.set_high().ok();
-    wdt.start(DELAY);
+    wdt.set_smclk(&smclk).start(DELAY);
 
     block!(wdt.wait()).ok();
     p1_0.set_low().ok();

@@ -69,7 +69,7 @@ impl<MODE: WatchdogSelect> Wdt<MODE> {
     }
 
     #[inline]
-    fn set_clk(self, clk_src: WDTSSEL_A) -> Self {
+    fn set_clk(&mut self, clk_src: WDTSSEL_A) -> &mut Self {
         // Halt timer first, as specified in the user's guide
         self.periph.wdtctl.write(|w| {
             Self::prewrite(w, 0)
@@ -90,21 +90,21 @@ impl<MODE: WatchdogSelect> Wdt<MODE> {
         self
     }
 
-    /// Set watchdog clock source to ACLK and halt timer. Default source is SMCLK.
+    /// Set watchdog clock source to ACLK and halt timer.
     #[inline]
-    pub fn set_aclk(self, _clks: &Aclk) -> Self {
+    pub fn set_aclk(&mut self, _clks: &Aclk) -> &mut Self {
         self.set_clk(WDTSSEL_A::ACLK)
     }
 
-    /// Set watchdog clock source to VLOCLK and halt timer. Default source is SMCLK.
+    /// Set watchdog clock source to VLOCLK and halt timer.
     #[inline]
-    pub fn set_vloclk(self) -> Self {
+    pub fn set_vloclk(&mut self) -> &mut Self {
         self.set_clk(WDTSSEL_A::VLOCLK)
     }
 
-    /// Set watchdog clock source to SMCLK and halt timer. Default source is SMCLK.
+    /// Set watchdog clock source to SMCLK, the default, and halt timer.
     #[inline]
-    pub fn set_smclk(self, _clks: &Smclk) -> Self {
+    pub fn set_smclk(&mut self, _clks: &Smclk) -> &mut Self {
         self.set_clk(WDTSSEL_A::SMCLK)
     }
 
