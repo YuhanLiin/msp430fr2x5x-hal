@@ -272,22 +272,14 @@ impl<P: GpioPort> GpioExt for P {
 /// Collection of proxies for pins 0 to 7 of a specific port, used to commit configurations for
 /// all pins in a single step, reducing the total number of register accesses.
 pub struct Batch<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7> {
-    /// Pin 0 proxy
-    pub pin0: PinProxy<PORT, Pin0, DIR0>,
-    /// Pin 1 proxy
-    pub pin1: PinProxy<PORT, Pin1, DIR1>,
-    /// Pin 2 proxy
-    pub pin2: PinProxy<PORT, Pin2, DIR2>,
-    /// Pin 3 proxy
-    pub pin3: PinProxy<PORT, Pin3, DIR3>,
-    /// Pin 4 proxy
-    pub pin4: PinProxy<PORT, Pin4, DIR4>,
-    /// Pin 5 proxy
-    pub pin5: PinProxy<PORT, Pin5, DIR5>,
-    /// Pin 6 proxy
-    pub pin6: PinProxy<PORT, Pin6, DIR6>,
-    /// Pin 7 proxy
-    pub pin7: PinProxy<PORT, Pin7, DIR7>,
+    pin0: PinProxy<PORT, Pin0, DIR0>,
+    pin1: PinProxy<PORT, Pin1, DIR1>,
+    pin2: PinProxy<PORT, Pin2, DIR2>,
+    pin3: PinProxy<PORT, Pin3, DIR3>,
+    pin4: PinProxy<PORT, Pin4, DIR4>,
+    pin5: PinProxy<PORT, Pin5, DIR5>,
+    pin6: PinProxy<PORT, Pin6, DIR6>,
+    pin7: PinProxy<PORT, Pin7, DIR7>,
 }
 
 impl<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
