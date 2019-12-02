@@ -8,7 +8,7 @@ use embedded_hal::timer::Cancel;
 use msp430fr2x5x_hal::{clock::*, gpio::*, pmm::*, rtc::*, watchdog::*};
 
 // Red LED blinks 2 seconds on, 2 off
-// Pressing P2.3 button halts program
+// Pressing P2.3 button toggles red LED and halts program
 fn main() {
     let periph = msp430fr2355::Peripherals::take().unwrap();
 
@@ -32,7 +32,7 @@ fn main() {
         .aclk_vloclk()
         .freeze();
 
-    let mut rtc = periph.RTC.use_vloclk();
+    let mut rtc = periph.RTC.constrain().use_vloclk();
     rtc.set_clk_div(RtcDiv::_10);
 
     button.select_falling_edge_trigger();
