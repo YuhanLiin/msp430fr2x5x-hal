@@ -8,6 +8,7 @@ use embedded_hal::watchdog::WatchdogEnable;
 use msp430fr2x5x_hal::{clock::*, fram::*, gpio::*, pmm::*, watchdog::*};
 use nb::block;
 
+// Red LED should blink 1 second on, 1 second off
 fn main() {
     let periph = msp430fr2355::Peripherals::take().unwrap();
 

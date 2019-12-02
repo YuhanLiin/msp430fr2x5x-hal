@@ -14,6 +14,8 @@ use panic_msp430 as _;
 static RED_LED: Mutex<RefCell<Option<Pin<Port1, Pin0, Output>>>> = Mutex::new(RefCell::new(None));
 static P2IV: Mutex<RefCell<Option<PxIV<Port2>>>> = Mutex::new(RefCell::new(None));
 
+// Red LED should blink 2 seconds on, 2 seconds off
+// Both green and red LEDs should blink when P2.3 LED is pressed
 fn main() {
     let periph = msp430fr2355::Peripherals::take().unwrap();
     let (_smclk, aclk) = periph

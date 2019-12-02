@@ -7,6 +7,8 @@ use embedded_hal::prelude::*;
 use embedded_hal::timer::Cancel;
 use msp430fr2x5x_hal::{clock::*, gpio::*, pmm::*, rtc::*, watchdog::*};
 
+// Red LED blinks 2 seconds on, 2 off
+// Pressing P2.3 button halts program
 fn main() {
     let periph = msp430fr2355::Peripherals::take().unwrap();
 

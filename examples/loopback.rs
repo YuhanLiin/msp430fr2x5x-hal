@@ -35,6 +35,8 @@ fn read_unwrap<R: Read<u8>>(rx: &mut R, err: char) -> u8 {
     }
 }
 
+// Echoes serial input on UART1 by roundtripping to UART0
+// Only UART1 settings matter for the host
 fn main() {
     let periph = msp430fr2355::Peripherals::take().unwrap();
 

@@ -6,6 +6,8 @@ use msp430fr2x5x_hal::{clock::*, fram::*, gpio::*, pmm::*, serial::*, watchdog::
 use nb::block;
 use panic_msp430 as _;
 
+// Prints "HELLO" when started then echos on UART1
+// Serial settings are listed in the code
 fn main() {
     let periph = msp430fr2355::Peripherals::take().unwrap();
 
