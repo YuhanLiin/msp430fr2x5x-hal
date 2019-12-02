@@ -214,8 +214,7 @@ impl<DIR> Into<UsciA1RxPin> for Pin<Port4, Pin2, Alternate1<DIR>> {
     }
 }
 
-/// Configuration object for serial UART without clock select info, which is required before a
-/// Serial object can be created.
+#[doc(hidden)]
 pub struct SerialConfigNoClock<USCI: SerialUsci> {
     _usci: PhantomData<USCI>,
     order: BitOrder,
@@ -226,7 +225,7 @@ pub struct SerialConfigNoClock<USCI: SerialUsci> {
     baudrate: u32,
 }
 
-/// Configuration object for serial UART with clock select info.
+/// Configuration object for serial UART
 pub struct SerialConfig<USCI: SerialUsci> {
     config: SerialConfigNoClock<USCI>,
     clksel: Ucssel,

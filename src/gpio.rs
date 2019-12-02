@@ -278,39 +278,36 @@ where
     }
 }
 
-/// Trait for getting the interrupt vector info for a port with interrupt capabilities
-pub trait GetInterruptVector {
+/// Interrupt vector register used to determine which pin caused a port ISR
+pub struct PxIV<PORT: PortNum>(PhantomData<PORT>);
+
+impl<PORT: PortNum> PxIV<PORT>
+where
+    PORT::Port: IntrPeriph,
+{
     /// When called inside an ISR, returns the pin number of the highest priority interrupt flag
     /// that's currently enabled. Automatically clears the same flag. For a given port, the lowest
     /// numbered pin has the highest interrupt priority.
-    fn get_interrupt_vector() -> InterruptVector;
-}
-
-impl<P: PortNum> GetInterruptVector for P
-where
-    P::Port: IntrPeriph,
-{
-    // Since all we do here are reg reads, this function is re-entrant
     #[inline]
-    fn get_interrupt_vector() -> InterruptVector {
-        let p = P::Port::steal();
+    pub fn get_interrupt_vector(&mut self) -> GpioVector {
+        let p = PORT::Port::steal();
         match p.pxiv_rd() {
-            0 => InterruptVector::NoIsr,
-            2 => InterruptVector::Pin0Isr,
-            4 => InterruptVector::Pin1Isr,
-            6 => InterruptVector::Pin2Isr,
-            8 => InterruptVector::Pin3Isr,
-            10 => InterruptVector::Pin4Isr,
-            12 => InterruptVector::Pin5Isr,
-            14 => InterruptVector::Pin6Isr,
-            16 => InterruptVector::Pin7Isr,
+            0 => GpioVector::NoIsr,
+            2 => GpioVector::Pin0Isr,
+            4 => GpioVector::Pin1Isr,
+            6 => GpioVector::Pin2Isr,
+            8 => GpioVector::Pin3Isr,
+            10 => GpioVector::Pin4Isr,
+            12 => GpioVector::Pin5Isr,
+            14 => GpioVector::Pin6Isr,
+            16 => GpioVector::Pin7Isr,
             _ => unreachable!(),
         }
     }
 }
 
 /// Indicates which pin on the GPIO port caused the ISR.
-pub enum InterruptVector {
+pub enum GpioVector {
     /// No ISR
     NoIsr,
     /// ISR caused by pin 0
@@ -442,6 +439,8 @@ pub struct Parts<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7> 
     pub pin6: Pin<PORT, Pin6, DIR6>,
     /// Pin7
     pub pin7: Pin<PORT, Pin7, DIR7>,
+    /// Interrupt vector register
+    pub pxiv: PxIV<PORT>,
 }
 
 impl<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
@@ -464,6 +463,7 @@ impl<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
             pin5: make_pin!(),
             pin6: make_pin!(),
             pin7: make_pin!(),
+            pxiv: PxIV(PhantomData),
         }
     }
 }

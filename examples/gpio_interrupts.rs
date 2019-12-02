@@ -12,6 +12,7 @@ use nb::block;
 use panic_msp430 as _;
 
 static RED_LED: Mutex<RefCell<Option<Pin<Port1, Pin0, Output>>>> = Mutex::new(RefCell::new(None));
+static P2IV: Mutex<RefCell<Option<PxIV<Port2>>>> = Mutex::new(RefCell::new(None));
 
 fn main() {
     let periph = msp430fr2355::Peripherals::take().unwrap();
@@ -23,7 +24,7 @@ fn main() {
         .smclk_on(SmclkDiv::_2)
         .aclk_vloclk()
         .freeze();
-    let mut wdt = periph.WDT_A.constrain().set_aclk(&aclk).to_interval();
+    let mut wdt = periph.WDT_A.constrain().to_interval();
     let pmm = periph.PMM.freeze();
 
     let p1 = periph.P1.batch().split(&pmm);
@@ -35,13 +36,19 @@ fn main() {
     let p6 = periph.P6.batch().config_pin6(|p| p.to_output()).split(&pmm);
 
     let red_led = p1.pin0.to_output();
+    // Onboard button with interrupt disabled
     let mut button = p2.pin3;
+    // Some random pin with interrupt enabled. IFG will be set manually.
     let mut pin = p2.pin7.pulldown();
     let mut green_led = p6.pin6;
+    let p2iv = p2.pxiv;
 
     free(|cs| *RED_LED.borrow(&cs).borrow_mut() = Some(red_led));
+    free(|cs| *P2IV.borrow(&cs).borrow_mut() = Some(p2iv));
 
-    wdt.enable_interrupts().start(WdtClkPeriods::_32K);
+    wdt.set_aclk(&aclk)
+        .enable_interrupts()
+        .start(WdtClkPeriods::_32K);
     pin.select_rising_edge_trigger().enable_interrupts();
     button.select_falling_edge_trigger();
 
@@ -58,8 +65,14 @@ interrupt!(PORT2, pin_isr);
 fn pin_isr() {
     free(|cs| {
         RED_LED.borrow(&cs).borrow_mut().as_mut().map(|red_led| {
-            match Port2::get_interrupt_vector() {
-                InterruptVector::Pin7Isr => red_led.toggle().ok(),
+            match P2IV
+                .borrow(&cs)
+                .borrow_mut()
+                .as_mut()
+                .unwrap()
+                .get_interrupt_vector()
+            {
+                GpioVector::Pin7Isr => red_led.toggle().ok(),
                 _ => panic!(),
             }
         })
