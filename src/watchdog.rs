@@ -1,6 +1,6 @@
 //! Watchdog timer, configurable as either a traditional watchdog or a plain timer.
 //!
-//! *Note*: MSP430 devices will reset after bootup if not stopped after an initial 32 ms interval
+//! **Note**: MSP430 devices will reset after bootup if not stopped after an initial 32 ms interval
 //! (roughly). If this is undesirable, call `WDT.constrain()` as soon in the application as
 //! possible to stop the watchdog.
 

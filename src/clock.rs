@@ -1,4 +1,4 @@
-//! Clock system configuration allowing the one-time configuration of MCLK, SMCLK, and ACLK.
+//! Clock system for configuration of MCLK, SMCLK, and ACLK.
 //!
 //! Once configuration is complete, `Aclk` and `Smclk` clock objects are returned for configuring
 //! other peripherals.
@@ -7,8 +7,8 @@
 //!
 //! DCO with FLL is supported on MCLK for select frequencies, as supporting other frequency values
 //! would require complex calibrations not handled by the HAL.
+
 use crate::fram::{Fram, WaitStates};
-use core::marker::PhantomData;
 use msp430fr2355 as pac;
 use pac::cs::csctl1::DCORSEL_A;
 use pac::cs::csctl4::{SELA_A, SELMS_A};
@@ -22,25 +22,14 @@ pub const VLOCLK: u16 = 10000;
 enum MclkSel {
     Refoclk,
     Vloclk,
-    Dcoclk(DcoclkFreqSel),
 }
 
 impl MclkSel {
-    #[inline(always)]
-    fn selms(&self) -> SELMS_A {
-        match self {
-            MclkSel::Refoclk => SELMS_A::REFOCLK,
-            MclkSel::Vloclk => SELMS_A::VLOCLK,
-            MclkSel::Dcoclk(_) => SELMS_A::DCOCLKDIV,
-        }
-    }
-
     #[inline(always)]
     fn freq(&self) -> u32 {
         match self {
             MclkSel::Vloclk => VLOCLK as u32,
             MclkSel::Refoclk => REFOCLK as u32,
-            MclkSel::Dcoclk(fsel) => fsel.freq(),
         }
     }
 }
@@ -130,9 +119,9 @@ impl DcoclkFreqSel {
 #[doc(hidden)]
 pub struct NoClockDefined;
 #[doc(hidden)]
-pub struct MclkDefined;
+pub struct MclkDefined(MclkSel);
 #[doc(hidden)]
-pub struct MclkDcoDefined;
+pub struct MclkDcoDefined(DcoclkFreqSel);
 #[doc(hidden)]
 pub struct SmclkDefined(SmclkDiv);
 #[doc(hidden)]
@@ -158,29 +147,42 @@ impl SmclkState for SmclkDisabled {
 }
 
 #[doc(hidden)]
-pub trait MclkState {}
-impl MclkState for MclkDefined {}
-impl MclkState for MclkDcoDefined {}
+pub trait MclkState {
+    fn selms(&self) -> SELMS_A;
+}
+impl MclkState for MclkDefined {
+    #[inline(always)]
+    fn selms(&self) -> SELMS_A {
+        match self.0 {
+            MclkSel::Refoclk => SELMS_A::REFOCLK,
+            MclkSel::Vloclk => SELMS_A::VLOCLK,
+        }
+    }
+}
+impl MclkState for MclkDcoDefined {
+    #[inline(always)]
+    fn selms(&self) -> SELMS_A {
+        SELMS_A::DCOCLKDIV
+    }
+}
 
 /// Builder object containing system clock configuration
 pub struct ClockConfig<MCLK, SMCLK> {
     periph: pac::CS,
-    mclk_sel: MclkSel,
+    mclk: MCLK,
     mclk_div: MclkDiv,
     aclk_sel: AclkSel,
     smclk: SMCLK,
-    _mclk: PhantomData<MCLK>,
 }
 
 macro_rules! make_clkconf {
-    ($conf:expr, $smclk:expr) => {
+    ($conf:expr, $mclk:expr, $smclk:expr) => {
         ClockConfig {
             periph: $conf.periph,
-            mclk_sel: $conf.mclk_sel,
+            mclk: $mclk,
             mclk_div: $conf.mclk_div,
             aclk_sel: $conf.aclk_sel,
             smclk: $smclk,
-            _mclk: PhantomData,
         }
     };
 }
@@ -199,9 +201,8 @@ impl CsExt for pac::CS {
         ClockConfig {
             periph: self,
             smclk: NoClockDefined,
-            _mclk: PhantomData,
+            mclk: NoClockDefined,
             mclk_div: MclkDiv::_1,
-            mclk_sel: MclkSel::Refoclk,
             aclk_sel: AclkSel::Refoclk,
         }
     }
@@ -227,8 +228,7 @@ impl<MCLK, SMCLK> ClockConfig<MCLK, SMCLK> {
     pub fn mclk_refoclk(self, mclk_div: MclkDiv) -> ClockConfig<MclkDefined, SMCLK> {
         ClockConfig {
             mclk_div,
-            mclk_sel: MclkSel::Refoclk,
-            ..make_clkconf!(self, self.smclk)
+            ..make_clkconf!(self, MclkDefined(MclkSel::Refoclk), self.smclk)
         }
     }
 
@@ -237,8 +237,7 @@ impl<MCLK, SMCLK> ClockConfig<MCLK, SMCLK> {
     pub fn mclk_vcoclk(self, mclk_div: MclkDiv) -> ClockConfig<MclkDefined, SMCLK> {
         ClockConfig {
             mclk_div,
-            mclk_sel: MclkSel::Vloclk,
-            ..make_clkconf!(self, self.smclk)
+            ..make_clkconf!(self, MclkDefined(MclkSel::Vloclk), self.smclk)
         }
     }
 
@@ -253,21 +252,20 @@ impl<MCLK, SMCLK> ClockConfig<MCLK, SMCLK> {
     ) -> ClockConfig<MclkDcoDefined, SMCLK> {
         ClockConfig {
             mclk_div,
-            mclk_sel: MclkSel::Dcoclk(target_freq),
-            ..make_clkconf!(self, self.smclk)
+            ..make_clkconf!(self, MclkDcoDefined(target_freq), self.smclk)
         }
     }
 
     /// Enable SMCLK and set SMCLK divider, which divides the MCLK frequency
     #[inline]
     pub fn smclk_on(self, div: SmclkDiv) -> ClockConfig<MCLK, SmclkDefined> {
-        make_clkconf!(self, SmclkDefined(div))
+        make_clkconf!(self, self.mclk, SmclkDefined(div))
     }
 
     /// Disable SMCLK
     #[inline]
     pub fn smclk_off(self) -> ClockConfig<MCLK, SmclkDisabled> {
-        make_clkconf!(self, SmclkDisabled)
+        make_clkconf!(self, self.mclk, SmclkDisabled)
     }
 }
 
@@ -286,30 +284,28 @@ fn fll_on() {
 impl<SMCLK: SmclkState> ClockConfig<MclkDcoDefined, SMCLK> {
     #[inline]
     fn configure_dco_fll(&self) {
+        let target_freq = self.mclk.0;
+
         // FLL configuration procedure from the user's guide
         // Should always be true
-        if let MclkSel::Dcoclk(target_freq) = self.mclk_sel {
-            fll_off();
-            self.periph.csctl3.write(|w| w.selref().refoclk());
-            self.periph.csctl0.write(|w| unsafe { w.bits(0) });
-            self.periph
-                .csctl1
-                .write(|w| w.dcorsel().variant(target_freq.dcorsel()));
-            self.periph.csctl2.write(|w| {
-                unsafe { w.flln().bits(target_freq.multiplier() - 1) }
-                    .flld()
-                    ._1()
-            });
+        fll_off();
+        self.periph.csctl3.write(|w| w.selref().refoclk());
+        self.periph.csctl0.write(|w| unsafe { w.bits(0) });
+        self.periph
+            .csctl1
+            .write(|w| w.dcorsel().variant(target_freq.dcorsel()));
+        self.periph.csctl2.write(|w| {
+            unsafe { w.flln().bits(target_freq.multiplier() - 1) }
+                .flld()
+                ._1()
+        });
 
-            msp430::asm::nop();
-            msp430::asm::nop();
-            msp430::asm::nop();
-            fll_on();
+        msp430::asm::nop();
+        msp430::asm::nop();
+        msp430::asm::nop();
+        fll_on();
 
-            while !self.periph.csctl7.read().fllunlock().is_fllunlock_0() {}
-        } else {
-            debug_assert!(false);
-        }
+        while !self.periph.csctl7.read().fllunlock().is_fllunlock_0() {}
     }
 
     #[inline]
@@ -329,7 +325,7 @@ impl<MCLK: MclkState, SMCLK: SmclkState> ClockConfig<MCLK, SMCLK> {
             w.sela()
                 .variant(self.aclk_sel.sela())
                 .selms()
-                .variant(self.mclk_sel.selms())
+                .variant(self.mclk.selms())
         });
 
         self.periph.csctl5.write(|w| {
@@ -347,7 +343,7 @@ impl ClockConfig<MclkDefined, SmclkDefined> {
     #[inline]
     pub fn freeze(self) -> (Smclk, Aclk) {
         self.configure_cs();
-        let mclk_freq = self.mclk_sel.freq() >> (self.mclk_div as u32);
+        let mclk_freq = self.mclk.0.freq() >> (self.mclk_div as u32);
         (
             Smclk(mclk_freq >> (self.smclk.0 as u32)),
             Aclk(self.aclk_sel.freq()),
@@ -370,7 +366,7 @@ impl ClockConfig<MclkDcoDefined, SmclkDefined> {
     /// wait). Do not change wait state afterwards.
     #[inline]
     pub fn freeze(self, fram: &mut Fram) -> (Smclk, Aclk) {
-        let mclk_freq = self.mclk_sel.freq() >> (self.mclk_div as u32);
+        let mclk_freq = self.mclk.0.freq() >> (self.mclk_div as u32);
         self.configure_cs();
         unsafe { self.configure_fram(fram, mclk_freq) };
         self.configure_dco_fll();
@@ -385,7 +381,7 @@ impl ClockConfig<MclkDcoDefined, SmclkDisabled> {
     /// Apply clock configuration and return MCLK and ACLK clock objects, as SMCLK is disabled
     #[inline]
     pub fn freeze(self, fram: &mut Fram) -> Aclk {
-        let mclk_freq = self.mclk_sel.freq() >> (self.mclk_div as u32);
+        let mclk_freq = self.mclk.0.freq() >> (self.mclk_div as u32);
         self.configure_cs();
         unsafe { self.configure_fram(fram, mclk_freq) };
         self.configure_dco_fll();

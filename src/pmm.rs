@@ -1,3 +1,5 @@
+//! Power management module
+
 use msp430fr2355::PMM;
 
 /// PMM type

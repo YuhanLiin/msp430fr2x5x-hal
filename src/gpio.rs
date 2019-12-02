@@ -1,10 +1,10 @@
-//! GPIO module abstractions for configuring and controlling individual GPIO pins.
+//! GPIO abstractions for configuring and controlling individual GPIO pins.
 //!
 //! To specify any pin, use the bounds `Pin<PORT: PortNum, PIN: PinNum>`.
 //! To specify any pin on a port that supports interrupts, use the bounds `Pin<PORT: IntrPortNum, PIN: PinNum>`.
 //! To specify any pin on PortX, use the bounds `Pin<PortX, PIN: PinNum>`.
 //!
-//! Note that interrupts are only supported by the hardware on ports *1 to 4*, so interrupt-related
+//! Note that interrupts are only supported by the hardware on ports **1 to 4**, so interrupt-related
 //! methods are only available on those pins.
 //!
 //! Pins can be converted to alternate functionalities 1 to 3, but the availability of these

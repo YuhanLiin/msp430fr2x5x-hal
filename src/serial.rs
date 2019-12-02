@@ -1,3 +1,5 @@
+//! Serial UART
+
 use crate::clock::{Aclk, Clock, Smclk};
 use crate::gpio::{Alternate1, Pin, Pin1, Pin2, Pin3, Pin5, Pin6, Pin7, Port1, Port4};
 use crate::hw_traits::eusci::UcxCtl0;
@@ -214,7 +216,7 @@ impl<DIR> Into<UsciA1RxPin> for Pin<Port4, Pin2, Alternate1<DIR>> {
     }
 }
 
-#[doc(hidden)]
+/// Configuration object for serial UART
 pub struct SerialConfigNoClock<USCI: SerialUsci> {
     _usci: PhantomData<USCI>,
     order: BitOrder,
@@ -388,6 +390,9 @@ impl<USCI: SerialUsci> SerialConfig<USCI> {
     }
 
     /// Perform hardware configuration and split into Tx and Rx pins from appropriate GPIOs
+    ///
+    /// # Panics
+    /// Panics if configured baudrate is higher than the clock rate or less than clock rate / 0xFFFF.
     #[inline]
     pub fn split<T: Into<USCI::TxPin>, R: Into<USCI::RxPin>>(
         self,
@@ -399,6 +404,9 @@ impl<USCI: SerialUsci> SerialConfig<USCI> {
     }
 
     /// Perform hardware configuration and create Tx pin from appropriate GPIO
+    ///
+    /// # Panics
+    /// Panics if configured baudrate is higher than the clock rate or less than clock rate / 0xFFFF.
     #[inline]
     pub fn tx_only<T: Into<USCI::TxPin>>(self, _tx: T) -> (Tx<USCI>) {
         self.config_hw();
@@ -406,6 +414,9 @@ impl<USCI: SerialUsci> SerialConfig<USCI> {
     }
 
     /// Perform hardware configuration and create Rx pin from appropriate GPIO
+    ///
+    /// # Panics
+    /// Panics if configured baudrate is higher than the clock rate or less than clock rate / 0xFFFF.
     #[inline]
     pub fn rx_only<R: Into<USCI::RxPin>>(self, _rx: R) -> (Rx<USCI>) {
         self.config_hw();

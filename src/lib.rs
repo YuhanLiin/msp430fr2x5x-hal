@@ -11,7 +11,7 @@
 //!
 //! Requires `msp430-elf-gcc` installed and in $PATH to build
 //!
-//! When using this crate as a dependency, make sure you include the appropriate memory.x file for
+//! When using this crate as a dependency, make sure you include the appropriate `memory.x` file for
 //! your microcontroller.
 //!
 //! # Examples
@@ -26,21 +26,13 @@
 #![feature(asm)]
 #![deny(missing_docs)]
 
-/// GPIO batch configuration
 pub mod batch_gpio;
-/// Microcontroller clock control and selection (CS)
 pub mod clock;
-/// FRAM controller
 pub mod fram;
-/// General purpose digital I/O
 pub mod gpio;
-/// Power management module
 pub mod pmm;
-/// Real time clock
 pub mod rtc;
-/// Serial UART
 pub mod serial;
-/// Watchdog timer
 pub mod watchdog;
 
 mod bits;

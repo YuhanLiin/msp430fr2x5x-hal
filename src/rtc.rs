@@ -1,3 +1,5 @@
+//! Real time counter
+
 use crate::clock::Smclk;
 use core::marker::PhantomData;
 use embedded_hal::timer::{Cancel, CountDown, Periodic};

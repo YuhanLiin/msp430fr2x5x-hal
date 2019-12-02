@@ -11,6 +11,7 @@ edition = "2018"
 [dependencies]
 msp430 = "0.1.0"
 nb = "0.1.2"
+msp430-rt = "0.1.4"
 
 [dependencies.void]
 version = "1.0.2"
@@ -19,9 +20,6 @@ default-features = false
 [dependencies.embedded-hal]
 version = "0.2.3"
 features = ["unproven"]
-
-[dependencies.msp430-rt]
-git = "https://github.com/rust-embedded/msp430-rt"
 
 [dependencies.msp430fr2355]
 features = ["rt"]
