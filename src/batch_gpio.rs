@@ -1,3 +1,10 @@
+//! The `Batch` abstraction allows changing GPIO pin configuration *statically* using the builder
+//! pattern before writing all configurations to the hardware in one series of register writes.
+//!
+//! For example, `P2.batch().config_pin3(|p| p.to_input_pullup()).config_pin1(|p| p.to_output()).split(&pmm)`
+//! configures P2.3 as a pullup input pin and P2.1 as an output pin and then writes the
+//! configuration to the hardware in a single set of writes.
+
 use crate::bits::BitsExt;
 use crate::gpio::*;
 use crate::hw_traits::gpio::{GpioPeriph, IntrPeriph};

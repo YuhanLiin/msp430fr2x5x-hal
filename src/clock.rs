@@ -1,3 +1,12 @@
+//! Clock system configuration allowing the one-time configuration of MCLK, SMCLK, and ACLK.
+//!
+//! Once configuration is complete, `Aclk` and `Smclk` clock objects are returned for configuring
+//! other peripherals.
+//! Configuration of MCLK and SMCLK *must* occur, though SMCLK can be disabled. In that case, only
+//! `Aclk` is returned.
+//!
+//! DCO with FLL is supported on MCLK for select frequencies, as supporting other frequency values
+//! would require complex calibrations not handled by the HAL.
 use crate::fram::{Fram, WaitStates};
 use core::marker::PhantomData;
 use msp430fr2355 as pac;
@@ -17,7 +26,7 @@ enum MclkSel {
 }
 
 impl MclkSel {
-    #[inline]
+    #[inline(always)]
     fn selms(&self) -> SELMS_A {
         match self {
             MclkSel::Refoclk => SELMS_A::REFOCLK,
@@ -26,7 +35,7 @@ impl MclkSel {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     fn freq(&self) -> u32 {
         match self {
             MclkSel::Vloclk => VLOCLK as u32,
@@ -43,7 +52,7 @@ enum AclkSel {
 }
 
 impl AclkSel {
-    #[inline]
+    #[inline(always)]
     fn sela(self) -> SELA_A {
         match self {
             AclkSel::Vloclk => SELA_A::VLOCLK,
@@ -51,7 +60,7 @@ impl AclkSel {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     fn freq(self) -> u16 {
         match self {
             AclkSel::Vloclk => VLOCLK,
@@ -83,7 +92,7 @@ pub enum DcoclkFreqSel {
 }
 
 impl DcoclkFreqSel {
-    #[inline]
+    #[inline(always)]
     fn dcorsel(self) -> DCORSEL_A {
         match self {
             DcoclkFreqSel::_1MHz => DCORSEL_A::DCORSEL_0,
@@ -97,7 +106,7 @@ impl DcoclkFreqSel {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     fn multiplier(self) -> u16 {
         match self {
             DcoclkFreqSel::_1MHz => 32,
@@ -153,8 +162,7 @@ pub trait MclkState {}
 impl MclkState for MclkDefined {}
 impl MclkState for MclkDcoDefined {}
 
-/// Builder object containing system clock configuration. Configuring MCLK must happen before SMCLK
-/// is configured.
+/// Builder object containing system clock configuration
 pub struct ClockConfig<MCLK, SMCLK> {
     periph: pac::CS,
     mclk_sel: MclkSel,
@@ -185,7 +193,7 @@ pub trait CsExt {
 }
 
 impl CsExt for pac::CS {
-    #[inline(always)]
+    #[inline]
     fn constrain(self) -> ClockConfig<NoClockDefined, NoClockDefined> {
         // These are the microcontroller default settings
         ClockConfig {
@@ -201,67 +209,63 @@ impl CsExt for pac::CS {
 
 impl<MCLK, SMCLK> ClockConfig<MCLK, SMCLK> {
     /// Select REFOCLK for ACLK
-    #[inline(always)]
-    pub const fn aclk_refoclk(mut self) -> Self {
+    #[inline]
+    pub fn aclk_refoclk(mut self) -> Self {
         self.aclk_sel = AclkSel::Refoclk;
         self
     }
 
     /// Select VLOCLK for ACLK
-    #[inline(always)]
-    pub const fn aclk_vloclk(mut self) -> Self {
+    #[inline]
+    pub fn aclk_vloclk(mut self) -> Self {
         self.aclk_sel = AclkSel::Vloclk;
         self
     }
-}
 
-impl ClockConfig<NoClockDefined, NoClockDefined> {
     /// Select REFOCLK for MCLK and set the MCLK divider. Frequency is `10000 / mclk_div` Hz.
-    #[inline(always)]
-    pub const fn mclk_refoclk(self, mclk_div: MclkDiv) -> ClockConfig<MclkDefined, NoClockDefined> {
+    #[inline]
+    pub fn mclk_refoclk(self, mclk_div: MclkDiv) -> ClockConfig<MclkDefined, SMCLK> {
         ClockConfig {
             mclk_div,
             mclk_sel: MclkSel::Refoclk,
-            ..make_clkconf!(self, NoClockDefined)
+            ..make_clkconf!(self, self.smclk)
         }
     }
 
     /// Select VLOCLK for MCLK and set the MCLK divider. Frequency is `32768 / mclk_div` Hz.
-    #[inline(always)]
-    pub const fn mclk_vcoclk(self, mclk_div: MclkDiv) -> ClockConfig<MclkDefined, NoClockDefined> {
+    #[inline]
+    pub fn mclk_vcoclk(self, mclk_div: MclkDiv) -> ClockConfig<MclkDefined, SMCLK> {
         ClockConfig {
             mclk_div,
             mclk_sel: MclkSel::Vloclk,
-            ..make_clkconf!(self, NoClockDefined)
+            ..make_clkconf!(self, self.smclk)
         }
     }
 
     /// Select DCOCLK for MCLK with FLL for stabilization. Frequency is `target_freq / mclk_div` Hz.
     /// This setting selects the default factory trim for DCO trimming and performs no extra
     /// calibration, so only a select few frequency targets can be selected.
-    #[inline(always)]
-    pub const fn mclk_dcoclk(
+    #[inline]
+    pub fn mclk_dcoclk(
         self,
         target_freq: DcoclkFreqSel,
         mclk_div: MclkDiv,
-    ) -> ClockConfig<MclkDcoDefined, NoClockDefined> {
+    ) -> ClockConfig<MclkDcoDefined, SMCLK> {
         ClockConfig {
             mclk_div,
             mclk_sel: MclkSel::Dcoclk(target_freq),
-            ..make_clkconf!(self, NoClockDefined)
+            ..make_clkconf!(self, self.smclk)
         }
     }
-}
 
-impl<MCLK: MclkState> ClockConfig<MCLK, NoClockDefined> {
     /// Enable SMCLK and set SMCLK divider, which divides the MCLK frequency
-    #[inline(always)]
+    #[inline]
     pub fn smclk_on(self, div: SmclkDiv) -> ClockConfig<MCLK, SmclkDefined> {
         make_clkconf!(self, SmclkDefined(div))
     }
 
     /// Disable SMCLK
-    #[inline(always)]
+    #[inline]
     pub fn smclk_off(self) -> ClockConfig<MCLK, SmclkDisabled> {
         make_clkconf!(self, SmclkDisabled)
     }

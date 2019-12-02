@@ -1,3 +1,18 @@
+//! GPIO module abstractions for configuring and controlling individual GPIO pins.
+//!
+//! To specify any pin, use the bounds `Pin<PORT: PortNum, PIN: PinNum>`.
+//! To specify any pin on a port that supports interrupts, use the bounds `Pin<PORT: IntrPortNum, PIN: PinNum>`.
+//! To specify any pin on PortX, use the bounds `Pin<PortX, PIN: PinNum>`.
+//!
+//! Note that interrupts are only supported by the hardware on ports *1 to 4*, so interrupt-related
+//! methods are only available on those pins.
+//!
+//! Pins can be converted to alternate functionalities 1 to 3, but the availability of these
+//! conversions on each pin is limited by the hardware capabilities in the [`datasheet`], so not
+//! every pin in every configuration can be converted to every alternate functionality.
+//!
+//! [`datasheet`]: http://www.ti.com/lit/ds/symlink/msp430fr2355.pdf
+
 pub use crate::batch_gpio::*;
 use crate::bits::BitsExt;
 use crate::hw_traits::gpio::{GpioPeriph, IntrPeriph};
@@ -19,8 +34,21 @@ pub trait PinNum {
 
 /// Trait that encompasses all `Portx` types for specifying GPIO port
 pub trait PortNum {
-    /// PAC peripheral type associated with the port
+    #[doc(hidden)]
     type Port: GpioPeriph;
+}
+
+/// Marker trait for all Ports that support interrupts
+pub trait IntrPortNum: PortNum {
+    #[doc(hidden)]
+    type IPort: IntrPeriph;
+}
+
+impl<PORT: PortNum> IntrPortNum for PORT
+where
+    PORT::Port: IntrPeriph,
+{
+    type IPort = PORT::Port;
 }
 
 /// Trait implemented on PAC GPIO types to map the PAC type to its respective port number type
@@ -152,7 +180,7 @@ pub struct Pulldown;
 /// Pull typestate for floating inputs
 pub struct Floating;
 
-/// A single GPIO pin on the chip.
+/// A single GPIO pin.
 pub struct Pin<PORT: PortNum, PIN: PinNum, DIR> {
     _port: PhantomData<PORT>,
     _pin: PhantomData<PIN>,
@@ -209,14 +237,11 @@ impl<PORT: PortNum, PIN: PinNum, PULL> Pin<PORT, PIN, Input<PULL>> {
     }
 }
 
-impl<PORT: PortNum, PIN: PinNum, PULL> Pin<PORT, PIN, Input<PULL>>
-where
-    PORT::Port: IntrPeriph,
-{
+impl<PORT: IntrPortNum, PIN: PinNum, PULL> Pin<PORT, PIN, Input<PULL>> {
     /// Set interrupt trigger to rising edge and clear interrupt flag.
     #[inline]
     pub fn select_rising_edge_trigger(&mut self) -> &mut Self {
-        let p = PORT::Port::steal();
+        let p = PORT::IPort::steal();
         p.pxies_set(PIN::SET_MASK);
         p.pxifg_clear(PIN::CLR_MASK);
         self
@@ -225,7 +250,7 @@ where
     /// Set interrupt trigger to falling edge, the default, and clear interrupt flag.
     #[inline]
     pub fn select_falling_edge_trigger(&mut self) -> &mut Self {
-        let p = PORT::Port::steal();
+        let p = PORT::IPort::steal();
         p.pxies_clear(PIN::CLR_MASK);
         p.pxifg_clear(PIN::CLR_MASK);
         self
@@ -236,7 +261,7 @@ where
     /// spurious interrupts.
     #[inline]
     pub fn enable_interrupts(&mut self) -> &mut Self {
-        let p = PORT::Port::steal();
+        let p = PORT::IPort::steal();
         p.pxie_set(PIN::SET_MASK);
         self
     }
@@ -244,7 +269,7 @@ where
     /// Disable interrupts on input pin.
     #[inline]
     pub fn disable_interrupt(&mut self) -> &mut Self {
-        let p = PORT::Port::steal();
+        let p = PORT::IPort::steal();
         p.pxie_clear(PIN::CLR_MASK);
         self
     }
@@ -252,7 +277,7 @@ where
     /// Set interrupt flag high, triggering an ISR if interrupts are enabled.
     #[inline]
     pub fn set_ifg(&mut self) -> &mut Self {
-        let p = PORT::Port::steal();
+        let p = PORT::IPort::steal();
         p.pxifg_set(PIN::SET_MASK);
         self
     }
@@ -260,7 +285,7 @@ where
     /// Clear interrupt flag.
     #[inline]
     pub fn clear_ifg(&mut self) -> &mut Self {
-        let p = PORT::Port::steal();
+        let p = PORT::IPort::steal();
         p.pxifg_clear(PIN::CLR_MASK);
         self
     }
@@ -268,7 +293,7 @@ where
     /// Wait for interrupt flag to go high nonblockingly. Clear the flag if high.
     #[inline]
     pub fn wait_for_ifg(&mut self) -> nb::Result<(), void::Void> {
-        let p = PORT::Port::steal();
+        let p = PORT::IPort::steal();
         if p.pxifg_rd().check(PIN::NUM) != 0 {
             p.pxifg_clear(PIN::CLR_MASK);
             Ok(())
@@ -281,16 +306,13 @@ where
 /// Interrupt vector register used to determine which pin caused a port ISR
 pub struct PxIV<PORT: PortNum>(PhantomData<PORT>);
 
-impl<PORT: PortNum> PxIV<PORT>
-where
-    PORT::Port: IntrPeriph,
-{
+impl<PORT: IntrPortNum> PxIV<PORT> {
     /// When called inside an ISR, returns the pin number of the highest priority interrupt flag
     /// that's currently enabled. Automatically clears the same flag. For a given port, the lowest
     /// numbered pin has the highest interrupt priority.
     #[inline]
     pub fn get_interrupt_vector(&mut self) -> GpioVector {
-        let p = PORT::Port::steal();
+        let p = PORT::IPort::steal();
         match p.pxiv_rd() {
             0 => GpioVector::NoIsr,
             2 => GpioVector::Pin0Isr,
