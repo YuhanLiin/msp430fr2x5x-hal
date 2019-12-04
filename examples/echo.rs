@@ -2,7 +2,11 @@
 
 use embedded_hal::digital::v2::OutputPin;
 use embedded_hal::prelude::*;
-use msp430fr2x5x_hal::{clock::*, fram::*, gpio::*, pmm::*, serial::*, watchdog::*};
+use msp430fr2x5x_hal::{
+    clock::{DcoclkFreqSel, MclkDiv, SmclkDiv},
+    prelude::*,
+    serial::*,
+};
 use nb::block;
 use panic_msp430 as _;
 

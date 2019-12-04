@@ -7,7 +7,12 @@ use core::cell::RefCell;
 use embedded_hal::digital::v2::*;
 use embedded_hal::timer::*;
 use msp430::interrupt::{enable as enable_int, free, Mutex};
-use msp430fr2x5x_hal::{clock::*, fram::*, gpio::*, pmm::*, watchdog::*};
+use msp430fr2x5x_hal::{
+    clock::{MclkDiv, SmclkDiv},
+    gpio::{GpioVector, Output, Pin, Pin0, Port1, Port2, PxIV},
+    prelude::*,
+    watchdog::WdtClkPeriods,
+};
 use nb::block;
 use panic_msp430 as _;
 

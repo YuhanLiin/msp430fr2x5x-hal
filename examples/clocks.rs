@@ -5,7 +5,11 @@ extern crate panic_msp430;
 use embedded_hal::digital::v2::*;
 use embedded_hal::timer::CountDown;
 use embedded_hal::watchdog::WatchdogEnable;
-use msp430fr2x5x_hal::{clock::*, fram::*, gpio::*, pmm::*, watchdog::*};
+use msp430fr2x5x_hal::{
+    clock::{DcoclkFreqSel, MclkDiv, SmclkDiv},
+    prelude::*,
+    watchdog::WdtClkPeriods,
+};
 use nb::block;
 
 // Red LED should blink 1 second on, 1 second off

@@ -31,6 +31,7 @@ pub mod clock;
 pub mod fram;
 pub mod gpio;
 pub mod pmm;
+pub mod prelude;
 pub mod rtc;
 pub mod serial;
 pub mod watchdog;

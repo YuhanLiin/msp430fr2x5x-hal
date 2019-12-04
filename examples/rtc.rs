@@ -5,7 +5,11 @@ extern crate panic_msp430;
 use embedded_hal::digital::v2::*;
 use embedded_hal::prelude::*;
 use embedded_hal::timer::Cancel;
-use msp430fr2x5x_hal::{clock::*, fram::*, gpio::*, pmm::*, rtc::*, watchdog::*};
+use msp430fr2x5x_hal::{
+    clock::{MclkDiv, SmclkDiv},
+    prelude::*,
+    rtc::RtcDiv,
+};
 
 // Red LED blinks 2 seconds on, 2 off
 // Pressing P2.3 button toggles red LED and halts program

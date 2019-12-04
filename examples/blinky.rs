@@ -1,7 +1,7 @@
 #![no_std]
 
 use embedded_hal::digital::v2::*;
-use msp430fr2x5x_hal::{gpio::*, pmm::*, watchdog::*};
+use msp430fr2x5x_hal::prelude::*;
 use panic_msp430 as _;
 
 // Red onboard LED should blink at a steady period.
