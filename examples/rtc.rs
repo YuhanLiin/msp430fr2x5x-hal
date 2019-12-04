@@ -5,7 +5,7 @@ extern crate panic_msp430;
 use embedded_hal::digital::v2::*;
 use embedded_hal::prelude::*;
 use embedded_hal::timer::Cancel;
-use msp430fr2x5x_hal::{clock::*, gpio::*, pmm::*, rtc::*, watchdog::*};
+use msp430fr2x5x_hal::{clock::*, fram::*, gpio::*, pmm::*, rtc::*, watchdog::*};
 
 // Red LED blinks 2 seconds on, 2 off
 // Pressing P2.3 button toggles red LED and halts program
@@ -30,7 +30,7 @@ fn main() {
         .mclk_refoclk(MclkDiv::_1)
         .smclk_on(SmclkDiv::_1)
         .aclk_vloclk()
-        .freeze();
+        .freeze(&mut periph.FRCTL.constrain());
 
     let mut rtc = periph.RTC.constrain().use_vloclk();
     rtc.set_clk_div(RtcDiv::_10);

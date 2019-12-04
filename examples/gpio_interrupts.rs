@@ -7,7 +7,7 @@ use core::cell::RefCell;
 use embedded_hal::digital::v2::*;
 use embedded_hal::timer::*;
 use msp430::interrupt::{enable as enable_int, free, Mutex};
-use msp430fr2x5x_hal::{clock::*, gpio::*, pmm::*, watchdog::*};
+use msp430fr2x5x_hal::{clock::*, fram::*, gpio::*, pmm::*, watchdog::*};
 use nb::block;
 use panic_msp430 as _;
 
@@ -25,7 +25,7 @@ fn main() {
         // 32 KHz SMCLK
         .smclk_on(SmclkDiv::_2)
         .aclk_vloclk()
-        .freeze();
+        .freeze(&mut periph.FRCTL.constrain());
     let mut wdt = periph.WDT_A.constrain().to_interval();
     let pmm = periph.PMM.freeze();
 
