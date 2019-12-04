@@ -135,15 +135,15 @@ pub trait SerialUsci: Sized {
         parity: Parity,
         loopback: Loopback,
         baudrate: u32,
-    ) -> SerialConfigNoClock<Self> {
-        SerialConfigNoClock {
+    ) -> SerialConfig<Self, NoClockSet> {
+        SerialConfig {
             order,
             cnt,
             stopbits,
             parity,
             loopback,
-            baudrate,
             _usci: PhantomData,
+            state: NoClockSet { baudrate },
         }
     }
 }
@@ -216,54 +216,82 @@ impl<DIR> Into<UsciA1RxPin> for Pin<Port4, Pin2, Alternate1<DIR>> {
     }
 }
 
+#[doc(hidden)]
+pub struct NoClockSet {
+    baudrate: u32,
+}
+
+#[doc(hidden)]
+pub struct ClockSet {
+    baud_config: BaudConfig,
+    clksel: Ucssel,
+}
+
 /// Configuration object for serial UART
-pub struct SerialConfigNoClock<USCI: SerialUsci> {
+pub struct SerialConfig<USCI: SerialUsci, S> {
     _usci: PhantomData<USCI>,
     order: BitOrder,
     cnt: BitCount,
     stopbits: StopBits,
     parity: Parity,
     loopback: Loopback,
-    baudrate: u32,
+    state: S,
 }
 
-/// Configuration object for serial UART
-pub struct SerialConfig<USCI: SerialUsci> {
-    config: SerialConfigNoClock<USCI>,
-    clksel: Ucssel,
-    freq: u32,
+macro_rules! serial_config {
+    ($conf:expr, $state:expr) => {
+        SerialConfig {
+            _usci: PhantomData,
+            order: $conf.order,
+            cnt: $conf.cnt,
+            stopbits: $conf.stopbits,
+            parity: $conf.parity,
+            loopback: $conf.loopback,
+            state: $state,
+        }
+    };
 }
 
-impl<USCI: SerialUsci> SerialConfigNoClock<USCI> {
+impl<USCI: SerialUsci> SerialConfig<USCI, NoClockSet> {
     /// Configure serial UART to use external UCLK, passing in the appropriately configured pin
     /// used as the clock signal as well as the frequency of the clock.
     #[inline(always)]
-    pub fn use_uclk<P: Into<USCI::ClockPin>>(self, _clk_pin: P, freq: u32) -> SerialConfig<USCI> {
-        SerialConfig {
-            config: self,
-            clksel: Ucssel::Uclk,
-            freq,
-        }
+    pub fn use_uclk<P: Into<USCI::ClockPin>>(
+        self,
+        _clk_pin: P,
+        freq: u32,
+    ) -> SerialConfig<USCI, ClockSet> {
+        serial_config!(
+            self,
+            ClockSet {
+                baud_config: calculate_baud_config(freq, self.state.baudrate),
+                clksel: Ucssel::Uclk,
+            }
+        )
     }
 
     /// Configure serial UART to use ACLK.
     #[inline(always)]
-    pub fn use_aclk(self, aclk: &Aclk) -> SerialConfig<USCI> {
-        SerialConfig {
-            config: self,
-            clksel: Ucssel::Aclk,
-            freq: aclk.freq() as u32,
-        }
+    pub fn use_aclk(self, aclk: &Aclk) -> SerialConfig<USCI, ClockSet> {
+        serial_config!(
+            self,
+            ClockSet {
+                baud_config: calculate_baud_config(aclk.freq() as u32, self.state.baudrate),
+                clksel: Ucssel::Aclk,
+            }
+        )
     }
 
     /// Configure serial UART to use SMCLK.
     #[inline(always)]
-    pub fn use_smclk(self, smclk: &Smclk) -> SerialConfig<USCI> {
-        SerialConfig {
-            config: self,
-            clksel: Ucssel::Smclk,
-            freq: smclk.freq(),
-        }
+    pub fn use_smclk(self, smclk: &Smclk) -> SerialConfig<USCI, ClockSet> {
+        serial_config!(
+            self,
+            ClockSet {
+                baud_config: calculate_baud_config(smclk.freq(), self.state.baudrate),
+                clksel: Ucssel::Smclk,
+            }
+        )
     }
 }
 
@@ -361,28 +389,25 @@ fn lookup_brs(clk_freq: u32, bps: u32) -> u8 {
     }
 }
 
-impl<USCI: SerialUsci> SerialConfig<USCI> {
+impl<USCI: SerialUsci> SerialConfig<USCI, ClockSet> {
     #[inline]
     fn config_hw(self) {
-        let SerialConfig {
-            config,
+        let ClockSet {
+            baud_config,
             clksel,
-            freq,
-        } = self;
+        } = self.state;
         let usci = USCI::Periph::steal();
-
-        let baud_config = calculate_baud_config(freq, config.baudrate);
 
         usci.ctl0_reset();
         usci.brw_settings(baud_config.br);
         usci.mctlw_settings(baud_config.ucos16, baud_config.brs, baud_config.brf);
-        usci.loopback(config.loopback.to_bool());
+        usci.loopback(self.loopback.to_bool());
         usci.ctl0_settings(UcxCtl0 {
-            ucpen: config.parity.ucpen(),
-            ucpar: config.parity.ucpar(),
-            ucmsb: config.order.to_bool(),
-            uc7bit: config.cnt.to_bool(),
-            ucspb: config.stopbits.to_bool(),
+            ucpen: self.parity.ucpen(),
+            ucpar: self.parity.ucpar(),
+            ucmsb: self.order.to_bool(),
+            uc7bit: self.cnt.to_bool(),
+            ucspb: self.stopbits.to_bool(),
             ucssel: clksel,
             // We want erroneous bytes to trigger RXIFG so all errors can be caught
             ucrxeie: true,
