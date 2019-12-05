@@ -5,6 +5,10 @@ name = "msp430fr2x5x-hal"
 version = "0.1.0"
 authors = ["YuhanLiin <linyuhan0315@hotmail.com>"]
 edition = "2018"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/YuhanLiin/msp430fr2x5x-hal"
+keywords = ["no-std", "msp430", "ti", "launchpad", "embedded-hal"]
+repository = "https://docs.rs/msp430fr2x5x-hal"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
