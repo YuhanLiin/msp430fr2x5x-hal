@@ -50,15 +50,15 @@ impl<PORT: PortNum, PIN: PinNum, PULL> PinProxy<PORT, PIN, Input<PULL>> {
     pub fn floating(self) -> PinProxy<PORT, PIN, Input<Floating>> {
         make_proxy!()
     }
-}
 
-impl<PORT: PortNum, PIN: PinNum, DIR> PinProxy<PORT, PIN, DIR> {
     /// Configures pin as output
     #[inline(always)]
     pub fn to_output(self) -> PinProxy<PORT, PIN, Output> {
         make_proxy!()
     }
+}
 
+impl<PORT: PortNum, PIN: PinNum> PinProxy<PORT, PIN, Output> {
     /// Configures pin as floating input
     #[inline(always)]
     pub fn to_input_floating(self) -> PinProxy<PORT, PIN, Input<Floating>> {

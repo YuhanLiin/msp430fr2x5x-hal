@@ -20,11 +20,7 @@ fn main() {
 
     let pmm = periph.PMM.freeze();
     let p1 = periph.P1.batch().config_pin0(|p| p.to_output()).split(&pmm);
-    let p2 = periph
-        .P2
-        .batch()
-        .config_pin3(|p| p.to_input_pullup())
-        .split(&pmm);
+    let p2 = periph.P2.batch().config_pin3(|p| p.pullup()).split(&pmm);
     let mut led = p1.pin0;
     let mut button = p2.pin3;
 

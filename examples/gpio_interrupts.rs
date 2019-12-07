@@ -35,11 +35,7 @@ fn main() {
     let pmm = periph.PMM.freeze();
 
     let p1 = periph.P1.batch().split(&pmm);
-    let p2 = periph
-        .P2
-        .batch()
-        .config_pin3(|p| p.to_input_pullup())
-        .split(&pmm);
+    let p2 = periph.P2.batch().config_pin3(|p| p.pullup()).split(&pmm);
     let p6 = periph.P6.batch().config_pin6(|p| p.to_output()).split(&pmm);
 
     let red_led = p1.pin0.to_output();
