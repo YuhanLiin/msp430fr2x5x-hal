@@ -17,7 +17,7 @@ pub struct UcxCtl0 {
 }
 
 pub trait EUsci {
-    fn steal<'a>() -> &'a Self;
+    unsafe fn steal<'a>() -> &'a Self;
 
     fn ctl0_reset(&self);
 
@@ -67,8 +67,8 @@ macro_rules! eusci_a_impl {
      $ucaxiv:ident, $Statw:ty) => {
         impl EUsci for pac::$eusci::RegisterBlock {
             #[inline(always)]
-            fn steal<'a>() -> &'a Self {
-                unsafe { &*pac::$EUsci::ptr() }
+            unsafe fn steal<'a>() -> &'a Self {
+                &*pac::$EUsci::ptr()
             }
 
             #[inline(always)]

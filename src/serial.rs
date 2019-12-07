@@ -396,7 +396,7 @@ impl<USCI: SerialUsci> SerialConfig<USCI, ClockSet> {
             baud_config,
             clksel,
         } = self.state;
-        let usci = USCI::Periph::steal();
+        let usci = unsafe { USCI::Periph::steal() };
 
         usci.ctl0_reset();
         usci.brw_settings(baud_config.br);
@@ -456,14 +456,14 @@ impl<USCI: SerialUsci> Tx<USCI> {
     /// Enable Tx interrupts, which fire when ready to send
     #[inline(always)]
     pub fn enable_tx_interrupts(&mut self) {
-        let usci = USCI::Periph::steal();
+        let usci = unsafe { USCI::Periph::steal() };
         usci.txie_set();
     }
 
     /// Disable Tx interrupts
     #[inline(always)]
     pub fn disable_tx_interrupts(&mut self) {
-        let usci = USCI::Periph::steal();
+        let usci = unsafe { USCI::Periph::steal() };
         usci.txie_clear();
     }
 }
@@ -476,7 +476,7 @@ impl<USCI: SerialUsci> Write<u8> for Tx<USCI> {
     /// `flush()` completes, the Tx buffer will be empty but the FIFO may still be sending.
     #[inline]
     fn flush(&mut self) -> nb::Result<(), Self::Error> {
-        let usci = USCI::Periph::steal();
+        let usci = unsafe { USCI::Periph::steal() };
         if usci.txifg_rd() {
             Ok(())
         } else {
@@ -486,7 +486,7 @@ impl<USCI: SerialUsci> Write<u8> for Tx<USCI> {
 
     #[inline]
     fn write(&mut self, data: u8) -> nb::Result<(), Self::Error> {
-        let usci = USCI::Periph::steal();
+        let usci = unsafe { USCI::Periph::steal() };
         if usci.txifg_rd() {
             usci.tx_wr(data);
             Ok(())
@@ -505,14 +505,14 @@ impl<USCI: SerialUsci> Rx<USCI> {
     /// Enable Rx interrupts, which fire when ready to read
     #[inline(always)]
     pub fn enable_rx_interrupts(&mut self) {
-        let usci = USCI::Periph::steal();
+        let usci = unsafe { USCI::Periph::steal() };
         usci.rxie_set();
     }
 
     /// Disable Rx interrupts
     #[inline(always)]
     pub fn disable_rx_interrupts(&mut self) {
-        let usci = USCI::Periph::steal();
+        let usci = unsafe { USCI::Periph::steal() };
         usci.rxie_clear();
     }
 }
@@ -532,7 +532,7 @@ impl<USCI: SerialUsci> Read<u8> for Rx<USCI> {
 
     #[inline]
     fn read(&mut self) -> nb::Result<u8, Self::Error> {
-        let usci = USCI::Periph::steal();
+        let usci = unsafe { USCI::Periph::steal() };
 
         if usci.rxifg_rd() {
             let statw = usci.statw_rd();

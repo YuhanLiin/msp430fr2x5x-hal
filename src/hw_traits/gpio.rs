@@ -1,7 +1,7 @@
 use msp430fr2355 as pac;
 
 pub trait GpioPeriph {
-    fn steal<'a>() -> &'a Self;
+    unsafe fn steal<'a>() -> &'a Self;
 
     fn pxin_rd(&self) -> u8;
 
@@ -87,8 +87,8 @@ macro_rules! gpio_impl {
 
             impl GpioPeriph for pac::$px::RegisterBlock {
                 #[inline(always)]
-                fn steal<'a>() -> &'a Self {
-                    unsafe{ &*pac::$Px::ptr() }
+                unsafe fn steal<'a>() -> &'a Self {
+                    &*pac::$Px::ptr()
                 }
 
                 #[inline(always)]
