@@ -110,13 +110,13 @@ impl DcoclkFreqSel {
     fn multiplier(self) -> u16 {
         match self {
             DcoclkFreqSel::_1MHz => 32,
-            DcoclkFreqSel::_2MHz => 64,
-            DcoclkFreqSel::_4MHz => 128,
-            DcoclkFreqSel::_8MHz => 256,
-            DcoclkFreqSel::_12MHz => 384,
-            DcoclkFreqSel::_16MHz => 512,
-            DcoclkFreqSel::_20MHz => 640,
-            DcoclkFreqSel::_24MHz => 738,
+            DcoclkFreqSel::_2MHz => 61,
+            DcoclkFreqSel::_4MHz => 122,
+            DcoclkFreqSel::_8MHz => 245,
+            DcoclkFreqSel::_12MHz => 366,
+            DcoclkFreqSel::_16MHz => 490,
+            DcoclkFreqSel::_20MHz => 610,
+            DcoclkFreqSel::_24MHz => 732,
         }
     }
 
