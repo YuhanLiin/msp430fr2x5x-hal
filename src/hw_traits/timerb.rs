@@ -7,14 +7,14 @@ pub enum Tbssel {
     Inclk,
 }
 
-pub enum ID {
+pub enum TimerDiv {
     _1,
     _2,
     _4,
     _8,
 }
 
-pub enum Tbidex {
+pub enum TimerExDiv {
     _1,
     _2,
     _3,
@@ -49,18 +49,25 @@ pub enum CapSelect {
 }
 
 pub trait TimerB {
+    /// Reset timer countdown
     fn reset(&self);
 
+    /// Set to upmode, reset timer, and clear interrupts
     fn upmode(&self);
+    /// Set to continuous mode, reset timer, and clear interrupts
     fn continuous(&self);
 
-    fn config_clock(&self, tbssel: Tbssel, div: ID);
+    /// Apply clock select settings
+    fn config_clock(&self, tbssel: Tbssel, div: TimerDiv);
 
+    /// Check if timer is stopped
     fn is_stopped(&self) -> bool;
 
+    /// Stop timer
     fn stop(&self);
 
-    fn set_tbidex(&self, tbidex: Tbidex);
+    /// Set expansion register clock divider settings
+    fn set_tbidex(&self, tbidex: TimerExDiv);
 
     fn tbifg_rd(&self) -> bool;
     fn tbifg_clr(&self);
@@ -184,7 +191,7 @@ macro_rules! timerb_impl {
                 });
             }
 
-            fn config_clock(&self, tbssel: Tbssel, div: ID) {
+            fn config_clock(&self, tbssel: Tbssel, div: TimerDiv) {
                 self.$tbxctl
                     .write(|w| w.tbssel().bits(tbssel as u8).id().bits(div as u8));
             }
@@ -197,7 +204,7 @@ macro_rules! timerb_impl {
                 unsafe { self.$tbxctl.clear_bits(|w| w.mc().stop()) };
             }
 
-            fn set_tbidex(&self, tbidex: Tbidex) {
+            fn set_tbidex(&self, tbidex: TimerExDiv) {
                 self.$tbxex.write(|w| w.tbidex().bits(tbidex as u8));
             }
 

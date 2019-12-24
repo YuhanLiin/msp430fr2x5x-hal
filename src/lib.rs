@@ -34,6 +34,7 @@ pub mod pmm;
 pub mod prelude;
 pub mod rtc;
 pub mod serial;
+pub mod timer;
 pub mod watchdog;
 
 mod bits;
