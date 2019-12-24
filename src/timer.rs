@@ -1,9 +1,11 @@
 //! Timer abstraction
 
-use crate::clock::{Aclk, Clock, Smclk};
-use crate::hw_traits::timerb::{SubTimer, Tbssel, TimerB, TimerDiv, TimerExDiv, CCR0};
+use crate::clock::{Aclk, Smclk};
+use crate::hw_traits::timerb::{SubTimer, Tbssel, TimerB, CCR0};
 use embedded_hal::timer::{Cancel, CountDown, Periodic};
 use msp430fr2355 as pac;
+
+pub use crate::hw_traits::timerb::{TimerDiv, TimerExDiv};
 
 /// Configures all HAL objects that use the TimerB timers
 pub struct TimerConfig {
@@ -70,11 +72,21 @@ pub struct Timer<T: TimerB> {
     timer: T,
 }
 
-impl<T: TimerB> Timer<T> {
+/// Extension trait for creating timers
+pub trait TimerExt {
+    #[doc(hidden)]
+    type Timer;
+
     /// Create new timer out of peripheral
-    pub fn new(timer: T, config: TimerConfig) -> Self {
-        config.write_regs(&timer);
-        Timer { timer }
+    fn to_timer(self, config: TimerConfig) -> Self::Timer;
+}
+
+impl<T: TimerB> TimerExt for T {
+    type Timer = Timer<T>;
+
+    fn to_timer(self, config: TimerConfig) -> Self::Timer {
+        config.write_regs(&self);
+        Timer { timer: self }
     }
 }
 
@@ -110,3 +122,15 @@ impl<T: TimerB + SubTimer<CCR0>> Cancel for Timer<T> {
 }
 
 impl<T: TimerB + SubTimer<CCR0>> Periodic for Timer<T> {}
+
+impl<T: TimerB> Timer<T> {
+    /// Enable timer countdown expiration interrupts
+    pub fn enable_interrupts(&mut self) {
+        self.timer.tbie_set();
+    }
+
+    /// Disable timer countdown expiration interrupts
+    pub fn disable_interrupts(&mut self) {
+        self.timer.tbie_clr();
+    }
+}

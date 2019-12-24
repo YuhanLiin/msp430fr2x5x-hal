@@ -7,21 +7,35 @@ pub enum Tbssel {
     Inclk,
 }
 
+/// Timer clock divider
 pub enum TimerDiv {
+    /// No division
     _1,
+    /// Divide by 2
     _2,
+    /// Divide by 4
     _4,
+    /// Divide by 8
     _8,
 }
 
+/// Timer expansion clock divider, applied on top of the normal clock divider
 pub enum TimerExDiv {
+    /// No division
     _1,
+    /// Divide by 2
     _2,
+    /// Divide by 3
     _3,
+    /// Divide by 4
     _4,
+    /// Divide by 5
     _5,
+    /// Divide by 6
     _6,
+    /// Divide by 7
     _7,
+    /// Divide by 8
     _8,
 }
 

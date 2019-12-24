@@ -17,5 +17,6 @@ pub use crate::pmm::PmmExt as _msp430fr2x5x_hal_PmmExt;
 pub use crate::rtc::RtcClockSrc as _msp430fr2x5x_hal_RtcClockSrc;
 pub use crate::rtc::RtcExt as _msp430fr2x5x_hal_RtcExt;
 pub use crate::serial::SerialUsci as _msp430fr2x5x_hal_SerialUsci;
+pub use crate::timer::TimerExt as _msp430fr2x5x_hal_TimerExt;
 pub use crate::watchdog::WatchdogSelect as _msp430fr2x5x_hal_WatchdogSelect;
 pub use crate::watchdog::WdtExt as _msp430fr2x5x_hal_WdtExt;
