@@ -271,6 +271,7 @@ fn fll_on() {
 }
 
 impl<SMCLK: SmclkState> ClockConfig<MclkDefined, SMCLK> {
+    #[inline]
     fn configure_dco_fll(&self) {
         // Run FLL configuration procedure from the user's guide if we are using DCO
         if let MclkSel::Dcoclk(target_freq) = self.mclk.0 {

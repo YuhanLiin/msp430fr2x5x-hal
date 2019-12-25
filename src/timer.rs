@@ -38,6 +38,7 @@ pub struct TimerConfig {
 
 impl TimerConfig {
     /// Configure timer clock source to ACLK
+    #[inline]
     pub fn aclk(_aclk: &Aclk) -> Self {
         TimerConfig {
             sel: Tbssel::Aclk,
@@ -47,6 +48,7 @@ impl TimerConfig {
     }
 
     /// Configure timer clock source to SMCLK
+    #[inline]
     pub fn smclk(_smclk: &Smclk) -> Self {
         TimerConfig {
             sel: Tbssel::Aclk,
@@ -56,6 +58,7 @@ impl TimerConfig {
     }
 
     /// Configure timer clock source to INCLK
+    #[inline]
     pub fn inclk() -> Self {
         TimerConfig {
             sel: Tbssel::Inclk,
@@ -65,6 +68,7 @@ impl TimerConfig {
     }
 
     /// Configure timer clock source to TBCLK
+    #[inline]
     pub fn tbclk() -> Self {
         TimerConfig {
             sel: Tbssel::Tbxclk,
@@ -74,6 +78,7 @@ impl TimerConfig {
     }
 
     /// Configure the normal clock divider and expansion clock divider settings
+    #[inline]
     pub fn clk_div(self, div: TimerDiv, ex_div: TimerExDiv) -> Self {
         TimerConfig {
             sel: self.sel,
@@ -82,6 +87,7 @@ impl TimerConfig {
         }
     }
 
+    #[inline]
     fn write_regs<T: TimerPeriph>(self, timer: &T) {
         timer.reset();
         timer.set_tbidex(self.ex_div);
@@ -106,6 +112,7 @@ pub trait TimerExt {
 impl<T: TimerPeriph> TimerExt for T {
     type Timer = Timer<T>;
 
+    #[inline(always)]
     fn to_timer(self, config: TimerConfig) -> Self::Timer {
         config.write_regs(&self);
         Timer { timer: self }
@@ -115,6 +122,7 @@ impl<T: TimerPeriph> TimerExt for T {
 impl<T: TimerPeriph> CountDown for Timer<T> {
     type Time = u16;
 
+    #[inline]
     fn start<U: Into<Self::Time>>(&mut self, count: U) {
         // 2 reads 1 write if timer is already stopped, 2 reads 2 writes if timer is not stopped
         if !self.timer.is_stopped() {
@@ -124,6 +132,7 @@ impl<T: TimerPeriph> CountDown for Timer<T> {
         self.timer.upmode();
     }
 
+    #[inline]
     fn wait(&mut self) -> nb::Result<(), void::Void> {
         if self.timer.tbifg_rd() {
             self.timer.tbifg_clr();
@@ -137,6 +146,7 @@ impl<T: TimerPeriph> CountDown for Timer<T> {
 impl<T: TimerPeriph> Cancel for Timer<T> {
     type Error = void::Void;
 
+    #[inline]
     fn cancel(&mut self) -> Result<(), Self::Error> {
         self.timer.stop();
         Ok(())
@@ -147,11 +157,13 @@ impl<T: TimerPeriph> Periodic for Timer<T> {}
 
 impl<T: TimerPeriph> Timer<T> {
     /// Enable timer countdown expiration interrupts
+    #[inline]
     pub fn enable_interrupts(&mut self) {
         self.timer.tbie_set();
     }
 
     /// Disable timer countdown expiration interrupts
+    #[inline]
     pub fn disable_interrupts(&mut self) {
         self.timer.tbie_clr();
     }
@@ -188,6 +200,7 @@ pub enum TimerTwoChannel {
 }
 
 impl Into<CCRn> for TimerTwoChannel {
+    #[inline]
     fn into(self) -> CCRn {
         match self {
             TimerTwoChannel::Chan1 => CCRn::CCR1,
@@ -214,6 +227,7 @@ pub enum TimerSixChannel {
 }
 
 impl Into<CCRn> for TimerSixChannel {
+    #[inline]
     fn into(self) -> CCRn {
         match self {
             TimerSixChannel::Chan1 => CCRn::CCR1,
@@ -229,10 +243,13 @@ impl Into<CCRn> for TimerSixChannel {
 impl<T: TimerPeriph> SubTimer for Timer<T> {
     type Channel = T::Channel;
 
+    #[inline]
     fn set_subtimer_count(&mut self, chan: Self::Channel, count: u16) {
         self.timer.set_ccrn(chan.into(), count);
         self.timer.ccifg_clr(chan.into());
     }
+
+    #[inline]
     fn wait_subtimer(&mut self, chan: Self::Channel) -> nb::Result<(), void::Void> {
         if self.timer.ccifg_rd(chan.into()) {
             self.timer.ccifg_clr(chan.into());
@@ -242,10 +259,12 @@ impl<T: TimerPeriph> SubTimer for Timer<T> {
         }
     }
 
+    #[inline]
     fn enable_subtimer_interrupts(&mut self, chan: Self::Channel) {
         self.timer.ccie_set(chan.into());
     }
 
+    #[inline]
     fn disable_subtimer_interrupts(&mut self, chan: Self::Channel) {
         self.timer.ccie_clr(chan.into());
     }

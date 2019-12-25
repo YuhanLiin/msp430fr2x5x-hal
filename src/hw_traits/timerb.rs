@@ -119,10 +119,12 @@ pub enum CCRn {
 macro_rules! timerb_impl {
     ($TBx:ident, $tbx:ident, $tbxctl:ident, $tbxex:ident, $([$CCRn:ident, $tbxcctln:ident, $tbxccrn:ident]),*) => {
         impl TimerB for pac::$TBx {
+            #[inline(always)]
             fn reset(&self) {
                 unsafe { self.$tbxctl.set_bits(|w| w.tbclr().set_bit()) };
             }
 
+            #[inline(always)]
             fn upmode(&self) {
                 self.$tbxctl.modify(|r, w| {
                     unsafe { w.bits(r.bits()) }
@@ -135,6 +137,7 @@ macro_rules! timerb_impl {
                 });
             }
 
+            #[inline(always)]
             fn continuous(&self) {
                 self.$tbxctl.modify(|r, w| {
                     unsafe { w.bits(r.bits()) }
@@ -147,39 +150,48 @@ macro_rules! timerb_impl {
                 });
             }
 
+            #[inline(always)]
             fn config_clock(&self, tbssel: Tbssel, div: TimerDiv) {
                 self.$tbxctl
                     .write(|w| w.tbssel().bits(tbssel as u8).id().bits(div as u8));
             }
 
+            #[inline(always)]
             fn is_stopped(&self) -> bool {
                 self.$tbxctl.read().mc().is_stop()
             }
 
+            #[inline(always)]
             fn stop(&self) {
                 unsafe { self.$tbxctl.clear_bits(|w| w.mc().stop()) };
             }
 
+            #[inline(always)]
             fn set_tbidex(&self, tbidex: TimerExDiv) {
                 self.$tbxex.write(|w| w.tbidex().bits(tbidex as u8));
             }
 
+            #[inline(always)]
             fn tbifg_rd(&self) -> bool {
                 self.$tbxctl.read().tbifg().bit()
             }
 
+            #[inline(always)]
             fn tbifg_clr(&self) {
                 unsafe { self.$tbxctl.clear_bits(|w| w.tbifg().clear_bit()) };
             }
 
+            #[inline(always)]
             fn tbie_set(&self) {
                 unsafe { self.$tbxctl.set_bits(|w| w.tbie().set_bit()) };
             }
 
+            #[inline(always)]
             fn tbie_clr(&self) {
                 unsafe { self.$tbxctl.clear_bits(|w| w.tbie().clear_bit()) };
             }
 
+            #[inline]
             #[allow(unreachable_patterns)]
             fn set_ccrn(&self, ccrn: CCRn, count: u16) {
                 match ccrn {
@@ -188,6 +200,7 @@ macro_rules! timerb_impl {
                 }
             }
 
+            #[inline]
             #[allow(unreachable_patterns)]
             fn get_ccrn(&self, ccrn: CCRn) -> u16 {
                 match ccrn {
@@ -196,6 +209,7 @@ macro_rules! timerb_impl {
                 }
             }
 
+            #[inline]
             #[allow(unreachable_patterns)]
             fn config_cmp_mode(&self, ccrn: CCRn, outmod: Outmod) {
                 match ccrn {
@@ -204,6 +218,7 @@ macro_rules! timerb_impl {
                 }
             }
 
+            #[inline]
             #[allow(unreachable_patterns)]
             fn config_cap_mode(&self, ccrn: CCRn, cm: CapMode, ccis: CapSelect) {
                 match ccrn {
@@ -212,6 +227,7 @@ macro_rules! timerb_impl {
                 }
             }
 
+            #[inline]
             #[allow(unreachable_patterns)]
             fn ccifg_rd(&self, ccrn: CCRn) -> bool {
                 match ccrn {
@@ -220,6 +236,7 @@ macro_rules! timerb_impl {
                 }
             }
 
+            #[inline]
             #[allow(unreachable_patterns)]
             fn ccifg_clr(&self, ccrn: CCRn) {
                 match ccrn {
@@ -228,6 +245,7 @@ macro_rules! timerb_impl {
                 }
             }
 
+            #[inline]
             #[allow(unreachable_patterns)]
             fn ccie_set(&self, ccrn: CCRn) {
                 match ccrn {
@@ -236,6 +254,7 @@ macro_rules! timerb_impl {
                 }
             }
 
+            #[inline]
             #[allow(unreachable_patterns)]
             fn ccie_clr(&self, ccrn: CCRn) {
                 match ccrn {
@@ -244,6 +263,7 @@ macro_rules! timerb_impl {
                 }
             }
 
+            #[inline]
             #[allow(unreachable_patterns)]
             fn cov_rd(&self, ccrn: CCRn) -> bool {
                 match ccrn {
@@ -252,6 +272,7 @@ macro_rules! timerb_impl {
                 }
             }
 
+            #[inline]
             #[allow(unreachable_patterns)]
             fn cov_ccifg_clr(&self, ccrn: CCRn) {
                 match ccrn {
