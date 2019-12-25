@@ -32,7 +32,6 @@ fn main() {
     pwm.set_period(5000u16);
     pwm.set_duty(PwmSixChannel::Chan5, 100);
     pwm.set_duty(PwmSixChannel::Chan4, 795);
-    pwm.start_all();
 
     pwm.disable(PwmSixChannel::Chan1);
 

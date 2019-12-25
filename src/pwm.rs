@@ -132,20 +132,20 @@ impl<T: PwmPeriph> PwmExt for T {
         config.write_regs(&self);
         self.config_cmp_mode(CCRn::CCR0, Outmod::Toggle);
         self.config_channels();
+        // Start the timer to run PWM
+        self.upmode();
         PwmPort { timer: self }
     }
 }
 
 impl<T: PwmPeriph> PwmPort<T> {
     #[inline(always)]
-    /// Unpause all PWM channels. Need to be called after initialization to use PWMs.
-    pub fn start_all(&mut self) {
+    fn start_all(&mut self) {
         self.timer.upmode();
     }
 
     #[inline(always)]
-    /// Pause all PWM channels. Output signal will be completely high or low.
-    pub fn pause_all(&mut self) {
+    fn pause_all(&mut self) {
         self.timer.stop();
     }
 }
