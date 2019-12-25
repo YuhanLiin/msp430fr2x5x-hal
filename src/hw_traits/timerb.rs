@@ -94,7 +94,9 @@ pub trait TimerB {
 
     fn config_cmp_mode(&self, ccrn: CCRn, outmod: Outmod);
 
-    fn config_cap_mode(&self, ccrn: CCRn, cm: CapMode, ccis: CapSelect);
+    fn set_cap_mode(&self, ccrn: CCRn, cm: CapMode);
+
+    fn set_cap_select(&self, ccrn: CCRn, ccis: CapSelect);
 
     fn ccifg_rd(&self, ccrn: CCRn) -> bool;
     fn ccifg_clr(&self, ccrn: CCRn);
@@ -102,7 +104,7 @@ pub trait TimerB {
     fn ccie_set(&self, ccrn: CCRn);
     fn ccie_clr(&self, ccrn: CCRn);
 
-    fn cov_rd(&self, ccrn: CCRn) -> bool;
+    fn cov_ccifg_rd(&self, ccrn: CCRn) -> (bool, bool);
     fn cov_ccifg_clr(&self, ccrn: CCRn);
 }
 
@@ -220,9 +222,18 @@ macro_rules! timerb_impl {
 
             #[inline]
             #[allow(unreachable_patterns)]
-            fn config_cap_mode(&self, ccrn: CCRn, cm: CapMode, ccis: CapSelect) {
+            fn set_cap_mode(&self, ccrn: CCRn, cm: CapMode) {
                 match ccrn {
-                    $(CCRn::$CCRn => self.$tbxcctln.write(|w| w.cap().capture().scs().sync().cm().bits(cm as u8).ccis().bits(ccis as u8)),)*
+                    $(CCRn::$CCRn => self.$tbxcctln.modify(|r, w| unsafe{ w.bits(r.bits()) }.cap().capture().scs().sync().cm().bits(cm as u8)),)*
+                    _ => panic!()
+                }
+            }
+
+            #[inline]
+            #[allow(unreachable_patterns)]
+            fn set_cap_select(&self, ccrn: CCRn, ccis: CapSelect) {
+                match ccrn {
+                    $(CCRn::$CCRn => self.$tbxcctln.modify(|r, w| unsafe{ w.bits(r.bits()) }.cap().capture().scs().sync().ccis().bits(ccis as u8)),)*
                     _ => panic!()
                 }
             }
@@ -265,9 +276,13 @@ macro_rules! timerb_impl {
 
             #[inline]
             #[allow(unreachable_patterns)]
-            fn cov_rd(&self, ccrn: CCRn) -> bool {
+            fn cov_ccifg_rd(&self, ccrn: CCRn) -> (bool, bool) {
                 match ccrn {
-                    $(CCRn::$CCRn => self.$tbxcctln.read().cov().bit(),)*
+                    $(CCRn::$CCRn => {
+                        let cctl = self.$tbxcctln.read();
+                        (cctl.cov().bit(), cctl.ccifg().bit())
+
+                    },)*
                     _ => panic!()
                 }
             }

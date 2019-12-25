@@ -34,6 +34,8 @@ fn main() {
     pwm.set_duty(PwmSixChannel::Chan4, 795);
     pwm.start_all();
 
+    pwm.disable(PwmSixChannel::Chan1);
+
     p6.pin4.to_output().to_alternate1();
     p6.pin3.to_output().to_alternate1();
 
