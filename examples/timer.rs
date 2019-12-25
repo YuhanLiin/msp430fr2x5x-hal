@@ -7,12 +7,12 @@ use embedded_hal::prelude::*;
 use msp430fr2x5x_hal::{
     clock::{DcoclkFreqSel, MclkDiv, SmclkDiv},
     prelude::*,
-    timer::{TimerConfig, TimerDiv, TimerExDiv},
+    timer::{TimerConfig, TimerDiv, TimerExDiv, TimerTwoChannel},
 };
 use nb::block;
 use void::ResultVoidExt;
 
-// 1 second on, 1 second off
+// 1 second on, 0.5 second off
 fn main() {
     let periph = msp430fr2355::Peripherals::take().unwrap();
 
@@ -36,8 +36,11 @@ fn main() {
         .to_timer(TimerConfig::aclk(&aclk).clk_div(TimerDiv::_2, TimerExDiv::_5));
 
     timer.start(1000u16);
+    timer.set_subtimer_count(TimerTwoChannel::Chan2, 500u16);
     loop {
+        block!(timer.wait_subtimer(TimerTwoChannel::Chan2)).void_unwrap();
+        p1_0.set_high().void_unwrap();
         block!(timer.wait()).void_unwrap();
-        p1_0.toggle().void_unwrap();
+        p1_0.set_low().void_unwrap();
     }
 }

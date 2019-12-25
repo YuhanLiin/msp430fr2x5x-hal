@@ -88,90 +88,32 @@ pub trait TimerB {
 
     fn tbie_set(&self);
     fn tbie_clr(&self);
+
+    fn set_ccrn(&self, ccrn: CCRn, count: u16);
+    fn get_ccrn(&self, ccrn: CCRn) -> u16;
+
+    fn config_cmp_mode(&self, ccrn: CCRn, outmod: Outmod);
+
+    fn config_cap_mode(&self, ccrn: CCRn, cm: CapMode, ccis: CapSelect);
+
+    fn ccifg_rd(&self, ccrn: CCRn) -> bool;
+    fn ccifg_clr(&self, ccrn: CCRn);
+
+    fn ccie_set(&self, ccrn: CCRn);
+    fn ccie_clr(&self, ccrn: CCRn);
+
+    fn cov_rd(&self, ccrn: CCRn) -> bool;
+    fn cov_ccifg_clr(&self, ccrn: CCRn);
 }
 
-pub struct CCR0;
-pub struct CCR1;
-pub struct CCR2;
-pub struct CCR3;
-pub struct CCR4;
-pub struct CCR5;
-pub struct CCR6;
-
-pub trait SubTimerB<CCRn> {
-    fn set_ccrn(&self, count: u16);
-    fn get_ccrn(&self) -> u16;
-
-    fn config_cmp_mode(&self, outmod: Outmod);
-
-    fn config_cap_mode(&self, cm: CapMode, ccis: CapSelect);
-
-    fn ccifg_rd(&self) -> bool;
-    fn ccifg_clr(&self);
-
-    fn ccie_set(&self);
-    fn ccie_clr(&self);
-
-    fn cov_rd(&self) -> bool;
-    fn cov_ccifg_clr(&self);
-}
-
-macro_rules! subtimer_impl {
-    ($CCRn:ident, $TBx:ident, $tbx:ident, $tbxcctln:ident, $tbxccrn:ident) => {
-        impl SubTimerB<$CCRn> for pac::$TBx {
-            fn set_ccrn(&self, count: u16) {
-                self.$tbxccrn.write(|w| unsafe { w.bits(count) });
-            }
-
-            fn get_ccrn(&self) -> u16 {
-                self.$tbxccrn.read().bits()
-            }
-
-            fn config_cmp_mode(&self, outmod: Outmod) {
-                self.$tbxcctln.write(|w| w.outmod().bits(outmod as u8));
-            }
-
-            fn config_cap_mode(&self, cm: CapMode, ccis: CapSelect) {
-                self.$tbxcctln.write(|w| {
-                    w.cap()
-                        .capture()
-                        .scs()
-                        .sync()
-                        .cm()
-                        .bits(cm as u8)
-                        .ccis()
-                        .bits(ccis as u8)
-                });
-            }
-
-            fn ccifg_rd(&self) -> bool {
-                self.$tbxcctln.read().ccifg().bit()
-            }
-
-            fn ccifg_clr(&self) {
-                unsafe { self.$tbxcctln.clear_bits(|w| w.ccifg().clear_bit()) };
-            }
-
-            fn ccie_set(&self) {
-                unsafe { self.$tbxcctln.set_bits(|w| w.ccie().set_bit()) };
-            }
-
-            fn ccie_clr(&self) {
-                unsafe { self.$tbxcctln.clear_bits(|w| w.ccie().clear_bit()) };
-            }
-
-            fn cov_rd(&self) -> bool {
-                self.$tbxcctln.read().cov().bit()
-            }
-
-            fn cov_ccifg_clr(&self) {
-                unsafe {
-                    self.$tbxcctln
-                        .clear_bits(|w| w.ccie().clear_bit().cov().clear_bit())
-                };
-            }
-        }
-    };
+pub enum CCRn {
+    CCR0,
+    CCR1,
+    CCR2,
+    CCR3,
+    CCR4,
+    CCR5,
+    CCR6,
 }
 
 macro_rules! timerb_impl {
@@ -237,9 +179,90 @@ macro_rules! timerb_impl {
             fn tbie_clr(&self) {
                 unsafe { self.$tbxctl.clear_bits(|w| w.tbie().clear_bit()) };
             }
-        }
 
-        $(subtimer_impl!($CCRn, $TBx, $tbx, $tbxcctln, $tbxccrn);)*
+            #[allow(unreachable_patterns)]
+            fn set_ccrn(&self, ccrn: CCRn, count: u16) {
+                match ccrn {
+                    $(CCRn::$CCRn => self.$tbxccrn.write(|w| unsafe { w.bits(count) }),)*
+                    _ => panic!()
+                }
+            }
+
+            #[allow(unreachable_patterns)]
+            fn get_ccrn(&self, ccrn: CCRn) -> u16 {
+                match ccrn {
+                    $(CCRn::$CCRn => self.$tbxccrn.read().bits(),)*
+                    _ => panic!()
+                }
+            }
+
+            #[allow(unreachable_patterns)]
+            fn config_cmp_mode(&self, ccrn: CCRn, outmod: Outmod) {
+                match ccrn {
+                    $(CCRn::$CCRn => self.$tbxcctln.write(|w| w.outmod().bits(outmod as u8)),)*
+                    _ => panic!()
+                }
+            }
+
+            #[allow(unreachable_patterns)]
+            fn config_cap_mode(&self, ccrn: CCRn, cm: CapMode, ccis: CapSelect) {
+                match ccrn {
+                    $(CCRn::$CCRn => self.$tbxcctln.write(|w| w.cap().capture().scs().sync().cm().bits(cm as u8).ccis().bits(ccis as u8)),)*
+                    _ => panic!()
+                }
+            }
+
+            #[allow(unreachable_patterns)]
+            fn ccifg_rd(&self, ccrn: CCRn) -> bool {
+                match ccrn {
+                    $(CCRn::$CCRn => self.$tbxcctln.read().ccifg().bit(),)*
+                    _ => panic!()
+                }
+            }
+
+            #[allow(unreachable_patterns)]
+            fn ccifg_clr(&self, ccrn: CCRn) {
+                match ccrn {
+                    $(CCRn::$CCRn => unsafe { self.$tbxcctln.clear_bits(|w| w.ccifg().clear_bit()) },)*
+                    _ => panic!()
+                }
+            }
+
+            #[allow(unreachable_patterns)]
+            fn ccie_set(&self, ccrn: CCRn) {
+                match ccrn {
+                    $(CCRn::$CCRn => unsafe { self.$tbxcctln.set_bits(|w| w.ccie().set_bit()) },)*
+                    _ => panic!()
+                }
+            }
+
+            #[allow(unreachable_patterns)]
+            fn ccie_clr(&self, ccrn: CCRn) {
+                match ccrn {
+                    $(CCRn::$CCRn => unsafe { self.$tbxcctln.clear_bits(|w| w.ccie().clear_bit()) },)*
+                    _ => panic!()
+                }
+            }
+
+            #[allow(unreachable_patterns)]
+            fn cov_rd(&self, ccrn: CCRn) -> bool {
+                match ccrn {
+                    $(CCRn::$CCRn => self.$tbxcctln.read().cov().bit(),)*
+                    _ => panic!()
+                }
+            }
+
+            #[allow(unreachable_patterns)]
+            fn cov_ccifg_clr(&self, ccrn: CCRn) {
+                match ccrn {
+                    $(CCRn::$CCRn => unsafe {
+                        self.$tbxcctln
+                            .clear_bits(|w| w.ccie().clear_bit().cov().clear_bit())
+                    },)*
+                    _ => panic!()
+                }
+            }
+        }
     };
 }
 
@@ -286,13 +309,3 @@ timerb_impl!(
     [CCR5, tb3cctl5, tb3ccr5],
     [CCR6, tb3cctl6, tb3ccr6]
 );
-
-pub enum CCRn {
-    CCR0,
-    CCR1,
-    CCR2,
-    CCR3,
-    CCR4,
-    CCR5,
-    CCR6,
-}

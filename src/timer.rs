@@ -1,34 +1,33 @@
 //! Timer abstraction
 
 use crate::clock::{Aclk, Smclk};
-use crate::hw_traits::timerb::{
-    SubTimerB, Tbssel, TimerB, CCR0, CCR1, CCR2, CCR3, CCR4, CCR5, CCR6,
-};
+use crate::hw_traits::timerb::{CCRn, Tbssel, TimerB};
 use embedded_hal::timer::{Cancel, CountDown, Periodic};
 use msp430fr2355 as pac;
 
 pub use crate::hw_traits::timerb::{TimerDiv, TimerExDiv};
 
-/// Marker trait for timers with 3 CC registers
-pub trait ThreeCapCmpTimer: TimerB + SubTimerB<CCR0> + SubTimerB<CCR1> + SubTimerB<CCR2> {}
-
-/// Marker trait for timers with 7 CC registers
-pub trait SevenCapCmpTimer:
-    TimerB
-    + SubTimerB<CCR0>
-    + SubTimerB<CCR1>
-    + SubTimerB<CCR2>
-    + SubTimerB<CCR3>
-    + SubTimerB<CCR4>
-    + SubTimerB<CCR5>
-    + SubTimerB<CCR6>
-{
+/// Trait indicating that the peripheral can be used as a timer
+pub trait TimerPeriph: TimerB {
+    #[doc(hidden)]
+    type Channel: Into<CCRn> + Copy;
 }
 
-impl ThreeCapCmpTimer for pac::TB0 {}
-impl ThreeCapCmpTimer for pac::TB1 {}
-impl ThreeCapCmpTimer for pac::TB2 {}
-impl SevenCapCmpTimer for pac::TB3 {}
+impl TimerPeriph for pac::TB0 {
+    type Channel = TimerTwoChannel;
+}
+
+impl TimerPeriph for pac::TB1 {
+    type Channel = TimerTwoChannel;
+}
+
+impl TimerPeriph for pac::TB2 {
+    type Channel = TimerTwoChannel;
+}
+
+impl TimerPeriph for pac::TB3 {
+    type Channel = TimerSixChannel;
+}
 
 /// Configures all HAL objects that use the TimerB timers
 pub struct TimerConfig {
@@ -83,7 +82,7 @@ impl TimerConfig {
         }
     }
 
-    fn write_regs<T: TimerB>(self, timer: &T) {
+    fn write_regs<T: TimerPeriph>(self, timer: &T) {
         timer.reset();
         timer.set_tbidex(self.ex_div);
         timer.config_clock(self.sel, self.div);
@@ -91,7 +90,7 @@ impl TimerConfig {
 }
 
 /// Periodic countdown timer
-pub struct Timer<T: TimerB> {
+pub struct Timer<T: TimerPeriph> {
     timer: T,
 }
 
@@ -104,7 +103,7 @@ pub trait TimerExt {
     fn to_timer(self, config: TimerConfig) -> Self::Timer;
 }
 
-impl<T: TimerB> TimerExt for T {
+impl<T: TimerPeriph> TimerExt for T {
     type Timer = Timer<T>;
 
     fn to_timer(self, config: TimerConfig) -> Self::Timer {
@@ -113,7 +112,7 @@ impl<T: TimerB> TimerExt for T {
     }
 }
 
-impl<T: TimerB + SubTimerB<CCR0>> CountDown for Timer<T> {
+impl<T: TimerPeriph> CountDown for Timer<T> {
     type Time = u16;
 
     fn start<U: Into<Self::Time>>(&mut self, count: U) {
@@ -121,7 +120,7 @@ impl<T: TimerB + SubTimerB<CCR0>> CountDown for Timer<T> {
         if !self.timer.is_stopped() {
             self.timer.stop();
         }
-        SubTimerB::<CCR0>::set_ccrn(&self.timer, count.into());
+        self.timer.set_ccrn(CCRn::CCR0, count.into());
         self.timer.upmode();
     }
 
@@ -135,7 +134,7 @@ impl<T: TimerB + SubTimerB<CCR0>> CountDown for Timer<T> {
     }
 }
 
-impl<T: TimerB + SubTimerB<CCR0>> Cancel for Timer<T> {
+impl<T: TimerPeriph> Cancel for Timer<T> {
     type Error = void::Void;
 
     fn cancel(&mut self) -> Result<(), Self::Error> {
@@ -144,9 +143,9 @@ impl<T: TimerB + SubTimerB<CCR0>> Cancel for Timer<T> {
     }
 }
 
-impl<T: TimerB + SubTimerB<CCR0>> Periodic for Timer<T> {}
+impl<T: TimerPeriph> Periodic for Timer<T> {}
 
-impl<T: TimerB> Timer<T> {
+impl<T: TimerPeriph> Timer<T> {
     /// Enable timer countdown expiration interrupts
     pub fn enable_interrupts(&mut self) {
         self.timer.tbie_set();
@@ -180,40 +179,74 @@ pub trait SubTimer {
 }
 
 /// Sub-timer channel enumeration for the 2-channel timers (3 capture-control registers)
+#[derive(Clone, Copy)]
 pub enum TimerTwoChannel {
+    /// Sub-timer 1
     Chan1,
+    /// Sub-timer 2
     Chan2,
+}
+
+impl Into<CCRn> for TimerTwoChannel {
+    fn into(self) -> CCRn {
+        match self {
+            TimerTwoChannel::Chan1 => CCRn::CCR1,
+            TimerTwoChannel::Chan2 => CCRn::CCR2,
+        }
+    }
 }
 
 /// Sub-timer channel enumeration for the 6-channel timers (7 capture-control registers)
+#[derive(Clone, Copy)]
 pub enum TimerSixChannel {
+    /// Sub-timer 1
     Chan1,
+    /// Sub-timer 2
     Chan2,
+    /// Sub-timer 3
     Chan3,
+    /// Sub-timer 4
     Chan4,
+    /// Sub-timer 5
     Chan5,
+    /// Sub-timer 6
     Chan6,
 }
 
-impl<T: ThreeCapCmpTimer> SubTimer for Timer<T> {
-    type Channel = TimerTwoChannel;
+impl Into<CCRn> for TimerSixChannel {
+    fn into(self) -> CCRn {
+        match self {
+            TimerSixChannel::Chan1 => CCRn::CCR1,
+            TimerSixChannel::Chan2 => CCRn::CCR2,
+            TimerSixChannel::Chan3 => CCRn::CCR3,
+            TimerSixChannel::Chan4 => CCRn::CCR4,
+            TimerSixChannel::Chan5 => CCRn::CCR5,
+            TimerSixChannel::Chan6 => CCRn::CCR6,
+        }
+    }
+}
+
+impl<T: TimerPeriph> SubTimer for Timer<T> {
+    type Channel = T::Channel;
 
     fn set_subtimer_count(&mut self, chan: Self::Channel, count: u16) {
-        match chan {
-            TimerTwoChannel::Chan1 => {
-                SubTimerB::<CCR1>::set_ccrn(&self.timer, count);
-                SubTimerB::<CCR1>::ccifg_clr(&self.timer);
-            },
-            TimerTwoChannel::Chan2 => {
-                SubTimerB::<CCR2>::set_ccrn(&self.timer, count);
-                SubTimerB::<CCR2>::ccifg_clr(&self.timer);
-            },
+        self.timer.set_ccrn(chan.into(), count);
+        self.timer.ccifg_clr(chan.into());
+    }
+    fn wait_subtimer(&mut self, chan: Self::Channel) -> nb::Result<(), void::Void> {
+        if self.timer.ccifg_rd(chan.into()) {
+            self.timer.ccifg_clr(chan.into());
+            Ok(())
+        } else {
+            Err(nb::Error::WouldBlock)
         }
     }
 
-    fn wait_subtimer(&mut self, chan: Self::Channel) -> nb::Result<(), void::Void>;
+    fn enable_subtimer_interrupts(&mut self, chan: Self::Channel) {
+        self.timer.ccie_set(chan.into());
+    }
 
-    fn enable_subtimer_interrupts(&mut self, chan: Self::Channel);
-
-    fn disable_subtimer_interrupts(&mut self, chan: Self::Channel);
+    fn disable_subtimer_interrupts(&mut self, chan: Self::Channel) {
+        self.timer.ccie_clr(chan.into());
+    }
 }
