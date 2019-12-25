@@ -1,11 +1,34 @@
 //! Timer abstraction
 
 use crate::clock::{Aclk, Smclk};
-use crate::hw_traits::timerb::{SubTimer, Tbssel, TimerB, CCR0};
+use crate::hw_traits::timerb::{
+    SubTimerB, Tbssel, TimerB, CCR0, CCR1, CCR2, CCR3, CCR4, CCR5, CCR6,
+};
 use embedded_hal::timer::{Cancel, CountDown, Periodic};
 use msp430fr2355 as pac;
 
 pub use crate::hw_traits::timerb::{TimerDiv, TimerExDiv};
+
+/// Marker trait for timers with 3 CC registers
+pub trait ThreeCapCmpTimer: TimerB + SubTimerB<CCR0> + SubTimerB<CCR1> + SubTimerB<CCR2> {}
+
+/// Marker trait for timers with 7 CC registers
+pub trait SevenCapCmpTimer:
+    TimerB
+    + SubTimerB<CCR0>
+    + SubTimerB<CCR1>
+    + SubTimerB<CCR2>
+    + SubTimerB<CCR3>
+    + SubTimerB<CCR4>
+    + SubTimerB<CCR5>
+    + SubTimerB<CCR6>
+{
+}
+
+impl ThreeCapCmpTimer for pac::TB0 {}
+impl ThreeCapCmpTimer for pac::TB1 {}
+impl ThreeCapCmpTimer for pac::TB2 {}
+impl SevenCapCmpTimer for pac::TB3 {}
 
 /// Configures all HAL objects that use the TimerB timers
 pub struct TimerConfig {
@@ -90,7 +113,7 @@ impl<T: TimerB> TimerExt for T {
     }
 }
 
-impl<T: TimerB + SubTimer<CCR0>> CountDown for Timer<T> {
+impl<T: TimerB + SubTimerB<CCR0>> CountDown for Timer<T> {
     type Time = u16;
 
     fn start<U: Into<Self::Time>>(&mut self, count: U) {
@@ -98,7 +121,7 @@ impl<T: TimerB + SubTimer<CCR0>> CountDown for Timer<T> {
         if !self.timer.is_stopped() {
             self.timer.stop();
         }
-        SubTimer::<CCR0>::set_ccrn(&self.timer, count.into());
+        SubTimerB::<CCR0>::set_ccrn(&self.timer, count.into());
         self.timer.upmode();
     }
 
@@ -112,7 +135,7 @@ impl<T: TimerB + SubTimer<CCR0>> CountDown for Timer<T> {
     }
 }
 
-impl<T: TimerB + SubTimer<CCR0>> Cancel for Timer<T> {
+impl<T: TimerB + SubTimerB<CCR0>> Cancel for Timer<T> {
     type Error = void::Void;
 
     fn cancel(&mut self) -> Result<(), Self::Error> {
@@ -121,7 +144,7 @@ impl<T: TimerB + SubTimer<CCR0>> Cancel for Timer<T> {
     }
 }
 
-impl<T: TimerB + SubTimer<CCR0>> Periodic for Timer<T> {}
+impl<T: TimerB + SubTimerB<CCR0>> Periodic for Timer<T> {}
 
 impl<T: TimerB> Timer<T> {
     /// Enable timer countdown expiration interrupts
@@ -133,4 +156,64 @@ impl<T: TimerB> Timer<T> {
     pub fn disable_interrupts(&mut self) {
         self.timer.tbie_clr();
     }
+}
+
+/// A timer with sub-timers that have their own interrupts and thresholds
+pub trait SubTimer {
+    /// Enumeration of available sub-timers
+    type Channel;
+
+    /// Set the threshold for one of the subtimers. Once the main timer counts to this threshold
+    /// the subtimer will fire. Note that the main timer resets once it counts to its own
+    /// threshold, not the sub-timer thresholds. It follows that the sub-timer threshold must be
+    /// less than the main threshold for it to fire.
+    fn set_subtimer_count(&mut self, chan: Self::Channel, count: u16);
+
+    /// Wait for the subtimer to fire
+    fn wait_subtimer(&mut self, chan: Self::Channel) -> nb::Result<(), void::Void>;
+
+    /// Enable the subtimer interrupts, which fire once the subtimer fires.
+    fn enable_subtimer_interrupts(&mut self, chan: Self::Channel);
+
+    /// Disable the subtimer interrupts, which fire once the subtimer fires.
+    fn disable_subtimer_interrupts(&mut self, chan: Self::Channel);
+}
+
+/// Sub-timer channel enumeration for the 2-channel timers (3 capture-control registers)
+pub enum TimerTwoChannel {
+    Chan1,
+    Chan2,
+}
+
+/// Sub-timer channel enumeration for the 6-channel timers (7 capture-control registers)
+pub enum TimerSixChannel {
+    Chan1,
+    Chan2,
+    Chan3,
+    Chan4,
+    Chan5,
+    Chan6,
+}
+
+impl<T: ThreeCapCmpTimer> SubTimer for Timer<T> {
+    type Channel = TimerTwoChannel;
+
+    fn set_subtimer_count(&mut self, chan: Self::Channel, count: u16) {
+        match chan {
+            TimerTwoChannel::Chan1 => {
+                SubTimerB::<CCR1>::set_ccrn(&self.timer, count);
+                SubTimerB::<CCR1>::ccifg_clr(&self.timer);
+            },
+            TimerTwoChannel::Chan2 => {
+                SubTimerB::<CCR2>::set_ccrn(&self.timer, count);
+                SubTimerB::<CCR2>::ccifg_clr(&self.timer);
+            },
+        }
+    }
+
+    fn wait_subtimer(&mut self, chan: Self::Channel) -> nb::Result<(), void::Void>;
+
+    fn enable_subtimer_interrupts(&mut self, chan: Self::Channel);
+
+    fn disable_subtimer_interrupts(&mut self, chan: Self::Channel);
 }

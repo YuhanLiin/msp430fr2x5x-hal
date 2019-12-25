@@ -98,7 +98,7 @@ pub struct CCR4;
 pub struct CCR5;
 pub struct CCR6;
 
-pub trait SubTimer<CCRn> {
+pub trait SubTimerB<CCRn> {
     fn set_ccrn(&self, count: u16);
     fn get_ccrn(&self) -> u16;
 
@@ -118,7 +118,7 @@ pub trait SubTimer<CCRn> {
 
 macro_rules! subtimer_impl {
     ($CCRn:ident, $TBx:ident, $tbx:ident, $tbxcctln:ident, $tbxccrn:ident) => {
-        impl SubTimer<$CCRn> for pac::$TBx {
+        impl SubTimerB<$CCRn> for pac::$TBx {
             fn set_ccrn(&self, count: u16) {
                 self.$tbxccrn.write(|w| unsafe { w.bits(count) });
             }
@@ -286,3 +286,13 @@ timerb_impl!(
     [CCR5, tb3cctl5, tb3ccr5],
     [CCR6, tb3cctl6, tb3ccr6]
 );
+
+pub enum CCRn {
+    CCR0,
+    CCR1,
+    CCR2,
+    CCR3,
+    CCR4,
+    CCR5,
+    CCR6,
+}
