@@ -4,7 +4,7 @@ use crate::hw_traits::timerb::{CCRn, Outmod, TimerB};
 use embedded_hal::Pwm;
 use msp430fr2355 as pac;
 
-pub use crate::timer::TimerConfig;
+pub use crate::timer::{TimerConfig, TimerDiv, TimerExDiv};
 
 /// Trait indicating that the peripheral can be used as a PWM
 pub trait PwmPeriph: TimerB {
@@ -138,12 +138,14 @@ impl<T: PwmPeriph> PwmExt for T {
 
 impl<T: PwmPeriph> PwmPort<T> {
     #[inline(always)]
-    fn enable_all(&mut self) {
-        self.timer.continuous();
+    /// Unpause all PWM channels. Need to be called after initialization to use PWMs.
+    pub fn start_all(&mut self) {
+        self.timer.upmode();
     }
 
     #[inline(always)]
-    fn disable_all(&mut self) {
+    /// Pause all PWM channels. Output signal will be completely high or low.
+    pub fn pause_all(&mut self) {
         self.timer.stop();
     }
 }
@@ -185,18 +187,18 @@ impl<T: PwmPeriph> Pwm for PwmPort<T> {
     // Less efficient than disable_all
     #[inline]
     fn disable(&mut self, channel: Self::Channel) {
-        self.disable_all();
+        self.pause_all();
         // Forces the channel to always output low signal
         self.timer.config_cmp_mode(channel.into(), Outmod::Out);
-        self.enable_all();
+        self.start_all();
     }
 
     // Less efficient than disable_all
     #[inline]
     fn enable(&mut self, channel: Self::Channel) {
-        self.disable_all();
+        self.pause_all();
         // Make channel work the same as normal PWM
         self.timer.config_cmp_mode(channel.into(), Outmod::ResetSet);
-        self.enable_all();
+        self.start_all();
     }
 }

@@ -51,7 +51,7 @@ impl TimerConfig {
     #[inline]
     pub fn smclk(_smclk: &Smclk) -> Self {
         TimerConfig {
-            sel: Tbssel::Aclk,
+            sel: Tbssel::Smclk,
             div: TimerDiv::_1,
             ex_div: TimerExDiv::_1,
         }
