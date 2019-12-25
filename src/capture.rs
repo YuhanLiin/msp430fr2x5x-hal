@@ -92,15 +92,18 @@ pub struct CapturePort<T: CapturePeriph> {
 }
 
 impl<T: CapturePeriph> CapturePort<T> {
+    #[inline(always)]
     fn start_all(&mut self) {
         self.timer.continuous();
     }
 
+    #[inline(always)]
     fn pause_all(&mut self) {
         self.timer.stop();
     }
 
     /// Set which input the channel will use to trigger captures. Defaults to capture input A.
+    #[inline]
     pub fn set_input_select(&mut self, chan: T::Channel, sel: CapSelect) {
         self.pause_all();
         // Need to disable capture mode before changing capture settings
@@ -110,12 +113,25 @@ impl<T: CapturePeriph> CapturePort<T> {
     }
 
     /// Set the edge trigger for the channel's capture. Defaults to no-capture.
+    #[inline]
     pub fn set_capture_trigger(&mut self, chan: T::Channel, mode: CapMode) {
         self.pause_all();
         // Need to disable capture mode before changing capture settings
         self.timer.config_cmp_mode(chan.into(), Outmod::Out);
         self.timer.set_cap_mode(chan.into(), mode);
         self.start_all();
+    }
+
+    /// Enable capture interrupts for the selected channel
+    #[inline]
+    pub fn enable_cap_intr(&mut self, chan: T::Channel) {
+        self.timer.ccie_set(chan.into());
+    }
+
+    /// Disable capture interrupts for the selected channel
+    #[inline]
+    pub fn disable_cap_intr(&mut self, chan: T::Channel) {
+        self.timer.ccie_clr(chan.into());
     }
 }
 
@@ -130,12 +146,15 @@ impl<T: CapturePeriph> Capture for CapturePort<T> {
     /// Number of cycles. Equivalent to `Self::Time`.
     type Capture = u16;
 
+    #[inline]
     fn get_resolution(&self) -> Self::Time {
         1
     }
 
+    #[inline]
     fn set_resolution<U: Into<Self::Time>>(&mut self, _res: U) {}
 
+    #[inline]
     fn capture(&mut self, chan: Self::Channel) -> nb::Result<Self::Capture, Self::Error> {
         let (cov, ccifg) = self.timer.cov_ccifg_rd(chan.into());
         if ccifg {
@@ -151,10 +170,12 @@ impl<T: CapturePeriph> Capture for CapturePort<T> {
         }
     }
 
+    #[inline]
     fn enable(&mut self, _chan: Self::Channel) {
         unimplemented!();
     }
 
+    #[inline]
     fn disable(&mut self, _chan: Self::Channel) {
         unimplemented!();
     }
@@ -172,8 +193,10 @@ pub trait CaptureExt {
 impl<T: CapturePeriph> CaptureExt for T {
     type Capture = CapturePort<T>;
 
+    #[inline]
     fn to_capture(self, config: TimerConfig) -> Self::Capture {
         config.write_regs(&self);
+        // Run the timer in continuous mode
         self.continuous();
         CapturePort { timer: self }
     }
