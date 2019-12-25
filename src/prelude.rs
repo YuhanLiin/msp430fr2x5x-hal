@@ -14,6 +14,8 @@ pub use crate::gpio::IntrPortNum as _msp430fr2x5x_hal_IntrPortNum;
 pub use crate::gpio::PinNum as _msp430fr2x5x_hal_PinNum;
 pub use crate::gpio::PortNum as _msp430fr2x5x_hal_PortNum;
 pub use crate::pmm::PmmExt as _msp430fr2x5x_hal_PmmExt;
+pub use crate::pwm::PwmExt as _msp430fr2x5x_hal_PwmExt;
+pub use crate::pwm::PwmPeriph as _msp430fr2x5x_hal_PwmPeriph;
 pub use crate::rtc::RtcClockSrc as _msp430fr2x5x_hal_RtcClockSrc;
 pub use crate::rtc::RtcExt as _msp430fr2x5x_hal_RtcExt;
 pub use crate::serial::SerialUsci as _msp430fr2x5x_hal_SerialUsci;
