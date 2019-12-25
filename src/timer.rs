@@ -88,7 +88,7 @@ impl TimerConfig {
     }
 
     #[inline]
-    fn write_regs<T: TimerPeriph>(self, timer: &T) {
+    pub(crate) fn write_regs<T: TimerB>(self, timer: &T) {
         timer.reset();
         timer.set_tbidex(self.ex_div);
         timer.config_clock(self.sel, self.div);
