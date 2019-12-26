@@ -1,6 +1,7 @@
 //! Signal capture abstraction
 
 use crate::hw_traits::timerb::{CCRn, Outmod, TimerB};
+use crate::timer::TimerClkPin;
 use embedded_hal::Capture;
 use msp430fr2355 as pac;
 
@@ -64,7 +65,7 @@ impl Into<CCRn> for CapSevenChannel {
 }
 
 /// Trait indicating that a peripheral can be used as a capture port
-pub trait CapturePeriph: TimerB {
+pub trait CapturePeriph: TimerClkPin {
     #[doc(hidden)]
     type Channel: Into<CCRn> + Copy;
 }
@@ -182,19 +183,19 @@ impl<T: CapturePeriph> Capture for CapturePort<T> {
 }
 
 /// Extension trait for creating capture ports from timer peripherals
-pub trait CaptureExt {
+pub trait CaptureExt: Sized + TimerClkPin {
     #[doc(hidden)]
     type Capture;
 
     /// Create new capture port out of timer
-    fn to_capture(self, config: TimerConfig) -> Self::Capture;
+    fn to_capture(self, config: TimerConfig<Self>) -> Self::Capture;
 }
 
 impl<T: CapturePeriph> CaptureExt for T {
     type Capture = CapturePort<T>;
 
     #[inline]
-    fn to_capture(self, config: TimerConfig) -> Self::Capture {
+    fn to_capture(self, config: TimerConfig<Self>) -> Self::Capture {
         config.write_regs(&self);
         // Run the timer in continuous mode
         self.continuous();

@@ -1,13 +1,14 @@
 //! PWM abstraction
 
 use crate::hw_traits::timerb::{CCRn, Outmod, TimerB};
+use crate::timer::TimerClkPin;
 use embedded_hal::Pwm;
 use msp430fr2355 as pac;
 
 pub use crate::timer::{TimerConfig, TimerDiv, TimerExDiv};
 
 /// Trait indicating that the peripheral can be used as a PWM
-pub trait PwmPeriph: TimerB {
+pub trait PwmPeriph: TimerClkPin {
     #[doc(hidden)]
     type Channel: Into<CCRn>;
 
@@ -116,19 +117,19 @@ pub struct PwmPort<T: PwmPeriph> {
 }
 
 /// Extension trait for creating PWM ports from timer peripherals
-pub trait PwmExt {
+pub trait PwmExt: Sized + TimerClkPin {
     #[doc(hidden)]
     type Pwm;
 
     /// Create new PWM port out of timer
-    fn to_pwm(self, config: TimerConfig) -> Self::Pwm;
+    fn to_pwm(self, config: TimerConfig<Self>) -> Self::Pwm;
 }
 
 impl<T: PwmPeriph> PwmExt for T {
     type Pwm = PwmPort<T>;
 
     #[inline]
-    fn to_pwm(self, config: TimerConfig) -> Self::Pwm {
+    fn to_pwm(self, config: TimerConfig<Self>) -> Self::Pwm {
         config.write_regs(&self);
         self.config_cmp_mode(CCRn::CCR0, Outmod::Toggle);
         self.config_channels();

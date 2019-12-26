@@ -1,46 +1,67 @@
 //! Timer abstraction
 
 use crate::clock::{Aclk, Smclk};
+use crate::gpio::{Alternate1, Floating, Input, Pin, Pin2, Pin6, Pin7, Port2, Port5, Port6};
 use crate::hw_traits::timerb::{CCRn, Tbssel, TimerB};
+use core::marker::PhantomData;
 use embedded_hal::timer::{Cancel, CountDown, Periodic};
 use msp430fr2355 as pac;
 
 pub use crate::hw_traits::timerb::{TimerDiv, TimerExDiv};
 
+pub(crate) trait TimerClkPin: TimerB {
+    // Pin type used for external TBxCLK of this timer
+    type Tbxclk;
+}
+
 /// Trait indicating that the peripheral can be used as a timer
-pub trait TimerPeriph: TimerB {
+pub trait TimerPeriph: TimerClkPin {
     #[doc(hidden)]
     type Channel: Into<CCRn> + Copy;
 }
 
+impl TimerClkPin for pac::TB0 {
+    type Tbxclk = Pin<Port2, Pin7, Alternate1<Input<Floating>>>;
+}
 impl TimerPeriph for pac::TB0 {
     type Channel = TimerTwoChannel;
 }
 
+impl TimerClkPin for pac::TB1 {
+    type Tbxclk = Pin<Port2, Pin2, Alternate1<Input<Floating>>>;
+}
 impl TimerPeriph for pac::TB1 {
     type Channel = TimerTwoChannel;
 }
 
+impl TimerClkPin for pac::TB2 {
+    type Tbxclk = Pin<Port5, Pin2, Alternate1<Input<Floating>>>;
+}
 impl TimerPeriph for pac::TB2 {
     type Channel = TimerTwoChannel;
 }
 
+impl TimerClkPin for pac::TB3 {
+    type Tbxclk = Pin<Port6, Pin6, Alternate1<Input<Floating>>>;
+}
 impl TimerPeriph for pac::TB3 {
     type Channel = TimerSixChannel;
 }
 
 /// Configures all HAL objects that use the TimerB timers
-pub struct TimerConfig {
+pub struct TimerConfig<T: TimerClkPin> {
+    _timer: PhantomData<T>,
     sel: Tbssel,
     div: TimerDiv,
     ex_div: TimerExDiv,
 }
 
-impl TimerConfig {
+impl<T: TimerClkPin> TimerConfig<T> {
     /// Configure timer clock source to ACLK
     #[inline]
     pub fn aclk(_aclk: &Aclk) -> Self {
         TimerConfig {
+            _timer: PhantomData,
             sel: Tbssel::Aclk,
             div: TimerDiv::_1,
             ex_div: TimerExDiv::_1,
@@ -51,17 +72,8 @@ impl TimerConfig {
     #[inline]
     pub fn smclk(_smclk: &Smclk) -> Self {
         TimerConfig {
+            _timer: PhantomData,
             sel: Tbssel::Smclk,
-            div: TimerDiv::_1,
-            ex_div: TimerExDiv::_1,
-        }
-    }
-
-    /// Configure timer clock source to INCLK
-    #[inline]
-    pub fn inclk() -> Self {
-        TimerConfig {
-            sel: Tbssel::Inclk,
             div: TimerDiv::_1,
             ex_div: TimerExDiv::_1,
         }
@@ -69,8 +81,9 @@ impl TimerConfig {
 
     /// Configure timer clock source to TBCLK
     #[inline]
-    pub fn tbclk() -> Self {
+    pub fn tbclk(_pin: T::Tbxclk) -> Self {
         TimerConfig {
+            _timer: PhantomData,
             sel: Tbssel::Tbxclk,
             div: TimerDiv::_1,
             ex_div: TimerExDiv::_1,
@@ -81,6 +94,7 @@ impl TimerConfig {
     #[inline]
     pub fn clk_div(self, div: TimerDiv, ex_div: TimerExDiv) -> Self {
         TimerConfig {
+            _timer: PhantomData,
             sel: self.sel,
             div,
             ex_div,
@@ -88,7 +102,7 @@ impl TimerConfig {
     }
 
     #[inline]
-    pub(crate) fn write_regs<T: TimerB>(self, timer: &T) {
+    pub(crate) fn write_regs(self, timer: &T) {
         timer.reset();
         timer.set_tbidex(self.ex_div);
         timer.config_clock(self.sel, self.div);
@@ -106,14 +120,14 @@ pub trait TimerExt {
     type Timer;
 
     /// Create new timer out of peripheral
-    fn to_timer(self, config: TimerConfig) -> Self::Timer;
+    fn to_timer(self, config: TimerConfig<Self>) -> Self::Timer;
 }
 
 impl<T: TimerPeriph> TimerExt for T {
     type Timer = Timer<T>;
 
     #[inline(always)]
-    fn to_timer(self, config: TimerConfig) -> Self::Timer {
+    fn to_timer(self, config: TimerConfig<Self>) -> Self::Timer {
         config.write_regs(&self);
         Timer { timer: self }
     }
