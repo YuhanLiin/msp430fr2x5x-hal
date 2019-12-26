@@ -5,11 +5,11 @@
 //! other channels in the same port.
 
 use crate::hw_traits::timerb::{CCRn, Outmod, TimerB};
-use crate::timer::TimerClkPin;
+use crate::timer::{read_tbxiv, TimerClkPin};
 use embedded_hal::Pwm;
 use msp430fr2355 as pac;
 
-pub use crate::timer::{TimerConfig, TimerDiv, TimerExDiv};
+pub use crate::timer::{TimerConfig, TimerDiv, TimerExDiv, TimerVector};
 
 /// Trait indicating that the peripheral can be used as a PWM
 pub trait PwmPeriph: TimerClkPin {
@@ -152,6 +152,12 @@ impl<T: PwmPeriph> PwmPort<T> {
     #[inline(always)]
     fn pause_all(&mut self) {
         self.timer.stop();
+    }
+
+    #[inline]
+    /// Read the timer interrupt vector. Automatically resets corresponding interrupt flag.
+    pub fn interrupt_vector(&mut self) -> TimerVector {
+        read_tbxiv(&self.timer)
     }
 }
 

@@ -6,12 +6,12 @@
 //! whose value will be stored whenever a channel capture event is triggered.
 
 use crate::hw_traits::timerb::CCRn;
-use crate::timer::TimerClkPin;
+use crate::timer::{read_tbxiv, TimerClkPin};
 use embedded_hal::Capture;
 use msp430fr2355 as pac;
 
 pub use crate::hw_traits::timerb::{CapSelect, CapTrigger};
-pub use crate::timer::{TimerConfig, TimerDiv, TimerExDiv};
+pub use crate::timer::{TimerConfig, TimerDiv, TimerExDiv, TimerVector};
 
 /// Capture channel for 3-channel capture ports
 #[derive(Clone, Copy)]
@@ -138,6 +138,12 @@ impl<T: CapturePeriph> CapturePort<T> {
     #[inline]
     pub fn disable_cap_intr(&mut self, chan: T::Channel) {
         self.timer.ccie_clr(chan.into());
+    }
+
+    #[inline]
+    /// Read the timer interrupt vector. Automatically resets corresponding interrupt flag.
+    pub fn interrupt_vector(&mut self) -> TimerVector {
+        read_tbxiv(&self.timer)
     }
 }
 

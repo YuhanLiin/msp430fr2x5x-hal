@@ -101,6 +101,8 @@ pub trait TimerB {
     fn tbie_set(&self);
     fn tbie_clr(&self);
 
+    fn tbxiv_rd(&self) -> u16;
+
     fn set_ccrn(&self, ccrn: CCRn, count: u16);
     fn get_ccrn(&self, ccrn: CCRn) -> u16;
 
@@ -131,7 +133,7 @@ pub enum CCRn {
 }
 
 macro_rules! timerb_impl {
-    ($TBx:ident, $tbx:ident, $tbxctl:ident, $tbxex:ident, $([$CCRn:ident, $tbxcctln:ident, $tbxccrn:ident]),*) => {
+    ($TBx:ident, $tbx:ident, $tbxctl:ident, $tbxex:ident, $tbxiv:ident, $([$CCRn:ident, $tbxcctln:ident, $tbxccrn:ident]),*) => {
         impl TimerB for pac::$TBx {
             #[inline(always)]
             fn reset(&self) {
@@ -203,6 +205,11 @@ macro_rules! timerb_impl {
             #[inline(always)]
             fn tbie_clr(&self) {
                 unsafe { self.$tbxctl.clear_bits(|w| w.tbie().clear_bit()) };
+            }
+
+            #[inline(always)]
+            fn tbxiv_rd(&self) -> u16 {
+                self.$tbxiv.read().bits()
             }
 
             #[inline]
@@ -328,6 +335,7 @@ timerb_impl!(
     tb0,
     tb0ctl,
     tb0ex0,
+    tb0iv,
     [CCR0, tb0cctl0, tb0ccr0],
     [CCR1, tb0cctl1, tb0ccr1],
     [CCR2, tb0cctl2, tb0ccr2]
@@ -338,6 +346,7 @@ timerb_impl!(
     tb1,
     tb1ctl,
     tb1ex0,
+    tb1iv,
     [CCR0, tb1cctl0, tb1ccr0],
     [CCR1, tb1cctl1, tb1ccr1],
     [CCR2, tb1cctl2, tb1ccr2]
@@ -348,6 +357,7 @@ timerb_impl!(
     tb2,
     tb2ctl,
     tb2ex0,
+    tb2iv,
     [CCR0, tb2cctl0, tb2ccr0],
     [CCR1, tb2cctl1, tb2ccr1],
     [CCR2, tb2cctl2, tb2ccr2]
@@ -358,6 +368,7 @@ timerb_impl!(
     tb3,
     tb3ctl,
     tb3ex0,
+    tb3iv,
     [CCR0, tb3cctl0, tb3ccr0],
     [CCR1, tb3cctl1, tb3ccr1],
     [CCR2, tb3cctl2, tb3ccr2],
