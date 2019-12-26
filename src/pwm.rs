@@ -1,4 +1,8 @@
-//! PWM abstraction
+//! PWM ports
+//!
+//! PWM ports are created from timers. TB0, TB1, and TB2 create 2-channel ports and TB3 create
+//! 6-channel ports. Each channel has its own configurable duty cycle, but share the same period as
+//! other channels in the same port.
 
 use crate::hw_traits::timerb::{CCRn, Outmod, TimerB};
 use crate::timer::TimerClkPin;

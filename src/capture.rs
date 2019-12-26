@@ -1,4 +1,9 @@
-//! Signal capture abstraction
+//! Capture ports
+//!
+//! Signal capture ports are created from timers. TB0, TB1, and TB2 create 3-channel ports and TB3
+//! creates a 7-channel port. Each capture channel has its own configurable input signal, edge
+//! trigger, and capture storage. Each port has a configurable timer counting from 0 to `2^16-1`,
+//! whose value will be stored whenever a channel capture event is triggered.
 
 use crate::hw_traits::timerb::CCRn;
 use crate::timer::TimerClkPin;
@@ -147,12 +152,12 @@ impl<T: CapturePeriph> Capture for CapturePort<T> {
     /// Number of cycles. Equivalent to `Self::Time`.
     type Capture = u16;
 
-    #[inline]
+    #[inline(always)]
     fn get_resolution(&self) -> Self::Time {
         1
     }
 
-    #[inline]
+    #[inline(always)]
     fn set_resolution<U: Into<Self::Time>>(&mut self, _res: U) {}
 
     #[inline]

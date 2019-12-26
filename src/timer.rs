@@ -1,4 +1,8 @@
-//! Timer abstraction
+//! Timers
+//!
+//! Each timer has a configurable clock source and clock dividers. In addition, the timers each
+//! have their own "sub-timers". Each sub-timer has its own configurable threshold and will set its
+//! own IFG when the main timer counts to its threshold.
 
 use crate::clock::{Aclk, Smclk};
 use crate::gpio::{Alternate1, Floating, Input, Pin, Pin2, Pin6, Pin7, Port2, Port5, Port6};
