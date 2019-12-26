@@ -50,16 +50,28 @@ pub enum Outmod {
     ResetSet,
 }
 
+/// Capture trigger
 pub enum CapMode {
+    /// No captures will occur
     NoCap,
+    /// Capture on input rising edge
     RisingEdge,
+    /// Capture on input falling edge
     FallingEdge,
+    /// Capture on input rising and falling edge
     BothEdges,
 }
 
+/// Capture input select
 pub enum CapSelect {
+    /// Capture input A
     InputA,
+    /// Capture input B
     InputB,
+    /// Chip ground (always low)
+    Gnd,
+    /// Chip VCC (always high)
+    Vcc,
 }
 
 pub trait TimerB {

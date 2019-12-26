@@ -1,6 +1,6 @@
 //! Signal capture abstraction
 
-use crate::hw_traits::timerb::{CCRn, Outmod, TimerB};
+use crate::hw_traits::timerb::{CCRn, Outmod};
 use crate::timer::TimerClkPin;
 use embedded_hal::Capture;
 use msp430fr2355 as pac;

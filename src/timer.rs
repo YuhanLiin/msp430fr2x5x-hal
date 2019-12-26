@@ -9,8 +9,10 @@ use msp430fr2355 as pac;
 
 pub use crate::hw_traits::timerb::{TimerDiv, TimerExDiv};
 
-pub(crate) trait TimerClkPin: TimerB {
+#[doc(hidden)]
+pub trait TimerClkPin: TimerB {
     // Pin type used for external TBxCLK of this timer
+    #[doc(hidden)]
     type Tbxclk;
 }
 
@@ -115,7 +117,7 @@ pub struct Timer<T: TimerPeriph> {
 }
 
 /// Extension trait for creating timers
-pub trait TimerExt {
+pub trait TimerExt: Sized + TimerClkPin {
     #[doc(hidden)]
     type Timer;
 
