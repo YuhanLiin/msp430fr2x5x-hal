@@ -51,7 +51,7 @@ pub enum Outmod {
 }
 
 /// Capture trigger
-pub enum CapMode {
+pub enum CapTrigger {
     /// No captures will occur
     NoCap,
     /// Capture on input rising edge
@@ -104,10 +104,10 @@ pub trait TimerB {
     fn set_ccrn(&self, ccrn: CCRn, count: u16);
     fn get_ccrn(&self, ccrn: CCRn) -> u16;
 
-    fn config_cmp_mode(&self, ccrn: CCRn, outmod: Outmod);
+    fn config_outmod(&self, ccrn: CCRn, outmod: Outmod);
 
-    fn set_cap_mode(&self, ccrn: CCRn, cm: CapMode);
-
+    fn set_cmp_mode(&self, ccrn: CCRn);
+    fn set_cap_trigger(&self, ccrn: CCRn, mode: CapTrigger);
     fn set_cap_select(&self, ccrn: CCRn, ccis: CapSelect);
 
     fn ccifg_rd(&self, ccrn: CCRn) -> bool;
@@ -225,7 +225,7 @@ macro_rules! timerb_impl {
 
             #[inline]
             #[allow(unreachable_patterns)]
-            fn config_cmp_mode(&self, ccrn: CCRn, outmod: Outmod) {
+            fn config_outmod(&self, ccrn: CCRn, outmod: Outmod) {
                 match ccrn {
                     $(CCRn::$CCRn => self.$tbxcctln.write(|w| w.outmod().bits(outmod as u8)),)*
                     _ => panic!()
@@ -234,7 +234,16 @@ macro_rules! timerb_impl {
 
             #[inline]
             #[allow(unreachable_patterns)]
-            fn set_cap_mode(&self, ccrn: CCRn, cm: CapMode) {
+            fn set_cmp_mode(&self, ccrn: CCRn) {
+                match ccrn {
+                    $(CCRn::$CCRn => unsafe { self.$tbxcctln.clear_bits(|w| w.cap().compare()) },)*
+                    _ => panic!()
+                }
+            }
+
+            #[inline]
+            #[allow(unreachable_patterns)]
+            fn set_cap_trigger(&self, ccrn: CCRn, cm: CapTrigger) {
                 match ccrn {
                     $(CCRn::$CCRn => self.$tbxcctln.modify(|r, w| unsafe{ w.bits(r.bits()) }.cap().capture().scs().sync().cm().bits(cm as u8)),)*
                     _ => panic!()
@@ -305,7 +314,7 @@ macro_rules! timerb_impl {
                 match ccrn {
                     $(CCRn::$CCRn => unsafe {
                         self.$tbxcctln
-                            .clear_bits(|w| w.ccie().clear_bit().cov().clear_bit())
+                            .clear_bits(|w| w.ccifg().clear_bit().cov().clear_bit())
                     },)*
                     _ => panic!()
                 }

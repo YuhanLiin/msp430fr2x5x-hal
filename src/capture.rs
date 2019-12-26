@@ -1,11 +1,11 @@
 //! Signal capture abstraction
 
-use crate::hw_traits::timerb::{CCRn, Outmod};
+use crate::hw_traits::timerb::CCRn;
 use crate::timer::TimerClkPin;
 use embedded_hal::Capture;
 use msp430fr2355 as pac;
 
-pub use crate::hw_traits::timerb::{CapMode, CapSelect};
+pub use crate::hw_traits::timerb::{CapSelect, CapTrigger};
 pub use crate::timer::{TimerConfig, TimerDiv, TimerExDiv};
 
 /// Capture channel for 3-channel capture ports
@@ -108,18 +108,18 @@ impl<T: CapturePeriph> CapturePort<T> {
     pub fn set_input_select(&mut self, chan: T::Channel, sel: CapSelect) {
         self.pause_all();
         // Need to disable capture mode before changing capture settings
-        self.timer.config_cmp_mode(chan.into(), Outmod::Out);
+        self.timer.set_cmp_mode(chan.into());
         self.timer.set_cap_select(chan.into(), sel);
         self.start_all();
     }
 
     /// Set the edge trigger for the channel's capture. Defaults to no-capture.
     #[inline]
-    pub fn set_capture_trigger(&mut self, chan: T::Channel, mode: CapMode) {
+    pub fn set_capture_trigger(&mut self, chan: T::Channel, mode: CapTrigger) {
         self.pause_all();
         // Need to disable capture mode before changing capture settings
-        self.timer.config_cmp_mode(chan.into(), Outmod::Out);
-        self.timer.set_cap_mode(chan.into(), mode);
+        self.timer.set_cmp_mode(chan.into());
+        self.timer.set_cap_trigger(chan.into(), mode);
         self.start_all();
     }
 
@@ -197,8 +197,6 @@ impl<T: CapturePeriph> CaptureExt for T {
     #[inline]
     fn to_capture(self, config: TimerConfig<Self>) -> Self::Capture {
         config.write_regs(&self);
-        // Run the timer in continuous mode
-        self.continuous();
         CapturePort { timer: self }
     }
 }

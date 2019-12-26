@@ -22,8 +22,8 @@ impl PwmPeriph for pac::TB0 {
 
     #[inline]
     fn config_channels(&self) {
-        self.config_cmp_mode(CCRn::CCR1, Outmod::ResetSet);
-        self.config_cmp_mode(CCRn::CCR2, Outmod::ResetSet);
+        self.config_outmod(CCRn::CCR1, Outmod::ResetSet);
+        self.config_outmod(CCRn::CCR2, Outmod::ResetSet);
     }
 }
 
@@ -32,8 +32,8 @@ impl PwmPeriph for pac::TB1 {
 
     #[inline]
     fn config_channels(&self) {
-        self.config_cmp_mode(CCRn::CCR1, Outmod::ResetSet);
-        self.config_cmp_mode(CCRn::CCR2, Outmod::ResetSet);
+        self.config_outmod(CCRn::CCR1, Outmod::ResetSet);
+        self.config_outmod(CCRn::CCR2, Outmod::ResetSet);
     }
 }
 
@@ -42,8 +42,8 @@ impl PwmPeriph for pac::TB2 {
 
     #[inline]
     fn config_channels(&self) {
-        self.config_cmp_mode(CCRn::CCR1, Outmod::ResetSet);
-        self.config_cmp_mode(CCRn::CCR2, Outmod::ResetSet);
+        self.config_outmod(CCRn::CCR1, Outmod::ResetSet);
+        self.config_outmod(CCRn::CCR2, Outmod::ResetSet);
     }
 }
 
@@ -52,12 +52,12 @@ impl PwmPeriph for pac::TB3 {
 
     #[inline]
     fn config_channels(&self) {
-        self.config_cmp_mode(CCRn::CCR1, Outmod::ResetSet);
-        self.config_cmp_mode(CCRn::CCR2, Outmod::ResetSet);
-        self.config_cmp_mode(CCRn::CCR3, Outmod::ResetSet);
-        self.config_cmp_mode(CCRn::CCR4, Outmod::ResetSet);
-        self.config_cmp_mode(CCRn::CCR5, Outmod::ResetSet);
-        self.config_cmp_mode(CCRn::CCR6, Outmod::ResetSet);
+        self.config_outmod(CCRn::CCR1, Outmod::ResetSet);
+        self.config_outmod(CCRn::CCR2, Outmod::ResetSet);
+        self.config_outmod(CCRn::CCR3, Outmod::ResetSet);
+        self.config_outmod(CCRn::CCR4, Outmod::ResetSet);
+        self.config_outmod(CCRn::CCR5, Outmod::ResetSet);
+        self.config_outmod(CCRn::CCR6, Outmod::ResetSet);
     }
 }
 
@@ -131,7 +131,7 @@ impl<T: PwmPeriph> PwmExt for T {
     #[inline]
     fn to_pwm(self, config: TimerConfig<Self>) -> Self::Pwm {
         config.write_regs(&self);
-        self.config_cmp_mode(CCRn::CCR0, Outmod::Toggle);
+        self.config_outmod(CCRn::CCR0, Outmod::Toggle);
         self.config_channels();
         // Start the timer to run PWM
         self.upmode();
@@ -190,7 +190,7 @@ impl<T: PwmPeriph> Pwm for PwmPort<T> {
     fn disable(&mut self, channel: Self::Channel) {
         self.pause_all();
         // Forces the channel to always output low signal
-        self.timer.config_cmp_mode(channel.into(), Outmod::Out);
+        self.timer.config_outmod(channel.into(), Outmod::Out);
         self.start_all();
     }
 
@@ -199,7 +199,7 @@ impl<T: PwmPeriph> Pwm for PwmPort<T> {
     fn enable(&mut self, channel: Self::Channel) {
         self.pause_all();
         // Make channel work the same as normal PWM
-        self.timer.config_cmp_mode(channel.into(), Outmod::ResetSet);
+        self.timer.config_outmod(channel.into(), Outmod::ResetSet);
         self.start_all();
     }
 }
