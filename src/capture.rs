@@ -244,9 +244,7 @@ impl<T: CapturePeriph> Capture for CapturePort<T> {
     }
 
     #[inline]
-    fn enable(&mut self, _chan: Self::Channel) {
-        unimplemented!();
-    }
+    fn enable(&mut self, _chan: Self::Channel) {}
 
     #[inline]
     fn disable(&mut self, _chan: Self::Channel) {
