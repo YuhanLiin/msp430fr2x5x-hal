@@ -1,7 +1,5 @@
 #![no_std]
 
-extern crate panic_msp430;
-
 use embedded_hal::digital::v2::*;
 use embedded_hal::prelude::*;
 use msp430fr2x5x_hal::{
@@ -11,6 +9,7 @@ use msp430fr2x5x_hal::{
     serial::*,
 };
 use nb::block;
+use panic_msp430 as _;
 use void::ResultVoidExt;
 
 // Connect push button input to P1.6. When button is pressed, putty should print the # of cycles

@@ -97,6 +97,28 @@ pub struct CapturePort<T: CapturePeriph> {
     timer: T,
 }
 
+type CaptureResult = Result<u16, OverCapture>;
+
+/// Capture TBIV interrupt vector
+pub enum CaptureVector {
+    /// No pending interrupt
+    NoInterrupt,
+    /// Interrupt caused by capture register 1. Contains the corresponding capture reading.
+    Capture1(CaptureResult),
+    /// Interrupt caused by capture register 2. Contains the corresponding capture reading.
+    Capture2(CaptureResult),
+    /// Interrupt caused by capture register 3. Contains the corresponding capture reading.
+    Capture3(CaptureResult),
+    /// Interrupt caused by capture register 4. Contains the corresponding capture reading.
+    Capture4(CaptureResult),
+    /// Interrupt caused by capture register 5. Contains the corresponding capture reading.
+    Capture5(CaptureResult),
+    /// Interrupt caused by capture register 6. Contains the corresponding capture reading.
+    Capture6(CaptureResult),
+    /// Interrupt caused by main timer overflow
+    MainTimer,
+}
+
 impl<T: CapturePeriph> CapturePort<T> {
     #[inline(always)]
     fn start_all(&mut self) {
@@ -106,6 +128,23 @@ impl<T: CapturePeriph> CapturePort<T> {
     #[inline(always)]
     fn pause_all(&mut self) {
         self.timer.stop();
+    }
+
+    #[inline(always)]
+    fn read_capture(&mut self, ccrn: CCRn) -> u16 {
+        self.timer.get_ccrn(ccrn)
+    }
+
+    // Assume correct interrupt has fired and check for overcapture before returning capture
+    fn read_capture_checked(&mut self, ccrn: CCRn) -> CaptureResult {
+        let (cov, _) = self.timer.cov_ccifg_rd(ccrn);
+        let cap = self.read_capture(ccrn);
+        if cov {
+            self.timer.cov_ccifg_clr(ccrn);
+            Err(OverCapture(cap))
+        } else {
+            Ok(cap)
+        }
     }
 
     /// Set which input the channel will use to trigger captures. Defaults to capture input A.
@@ -141,9 +180,31 @@ impl<T: CapturePeriph> CapturePort<T> {
     }
 
     #[inline]
-    /// Read the timer interrupt vector. Automatically resets corresponding interrupt flag.
-    pub fn interrupt_vector(&mut self) -> TimerVector {
-        read_tbxiv(&self.timer)
+    /// Read the timer interrupt vector. Automatically resets corresponding interrupt flag. If the
+    /// vector corresponds to any of the capture registers, the capture will be read and returned.
+    pub fn interrupt_vector(&mut self) -> CaptureVector {
+        match read_tbxiv(&self.timer) {
+            TimerVector::NoInterrupt => CaptureVector::NoInterrupt,
+            TimerVector::SubTimer1 => {
+                CaptureVector::Capture1(self.read_capture_checked(CCRn::CCR1))
+            }
+            TimerVector::SubTimer2 => {
+                CaptureVector::Capture2(self.read_capture_checked(CCRn::CCR2))
+            }
+            TimerVector::SubTimer3 => {
+                CaptureVector::Capture3(self.read_capture_checked(CCRn::CCR3))
+            }
+            TimerVector::SubTimer4 => {
+                CaptureVector::Capture4(self.read_capture_checked(CCRn::CCR4))
+            }
+            TimerVector::SubTimer5 => {
+                CaptureVector::Capture5(self.read_capture_checked(CCRn::CCR5))
+            }
+            TimerVector::SubTimer6 => {
+                CaptureVector::Capture6(self.read_capture_checked(CCRn::CCR6))
+            }
+            TimerVector::MainTimer => CaptureVector::MainTimer,
+        }
     }
 }
 
@@ -170,7 +231,7 @@ impl<T: CapturePeriph> Capture for CapturePort<T> {
     fn capture(&mut self, chan: Self::Channel) -> nb::Result<Self::Capture, Self::Error> {
         let (cov, ccifg) = self.timer.cov_ccifg_rd(chan.into());
         if ccifg {
-            let ccrn = self.timer.get_ccrn(chan.into());
+            let ccrn = self.read_capture(chan.into());
             self.timer.cov_ccifg_clr(chan.into());
             if cov {
                 Err(nb::Error::Other(OverCapture(ccrn)))

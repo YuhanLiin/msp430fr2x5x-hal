@@ -122,6 +122,7 @@ pub trait TimerB {
     fn cov_ccifg_clr(&self, ccrn: CCRn);
 }
 
+#[derive(Clone, Copy)]
 pub enum CCRn {
     CCR0,
     CCR1,

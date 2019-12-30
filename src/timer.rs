@@ -143,33 +143,33 @@ impl<T: TimerPeriph> TimerExt for T {
 pub enum TimerVector {
     /// No pending interrupt
     NoInterrupt,
-    /// Interrupt caused by capture-compare register 1
-    CapCmp1,
-    /// Interrupt caused by capture-compare register 2
-    CapCmp2,
-    /// Interrupt caused by capture-compare register 3
-    CapCmp3,
-    /// Interrupt caused by capture-compare register 4
-    CapCmp4,
-    /// Interrupt caused by capture-compare register 5
-    CapCmp5,
-    /// Interrupt caused by capture-compare register 6
-    CapCmp6,
+    /// Interrupt caused by sub-timer 1
+    SubTimer1,
+    /// Interrupt caused by sub-timer 2
+    SubTimer2,
+    /// Interrupt caused by sub-timer 3
+    SubTimer3,
+    /// Interrupt caused by sub-timer 4
+    SubTimer4,
+    /// Interrupt caused by sub-timer 5
+    SubTimer5,
+    /// Interrupt caused by sub-timer 6
+    SubTimer6,
     /// Interrupt caused by main timer overflow
-    Timer,
+    MainTimer,
 }
 
 #[inline]
 pub(crate) fn read_tbxiv<T: TimerB>(timer: &T) -> TimerVector {
     match timer.tbxiv_rd() {
         0 => TimerVector::NoInterrupt,
-        2 => TimerVector::CapCmp1,
-        4 => TimerVector::CapCmp2,
-        6 => TimerVector::CapCmp3,
-        8 => TimerVector::CapCmp4,
-        10 => TimerVector::CapCmp5,
-        12 => TimerVector::CapCmp6,
-        14 => TimerVector::Timer,
+        2 => TimerVector::SubTimer1,
+        4 => TimerVector::SubTimer2,
+        6 => TimerVector::SubTimer3,
+        8 => TimerVector::SubTimer4,
+        10 => TimerVector::SubTimer5,
+        12 => TimerVector::SubTimer6,
+        14 => TimerVector::MainTimer,
         _ => unreachable!(),
     }
 }
