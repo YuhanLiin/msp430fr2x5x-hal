@@ -15,6 +15,10 @@ use msp430fr2355 as pac;
 
 pub use crate::hw_traits::timerb::{TimerDiv, TimerExDiv};
 
+/// Trait indicating that the peripheral can be used as a sub-timer or PWM
+pub trait CapCmpPeriph<C>: CCRn<C> {}
+impl<T: CCRn<C>, C> CapCmpPeriph<C> for T {}
+
 /// Trait indicating that the peripheral can be used as a timer
 pub trait TimerPeriph: TimerB {
     // Pin type used for external TBxCLK of this timer
@@ -58,7 +62,7 @@ impl TimerPeriph for pac::tb3::RegisterBlock {
 impl SevenCCRnTimer for pac::tb3::RegisterBlock {}
 
 /// Configures all HAL objects that use the TimerB timers
-pub struct TimerConfig<T: TimerPeriph> {
+pub struct TimerConfig<T> {
     _timer: PhantomData<T>,
     sel: Tbssel,
     div: TimerDiv,
@@ -171,7 +175,7 @@ impl<T: SevenCCRnTimer> Default for SevenCCRnParts<T> {
 }
 
 /// Periodic countdown timer
-pub struct Timer<T: TimerPeriph>(PhantomData<T>);
+pub struct Timer<T>(PhantomData<T>);
 
 impl<T: TimerPeriph> Default for Timer<T> {
     fn default() -> Self {
@@ -180,7 +184,7 @@ impl<T: TimerPeriph> Default for Timer<T> {
 }
 
 /// Sub-timer with its own interrupts and threshold that shares its countdown with the main timer
-pub struct SubTimer<T: CCRn<C>, C>(PhantomData<T>, PhantomData<C>);
+pub struct SubTimer<T, C>(PhantomData<T>, PhantomData<C>);
 
 impl<T: TimerPeriph + CCRn<C>, C> Default for SubTimer<T, C> {
     fn default() -> Self {

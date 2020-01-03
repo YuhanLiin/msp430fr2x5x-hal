@@ -7,7 +7,7 @@ use embedded_hal::prelude::*;
 use msp430fr2x5x_hal::{
     clock::{DcoclkFreqSel, MclkDiv, SmclkDiv},
     prelude::*,
-    timer::{TimerConfig, TimerDiv, TimerExDiv},
+    timer::{CapCmpPeriph, SubTimer, ThreeCCRnTimer, Timer, TimerConfig, TimerDiv, TimerExDiv},
 };
 use nb::block;
 use void::ResultVoidExt;
@@ -37,8 +37,7 @@ fn main() {
     let mut timer = parts.timer;
     let mut subtimer = parts.subtimer2;
 
-    timer.start(1000u16);
-    subtimer.set_count(500u16);
+    set_time(&mut timer, &mut subtimer, 500);
     loop {
         block!(subtimer.wait()).void_unwrap();
         p1_0.set_high().void_unwrap();
@@ -47,4 +46,13 @@ fn main() {
         block!(timer.wait()).void_unwrap();
         p1_0.set_low().void_unwrap();
     }
+}
+
+fn set_time<T: ThreeCCRnTimer + CapCmpPeriph<C>, C>(
+    timer: &mut Timer<T>,
+    subtimer: &mut SubTimer<T, C>,
+    delay: u16,
+) {
+    timer.start(delay + delay);
+    subtimer.set_count(delay);
 }
