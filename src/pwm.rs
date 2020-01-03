@@ -5,18 +5,18 @@
 //! other channels in the same port.
 
 use crate::gpio::{
-    Alternate1, Alternate2, ChangeSelectBits, Output, Pin, Pin0, Pin1, Pin2, Pin3, Pin4, Pin5,
-    Pin6, Pin7, Port1, Port2, Port5, Port6,
+    Alternate1, Alternate2, ChangeSelectBits, ChangeSelectBitsSealed, Output, Pin, Pin0, Pin1,
+    Pin2, Pin3, Pin4, Pin5, Pin6, Pin7, Port1, Port2, Port5, Port6,
 };
 use crate::hw_traits::timerb::{
     CCRn, Outmod, TimerB, TimerSteal, CCR0, CCR1, CCR2, CCR3, CCR4, CCR5, CCR6,
 };
-use crate::timer::{SevenCCRnTimer, ThreeCCRnTimer, TimerPeriph};
+use crate::timer::{SevenCCRnTimer, ThreeCCRnTimer};
 use core::marker::PhantomData;
 use embedded_hal::PwmPin;
 use msp430fr2355 as pac;
 
-pub use crate::timer::{TimerConfig, TimerDiv, TimerExDiv};
+pub use crate::timer::{CapCmpPeriph, TimerConfig, TimerDiv, TimerExDiv, TimerPeriph};
 
 #[doc(hidden)]
 pub trait PwmConfigChannels {
@@ -233,7 +233,7 @@ where
 /// Extension trait for creating PWM pins from timer peripherals
 pub trait PwmExt: Sized {
     #[doc(hidden)]
-    type Timer: TimerPeriph + PwmConfigChannels + CCRn<CCR0>;
+    type Timer: TimerPeriph + PwmConfigChannels;
     /// Collection of PWM pins
     type Pins: Default;
 

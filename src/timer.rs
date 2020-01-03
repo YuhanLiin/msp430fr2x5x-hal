@@ -20,24 +20,17 @@ pub trait CapCmpPeriph<C>: CCRn<C> {}
 impl<T: CCRn<C>, C> CapCmpPeriph<C> for T {}
 
 /// Trait indicating that the peripheral can be used as a timer
-pub trait TimerPeriph: TimerB {
+pub trait TimerPeriph: TimerB + CCRn<CCR0> {
     // Pin type used for external TBxCLK of this timer
     #[doc(hidden)]
     type Tbxclk;
 }
 
 #[doc(hidden)]
-pub trait ThreeCCRnTimer: TimerPeriph + CCRn<CCR0> + CCRn<CCR1> + CCRn<CCR2> {}
+pub trait ThreeCCRnTimer: TimerPeriph + CCRn<CCR1> + CCRn<CCR2> {}
 #[doc(hidden)]
 pub trait SevenCCRnTimer:
-    TimerPeriph
-    + CCRn<CCR0>
-    + CCRn<CCR1>
-    + CCRn<CCR2>
-    + CCRn<CCR3>
-    + CCRn<CCR4>
-    + CCRn<CCR5>
-    + CCRn<CCR6>
+    TimerPeriph + CCRn<CCR1> + CCRn<CCR2> + CCRn<CCR3> + CCRn<CCR4> + CCRn<CCR5> + CCRn<CCR6>
 {
 }
 
@@ -262,7 +255,7 @@ pub(crate) fn read_tbxiv<T: TimerB>(timer: &T) -> TimerVector {
     }
 }
 
-impl<T: TimerPeriph + CCRn<CCR0>> CountDown for Timer<T> {
+impl<T: TimerPeriph> CountDown for Timer<T> {
     type Time = u16;
 
     #[inline]
@@ -285,7 +278,7 @@ impl<T: TimerPeriph + CCRn<CCR0>> CountDown for Timer<T> {
     }
 }
 
-impl<T: TimerPeriph + CCRn<CCR0>> Cancel for Timer<T> {
+impl<T: TimerPeriph> Cancel for Timer<T> {
     type Error = void::Void;
 
     #[inline(always)]

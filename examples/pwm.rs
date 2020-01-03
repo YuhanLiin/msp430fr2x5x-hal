@@ -6,7 +6,7 @@ use embedded_hal::prelude::*;
 use msp430fr2x5x_hal::{
     clock::{DcoclkFreqSel, MclkDiv, SmclkDiv},
     prelude::*,
-    pwm::{PwmSixChannel, TimerConfig},
+    pwm::{CapCmpPeriph, Pwm, PwmGpio, TimerConfig, TimerPeriph},
 };
 
 // P6.4 LED should be bright, P6.3 LED should be dim
@@ -27,16 +27,21 @@ fn main() {
         .aclk_vloclk()
         .freeze(&mut fram);
 
-    let mut pwm = periph.TB3.to_pwm(TimerConfig::smclk(&smclk));
+    let pwm = periph.TB3.to_pwm(TimerConfig::smclk(&smclk), 5000);
+    let mut pwm4 = pwm.pwm4.init(p6.pin3.to_output().to_alternate1());
+    let mut pwm5 = pwm.pwm5.init(p6.pin4.to_output().to_alternate1());
 
-    pwm.set_period(5000u16);
-    pwm.set_duty(PwmSixChannel::Chan5, 100);
-    pwm.set_duty(PwmSixChannel::Chan4, 3795);
-
-    pwm.disable(PwmSixChannel::Chan1);
-
-    p6.pin4.to_output().to_alternate1();
-    p6.pin3.to_output().to_alternate1();
+    config_pwm(&mut pwm4, 100);
+    config_pwm(&mut pwm5, 3795);
 
     loop {}
+}
+
+fn config_pwm<T, C>(pwm: &mut Pwm<T, C>, duty: u16)
+where
+    (T, C): PwmGpio,
+    T: CapCmpPeriph<C> + TimerPeriph,
+{
+    pwm.enable();
+    pwm.set_duty(duty);
 }

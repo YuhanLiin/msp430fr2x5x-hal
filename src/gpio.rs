@@ -491,47 +491,56 @@ impl<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
 }
 
 #[doc(hidden)]
-pub trait ChangeSelectBits {
-    fn set_sel0(&mut self);
-    fn set_sel1(&mut self);
-    fn clear_sel0(&mut self);
-    fn clear_sel1(&mut self);
-    fn flip_selc(&mut self);
+pub trait ChangeSelectBits: sealed::ChangeSelectBitsSealed {}
+impl<T: sealed::ChangeSelectBitsSealed> ChangeSelectBits for T {}
+
+pub(crate) mod sealed {
+    use super::*;
+
+    pub trait ChangeSelectBitsSealed {
+        fn set_sel0(&mut self);
+        fn set_sel1(&mut self);
+        fn clear_sel0(&mut self);
+        fn clear_sel1(&mut self);
+        fn flip_selc(&mut self);
+    }
+
+    // Methods for managing sel1, sel0, and selc registers
+    impl<PORT: PortNum, PIN: PinNum, DIR> ChangeSelectBitsSealed for Pin<PORT, PIN, DIR> {
+        #[inline]
+        fn set_sel0(&mut self) {
+            let p = unsafe { PORT::Port::steal() };
+            p.pxsel0_set(PIN::SET_MASK);
+        }
+
+        #[inline]
+        fn set_sel1(&mut self) {
+            let p = unsafe { PORT::Port::steal() };
+            p.pxsel1_set(PIN::SET_MASK);
+        }
+
+        #[inline]
+        fn clear_sel0(&mut self) {
+            let p = unsafe { PORT::Port::steal() };
+            p.pxsel0_clear(PIN::CLR_MASK);
+        }
+
+        #[inline]
+        fn clear_sel1(&mut self) {
+            let p = unsafe { PORT::Port::steal() };
+            p.pxsel1_clear(PIN::CLR_MASK);
+        }
+
+        #[inline]
+        fn flip_selc(&mut self) {
+            let p = unsafe { PORT::Port::steal() };
+            // Change both sel0 and sel1 bits at once
+            p.pxselc_wr(0u8.set(PIN::NUM));
+        }
+    }
 }
 
-// Methods for managing sel1, sel0, and selc registers
-impl<PORT: PortNum, PIN: PinNum, DIR> ChangeSelectBits for Pin<PORT, PIN, DIR> {
-    #[inline]
-    fn set_sel0(&mut self) {
-        let p = unsafe { PORT::Port::steal() };
-        p.pxsel0_set(PIN::SET_MASK);
-    }
-
-    #[inline]
-    fn set_sel1(&mut self) {
-        let p = unsafe { PORT::Port::steal() };
-        p.pxsel1_set(PIN::SET_MASK);
-    }
-
-    #[inline]
-    fn clear_sel0(&mut self) {
-        let p = unsafe { PORT::Port::steal() };
-        p.pxsel0_clear(PIN::CLR_MASK);
-    }
-
-    #[inline]
-    fn clear_sel1(&mut self) {
-        let p = unsafe { PORT::Port::steal() };
-        p.pxsel1_clear(PIN::CLR_MASK);
-    }
-
-    #[inline]
-    fn flip_selc(&mut self) {
-        let p = unsafe { PORT::Port::steal() };
-        // Change both sel0 and sel1 bits at once
-        p.pxselc_wr(0u8.set(PIN::NUM));
-    }
-}
+pub(crate) use sealed::ChangeSelectBitsSealed;
 
 /// Typestate for GPIO alternate function 1
 pub struct Alternate1<DIR>(PhantomData<DIR>);
