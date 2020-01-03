@@ -490,8 +490,17 @@ impl<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
     }
 }
 
+#[doc(hidden)]
+pub trait ChangeSelectBits {
+    fn set_sel0(&mut self);
+    fn set_sel1(&mut self);
+    fn clear_sel0(&mut self);
+    fn clear_sel1(&mut self);
+    fn flip_selc(&mut self);
+}
+
 // Methods for managing sel1, sel0, and selc registers
-impl<PORT: PortNum, PIN: PinNum, DIR> Pin<PORT, PIN, DIR> {
+impl<PORT: PortNum, PIN: PinNum, DIR> ChangeSelectBits for Pin<PORT, PIN, DIR> {
     #[inline]
     fn set_sel0(&mut self) {
         let p = unsafe { PORT::Port::steal() };
