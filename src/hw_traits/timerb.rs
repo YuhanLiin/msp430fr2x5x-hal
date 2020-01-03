@@ -74,9 +74,11 @@ pub enum CapSelect {
     Vcc,
 }
 
-pub trait TimerB {
+pub trait TimerSteal {
     unsafe fn steal<'a>() -> &'a Self;
+}
 
+pub trait TimerB: TimerSteal {
     /// Reset timer countdown
     fn reset(&self);
 
@@ -106,7 +108,7 @@ pub trait TimerB {
     fn tbxiv_rd(&self) -> u16;
 }
 
-pub trait CCRn<C> {
+pub trait CCRn<C>: TimerSteal {
     fn set_ccrn(&self, count: u16);
     fn get_ccrn(&self) -> u16;
 
@@ -234,12 +236,14 @@ macro_rules! ccrn_impl {
 
 macro_rules! timerb_impl {
     ($TBx:ident, $tbx:ident, $tbxctl:ident, $tbxex:ident, $tbxiv:ident, $([$CCRn:ident, $tbxcctln:ident, $tbxccrn:ident]),*) => {
-        impl TimerB for pac::$tbx::RegisterBlock {
+        impl TimerSteal for pac::$tbx::RegisterBlock {
             #[inline(always)]
             unsafe fn steal<'a>() -> &'a Self {
                 &*pac::$TBx::ptr()
             }
+        }
 
+        impl TimerB for pac::$tbx::RegisterBlock {
             #[inline(always)]
             fn reset(&self) {
                 unsafe { self.$tbxctl.set_bits(|w| w.tbclr().set_bit()) };

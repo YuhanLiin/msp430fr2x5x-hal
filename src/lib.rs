@@ -27,13 +27,13 @@
 #![deny(missing_docs)]
 
 pub mod batch_gpio;
-pub mod capture;
+//pub mod capture;
 pub mod clock;
 pub mod fram;
 pub mod gpio;
 pub mod pmm;
 pub mod prelude;
-pub mod pwm;
+//pub mod pwm;
 pub mod rtc;
 pub mod serial;
 pub mod timer;

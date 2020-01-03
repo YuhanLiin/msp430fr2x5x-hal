@@ -6,63 +6,64 @@
 
 use crate::clock::{Aclk, Smclk};
 use crate::gpio::{Alternate1, Floating, Input, Pin, Pin2, Pin6, Pin7, Port2, Port5, Port6};
-use crate::hw_traits::timerb::{CCRn, Tbssel, TimerB};
+use crate::hw_traits::timerb::{CCRn, Tbssel, TimerB, CCR0, CCR1, CCR2, CCR3, CCR4, CCR5, CCR6};
 use core::marker::PhantomData;
 use embedded_hal::timer::{Cancel, CountDown, Periodic};
 use msp430fr2355 as pac;
 
 pub use crate::hw_traits::timerb::{TimerDiv, TimerExDiv};
 
-#[doc(hidden)]
-pub trait TimerClkPin: TimerB {
+/// Trait indicating that the peripheral can be used as a timer
+pub trait TimerPeriph: TimerB {
     // Pin type used for external TBxCLK of this timer
     #[doc(hidden)]
     type Tbxclk;
 }
 
-/// Trait indicating that the peripheral can be used as a timer
-pub trait TimerPeriph: TimerClkPin {
-    #[doc(hidden)]
-    type Channel: Into<CCRn> + Copy;
+#[doc(hidden)]
+pub trait ThreeCCRnTimer: TimerPeriph + CCRn<CCR0> + CCRn<CCR1> + CCRn<CCR2> {}
+#[doc(hidden)]
+pub trait SevenCCRnTimer:
+    TimerPeriph
+    + CCRn<CCR0>
+    + CCRn<CCR1>
+    + CCRn<CCR2>
+    + CCRn<CCR3>
+    + CCRn<CCR4>
+    + CCRn<CCR5>
+    + CCRn<CCR6>
+{
 }
 
-impl TimerClkPin for pac::TB0 {
+impl TimerPeriph for pac::tb0::RegisterBlock {
     type Tbxclk = Pin<Port2, Pin7, Alternate1<Input<Floating>>>;
 }
-impl TimerPeriph for pac::TB0 {
-    type Channel = TimerTwoChannel;
-}
+impl ThreeCCRnTimer for pac::tb0::RegisterBlock {}
 
-impl TimerClkPin for pac::TB1 {
+impl TimerPeriph for pac::tb1::RegisterBlock {
     type Tbxclk = Pin<Port2, Pin2, Alternate1<Input<Floating>>>;
 }
-impl TimerPeriph for pac::TB1 {
-    type Channel = TimerTwoChannel;
-}
+impl ThreeCCRnTimer for pac::tb1::RegisterBlock {}
 
-impl TimerClkPin for pac::TB2 {
+impl TimerPeriph for pac::tb2::RegisterBlock {
     type Tbxclk = Pin<Port5, Pin2, Alternate1<Input<Floating>>>;
 }
-impl TimerPeriph for pac::TB2 {
-    type Channel = TimerTwoChannel;
-}
+impl ThreeCCRnTimer for pac::tb2::RegisterBlock {}
 
-impl TimerClkPin for pac::TB3 {
+impl TimerPeriph for pac::tb3::RegisterBlock {
     type Tbxclk = Pin<Port6, Pin6, Alternate1<Input<Floating>>>;
 }
-impl TimerPeriph for pac::TB3 {
-    type Channel = TimerSixChannel;
-}
+impl SevenCCRnTimer for pac::tb3::RegisterBlock {}
 
 /// Configures all HAL objects that use the TimerB timers
-pub struct TimerConfig<T: TimerClkPin> {
+pub struct TimerConfig<T: TimerPeriph> {
     _timer: PhantomData<T>,
     sel: Tbssel,
     div: TimerDiv,
     ex_div: TimerExDiv,
 }
 
-impl<T: TimerClkPin> TimerConfig<T> {
+impl<T: TimerPeriph> TimerConfig<T> {
     /// Configure timer clock source to ACLK
     #[inline]
     pub fn aclk(_aclk: &Aclk) -> Self {
@@ -115,28 +116,103 @@ impl<T: TimerClkPin> TimerConfig<T> {
     }
 }
 
+/// Main timer and sub-timers for timer peripherals with 3 capture-compare registers
+pub struct ThreeCCRnParts<T: ThreeCCRnTimer> {
+    /// Main timer
+    pub timer: Timer<T>,
+    /// Sub-timer 1 (derived from CCR1 register)
+    pub subtimer1: SubTimer<T, CCR1>,
+    /// Sub-timer 2 (derived from CCR2 register)
+    pub subtimer2: SubTimer<T, CCR2>,
+}
+
+impl<T: ThreeCCRnTimer> Default for ThreeCCRnParts<T> {
+    fn default() -> Self {
+        Self {
+            timer: Default::default(),
+            subtimer1: Default::default(),
+            subtimer2: Default::default(),
+        }
+    }
+}
+
+/// Main timer and sub-timers for timer peripherals with 7 capture-compare registers
+pub struct SevenCCRnParts<T: SevenCCRnTimer> {
+    /// Main timer
+    pub timer: Timer<T>,
+    /// Sub-timer 1 (derived from CCR1 register)
+    pub subtimer1: SubTimer<T, CCR1>,
+    /// Sub-timer 2 (derived from CCR2 register)
+    pub subtimer2: SubTimer<T, CCR2>,
+    /// Sub-timer 3 (derived from CCR3 register)
+    pub subtimer3: SubTimer<T, CCR3>,
+    /// Sub-timer 4 (derived from CCR4 register)
+    pub subtimer4: SubTimer<T, CCR4>,
+    /// Sub-timer 5 (derived from CCR5 register)
+    pub subtimer5: SubTimer<T, CCR5>,
+    /// Sub-timer 6 (derived from CCR6 register)
+    pub subtimer6: SubTimer<T, CCR6>,
+}
+
+impl<T: SevenCCRnTimer> Default for SevenCCRnParts<T> {
+    fn default() -> Self {
+        Self {
+            timer: Default::default(),
+            subtimer1: Default::default(),
+            subtimer2: Default::default(),
+            subtimer3: Default::default(),
+            subtimer4: Default::default(),
+            subtimer5: Default::default(),
+            subtimer6: Default::default(),
+        }
+    }
+}
+
 /// Periodic countdown timer
-pub struct Timer<T: TimerPeriph> {
-    timer: T,
+pub struct Timer<T: TimerPeriph>(PhantomData<T>);
+
+impl<T: TimerPeriph> Default for Timer<T> {
+    fn default() -> Self {
+        Self(PhantomData)
+    }
+}
+
+/// Sub-timer with its own interrupts and threshold that shares its countdown with the main timer
+pub struct SubTimer<T: CCRn<C>, C>(PhantomData<T>, PhantomData<C>);
+
+impl<T: TimerPeriph + CCRn<C>, C> Default for SubTimer<T, C> {
+    fn default() -> Self {
+        Self(PhantomData, PhantomData)
+    }
 }
 
 /// Extension trait for creating timers
-pub trait TimerExt: Sized + TimerClkPin {
-    #[doc(hidden)]
-    type Timer;
+pub trait TimerExt: Sized + TimerPeriph {
+    /// Set of timers
+    type Parts: Default;
 
-    /// Create new timer out of peripheral
-    fn to_timer(self, config: TimerConfig<Self>) -> Self::Timer;
+    /// Create new set of timers out of a TBx peripheral
+    #[inline(always)]
+    fn to_timer(self, config: TimerConfig<Self>) -> Self::Parts {
+        config.write_regs(&self);
+        Self::Parts::default()
+    }
 }
 
-impl<T: TimerPeriph> TimerExt for T {
-    type Timer = Timer<T>;
+impl TimerExt for pac::tb0::RegisterBlock {
+    type Parts = ThreeCCRnParts<Self>;
+}
 
-    #[inline(always)]
-    fn to_timer(self, config: TimerConfig<Self>) -> Self::Timer {
-        config.write_regs(&self);
-        Timer { timer: self }
-    }
+impl TimerExt for pac::tb1::RegisterBlock {
+    type Parts = ThreeCCRnParts<Self>;
+}
+
+impl TimerExt for pac::tb2::RegisterBlock {
+    type Parts = ThreeCCRnParts<Self>;
+}
+
+impl TimerExt for pac::tb3::RegisterBlock {
+    type Parts = SevenCCRnParts<Self>;
 }
 
 /// Timer TBIV interrupt vector
@@ -174,23 +250,22 @@ pub(crate) fn read_tbxiv<T: TimerB>(timer: &T) -> TimerVector {
     }
 }
 
-impl<T: TimerPeriph> CountDown for Timer<T> {
+impl<T: TimerPeriph + CCRn<CCR0>> CountDown for Timer<T> {
     type Time = u16;
 
     #[inline]
     fn start<U: Into<Self::Time>>(&mut self, count: U) {
-        // 2 reads 1 write if timer is already stopped, 2 reads 2 writes if timer is not stopped
-        if !self.timer.is_stopped() {
-            self.timer.stop();
-        }
-        self.timer.set_ccrn(CCRn::CCR0, count.into());
-        self.timer.upmode();
+        let timer = unsafe { T::steal() };
+        timer.stop();
+        timer.set_ccrn(count.into());
+        timer.upmode();
     }
 
-    #[inline]
+    #[inline(always)]
     fn wait(&mut self) -> nb::Result<(), void::Void> {
-        if self.timer.tbifg_rd() {
-            self.timer.tbifg_clr();
+        let timer = unsafe { T::steal() };
+        if timer.tbifg_rd() {
+            timer.tbifg_clr();
             Ok(())
         } else {
             Err(nb::Error::WouldBlock)
@@ -198,12 +273,13 @@ impl<T: TimerPeriph> CountDown for Timer<T> {
     }
 }
 
-impl<T: TimerPeriph> Cancel for Timer<T> {
+impl<T: TimerPeriph + CCRn<CCR0>> Cancel for Timer<T> {
     type Error = void::Void;
 
-    #[inline]
+    #[inline(always)]
     fn cancel(&mut self) -> Result<(), Self::Error> {
-        self.timer.stop();
+        let timer = unsafe { T::steal() };
+        timer.stop();
         Ok(())
     }
 }
@@ -212,121 +288,62 @@ impl<T: TimerPeriph> Periodic for Timer<T> {}
 
 impl<T: TimerPeriph> Timer<T> {
     /// Enable timer countdown expiration interrupts
-    #[inline]
+    #[inline(always)]
     pub fn enable_interrupts(&mut self) {
-        self.timer.tbie_set();
+        let timer = unsafe { T::steal() };
+        timer.tbie_set();
     }
 
     /// Disable timer countdown expiration interrupts
-    #[inline]
+    #[inline(always)]
     pub fn disable_interrupts(&mut self) {
-        self.timer.tbie_clr();
+        let timer = unsafe { T::steal() };
+        timer.tbie_clr();
     }
 
-    #[inline]
+    #[inline(always)]
     /// Read the timer interrupt vector. Automatically resets corresponding interrupt flag.
     pub fn interrupt_vector(&mut self) -> TimerVector {
-        read_tbxiv(&self.timer)
+        let timer = unsafe { T::steal() };
+        read_tbxiv(timer)
     }
 }
 
-/// A timer with sub-timers that have their own interrupts and thresholds
-pub trait SubTimer {
-    /// Enumeration of available sub-timers
-    type Channel;
-
+impl<T: CCRn<C>, C> SubTimer<T, C> {
+    #[inline(always)]
     /// Set the threshold for one of the subtimers. Once the main timer counts to this threshold
     /// the subtimer will fire. Note that the main timer resets once it counts to its own
     /// threshold, not the sub-timer thresholds. It follows that the sub-timer threshold must be
     /// less than the main threshold for it to fire.
-    fn set_subtimer_count(&mut self, chan: Self::Channel, count: u16);
+    pub fn set_subtimer_count(&mut self, count: u16) {
+        let timer = unsafe { T::steal() };
+        timer.set_ccrn(count);
+        timer.ccifg_clr();
+    }
 
+    #[inline(always)]
     /// Wait for the subtimer to fire
-    fn wait_subtimer(&mut self, chan: Self::Channel) -> nb::Result<(), void::Void>;
-
-    /// Enable the subtimer interrupts, which fire once the subtimer fires.
-    fn enable_subtimer_interrupts(&mut self, chan: Self::Channel);
-
-    /// Disable the subtimer interrupts, which fire once the subtimer fires.
-    fn disable_subtimer_interrupts(&mut self, chan: Self::Channel);
-}
-
-/// Sub-timer channel enumeration for the 2-channel timers (3 capture-control registers)
-#[derive(Clone, Copy)]
-pub enum TimerTwoChannel {
-    /// Sub-timer 1
-    Chan1,
-    /// Sub-timer 2
-    Chan2,
-}
-
-impl Into<CCRn> for TimerTwoChannel {
-    #[inline]
-    fn into(self) -> CCRn {
-        match self {
-            TimerTwoChannel::Chan1 => CCRn::CCR1,
-            TimerTwoChannel::Chan2 => CCRn::CCR2,
-        }
-    }
-}
-
-/// Sub-timer channel enumeration for the 6-channel timers (7 capture-control registers)
-#[derive(Clone, Copy)]
-pub enum TimerSixChannel {
-    /// Sub-timer 1
-    Chan1,
-    /// Sub-timer 2
-    Chan2,
-    /// Sub-timer 3
-    Chan3,
-    /// Sub-timer 4
-    Chan4,
-    /// Sub-timer 5
-    Chan5,
-    /// Sub-timer 6
-    Chan6,
-}
-
-impl Into<CCRn> for TimerSixChannel {
-    #[inline]
-    fn into(self) -> CCRn {
-        match self {
-            TimerSixChannel::Chan1 => CCRn::CCR1,
-            TimerSixChannel::Chan2 => CCRn::CCR2,
-            TimerSixChannel::Chan3 => CCRn::CCR3,
-            TimerSixChannel::Chan4 => CCRn::CCR4,
-            TimerSixChannel::Chan5 => CCRn::CCR5,
-            TimerSixChannel::Chan6 => CCRn::CCR6,
-        }
-    }
-}
-
-impl<T: TimerPeriph> SubTimer for Timer<T> {
-    type Channel = T::Channel;
-
-    #[inline]
-    fn set_subtimer_count(&mut self, chan: Self::Channel, count: u16) {
-        self.timer.set_ccrn(chan.into(), count);
-        self.timer.ccifg_clr(chan.into());
-    }
-
-    #[inline]
-    fn wait_subtimer(&mut self, chan: Self::Channel) -> nb::Result<(), void::Void> {
-        if self.timer.ccifg_rd(chan.into()) {
-            self.timer.ccifg_clr(chan.into());
+    pub fn wait_subtimer(&mut self) -> nb::Result<(), void::Void> {
+        let timer = unsafe { T::steal() };
+        if timer.ccifg_rd() {
+            timer.ccifg_clr();
             Ok(())
         } else {
             Err(nb::Error::WouldBlock)
         }
     }
 
-    #[inline]
-    fn enable_subtimer_interrupts(&mut self, chan: Self::Channel) {
-        self.timer.ccie_set(chan.into());
+    #[inline(always)]
+    /// Enable the subtimer interrupts, which fire once the subtimer fires.
+    pub fn enable_subtimer_interrupts(&mut self) {
+        let timer = unsafe { T::steal() };
+        timer.ccie_set();
     }
 
-    #[inline]
-    fn disable_subtimer_interrupts(&mut self, chan: Self::Channel) {
-        self.timer.ccie_clr(chan.into());
+    #[inline(always)]
+    /// Disable the subtimer interrupts, which fire once the subtimer fires.
+    pub fn disable_subtimer_interrupts(&mut self) {
+        let timer = unsafe { T::steal() };
+        timer.ccie_clr();
     }
 }
