@@ -119,6 +119,8 @@ impl<T: TimerPeriph> TimerConfig<T> {
 pub struct ThreeCCRnParts<T: ThreeCCRnTimer> {
     /// Main timer
     pub timer: Timer<T>,
+    /// Timer interrupt vector
+    pub tbxiv: TBxIV<T>,
     /// Sub-timer 1 (derived from CCR1 register)
     pub subtimer1: SubTimer<T, CCR1>,
     /// Sub-timer 2 (derived from CCR2 register)
@@ -129,6 +131,7 @@ impl<T: ThreeCCRnTimer> Default for ThreeCCRnParts<T> {
     fn default() -> Self {
         Self {
             timer: Default::default(),
+            tbxiv: TBxIV(PhantomData),
             subtimer1: Default::default(),
             subtimer2: Default::default(),
         }
@@ -139,6 +142,8 @@ impl<T: ThreeCCRnTimer> Default for ThreeCCRnParts<T> {
 pub struct SevenCCRnParts<T: SevenCCRnTimer> {
     /// Main timer
     pub timer: Timer<T>,
+    /// Timer interrupt vector
+    pub tbxiv: TBxIV<T>,
     /// Sub-timer 1 (derived from CCR1 register)
     pub subtimer1: SubTimer<T, CCR1>,
     /// Sub-timer 2 (derived from CCR2 register)
@@ -157,6 +162,7 @@ impl<T: SevenCCRnTimer> Default for SevenCCRnParts<T> {
     fn default() -> Self {
         Self {
             timer: Default::default(),
+            tbxiv: TBxIV(PhantomData),
             subtimer1: Default::default(),
             subtimer2: Default::default(),
             subtimer3: Default::default(),
@@ -255,6 +261,18 @@ pub(crate) fn read_tbxiv<T: TimerB>(timer: &T) -> TimerVector {
     }
 }
 
+/// Interrupt vector register for determining which timer caused an ISR
+pub struct TBxIV<T: TimerB>(PhantomData<T>);
+
+impl<T: TimerB> TBxIV<T> {
+    #[inline]
+    /// Read the timer interrupt vector. Automatically resets corresponding interrupt flag.
+    pub fn interrupt_vector(&mut self) -> TimerVector {
+        let timer = unsafe { T::steal() };
+        read_tbxiv(timer)
+    }
+}
+
 impl<T: TimerPeriph> CountDown for Timer<T> {
     type Time = u16;
 
@@ -304,13 +322,6 @@ impl<T: TimerPeriph> Timer<T> {
     pub fn disable_interrupts(&mut self) {
         let timer = unsafe { T::steal() };
         timer.tbie_clr();
-    }
-
-    #[inline]
-    /// Read the timer interrupt vector. Automatically resets corresponding interrupt flag.
-    pub fn interrupt_vector(&mut self) -> TimerVector {
-        let timer = unsafe { T::steal() };
-        read_tbxiv(timer)
     }
 }
 
