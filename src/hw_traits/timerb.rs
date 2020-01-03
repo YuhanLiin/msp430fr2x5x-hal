@@ -75,6 +75,8 @@ pub enum CapSelect {
 }
 
 pub trait TimerB {
+    unsafe fn steal<'a>() -> &'a Self;
+
     /// Reset timer countdown
     fn reset(&self);
 
@@ -102,40 +104,142 @@ pub trait TimerB {
     fn tbie_clr(&self);
 
     fn tbxiv_rd(&self) -> u16;
-
-    fn set_ccrn(&self, ccrn: CCRn, count: u16);
-    fn get_ccrn(&self, ccrn: CCRn) -> u16;
-
-    fn config_outmod(&self, ccrn: CCRn, outmod: Outmod);
-
-    fn set_cmp_mode(&self, ccrn: CCRn);
-    fn set_cap_trigger(&self, ccrn: CCRn, mode: CapTrigger);
-    fn set_cap_select(&self, ccrn: CCRn, ccis: CapSelect);
-
-    fn ccifg_rd(&self, ccrn: CCRn) -> bool;
-    fn ccifg_clr(&self, ccrn: CCRn);
-
-    fn ccie_set(&self, ccrn: CCRn);
-    fn ccie_clr(&self, ccrn: CCRn);
-
-    fn cov_ccifg_rd(&self, ccrn: CCRn) -> (bool, bool);
-    fn cov_ccifg_clr(&self, ccrn: CCRn);
 }
 
-#[derive(Clone, Copy)]
-pub enum CCRn {
-    CCR0,
-    CCR1,
-    CCR2,
-    CCR3,
-    CCR4,
-    CCR5,
-    CCR6,
+pub trait CCRn<C> {
+    fn set_ccrn(&self, count: u16);
+    fn get_ccrn(&self) -> u16;
+
+    fn config_outmod(&self, outmod: Outmod);
+
+    fn set_cmp_mode(&self);
+    fn set_cap_trigger(&self, mode: CapTrigger);
+    fn set_cap_select(&self, ccis: CapSelect);
+
+    fn ccifg_rd(&self) -> bool;
+    fn ccifg_clr(&self);
+
+    fn ccie_set(&self);
+    fn ccie_clr(&self);
+
+    fn cov_ccifg_rd(&self) -> (bool, bool);
+    fn cov_ccifg_clr(&self);
+}
+
+pub struct CCR0;
+pub struct CCR1;
+pub struct CCR2;
+pub struct CCR3;
+pub struct CCR4;
+pub struct CCR5;
+pub struct CCR6;
+
+macro_rules! ccrn_impl {
+    ($tbx:ident, $CCRn:ident, $tbxcctln:ident, $tbxccrn:ident) => {
+        impl CCRn<$CCRn> for pac::$tbx::RegisterBlock {
+            #[inline(always)]
+            #[allow(unreachable_patterns)]
+            fn set_ccrn(&self, count: u16) {
+                self.$tbxccrn.write(|w| unsafe { w.bits(count) });
+            }
+
+            #[inline(always)]
+            #[allow(unreachable_patterns)]
+            fn get_ccrn(&self) -> u16 {
+                self.$tbxccrn.read().bits()
+            }
+
+            #[inline(always)]
+            #[allow(unreachable_patterns)]
+            fn config_outmod(&self, outmod: Outmod) {
+                self.$tbxcctln.write(|w| w.outmod().bits(outmod as u8));
+            }
+
+            #[inline(always)]
+            #[allow(unreachable_patterns)]
+            fn set_cmp_mode(&self) {
+                unsafe { self.$tbxcctln.clear_bits(|w| w.cap().compare()) };
+            }
+
+            #[inline(always)]
+            #[allow(unreachable_patterns)]
+            fn set_cap_trigger(&self, cm: CapTrigger) {
+                self.$tbxcctln.modify(|r, w| {
+                    unsafe { w.bits(r.bits()) }
+                        .cap()
+                        .capture()
+                        .scs()
+                        .sync()
+                        .cm()
+                        .bits(cm as u8)
+                });
+            }
+
+            #[inline(always)]
+            #[allow(unreachable_patterns)]
+            fn set_cap_select(&self, ccis: CapSelect) {
+                self.$tbxcctln.modify(|r, w| {
+                    unsafe { w.bits(r.bits()) }
+                        .cap()
+                        .capture()
+                        .scs()
+                        .sync()
+                        .ccis()
+                        .bits(ccis as u8)
+                });
+            }
+
+            #[inline(always)]
+            #[allow(unreachable_patterns)]
+            fn ccifg_rd(&self) -> bool {
+                self.$tbxcctln.read().ccifg().bit()
+            }
+
+            #[inline(always)]
+            #[allow(unreachable_patterns)]
+            fn ccifg_clr(&self) {
+                unsafe { self.$tbxcctln.clear_bits(|w| w.ccifg().clear_bit()) };
+            }
+
+            #[inline(always)]
+            #[allow(unreachable_patterns)]
+            fn ccie_set(&self) {
+                unsafe { self.$tbxcctln.set_bits(|w| w.ccie().set_bit()) };
+            }
+
+            #[inline(always)]
+            #[allow(unreachable_patterns)]
+            fn ccie_clr(&self) {
+                unsafe { self.$tbxcctln.clear_bits(|w| w.ccie().clear_bit()) };
+            }
+
+            #[inline(always)]
+            #[allow(unreachable_patterns)]
+            fn cov_ccifg_rd(&self) -> (bool, bool) {
+                let cctl = self.$tbxcctln.read();
+                (cctl.cov().bit(), cctl.ccifg().bit())
+            }
+
+            #[inline(always)]
+            #[allow(unreachable_patterns)]
+            fn cov_ccifg_clr(&self) {
+                unsafe {
+                    self.$tbxcctln
+                        .clear_bits(|w| w.ccifg().clear_bit().cov().clear_bit())
+                };
+            }
+        }
+    };
 }
 
 macro_rules! timerb_impl {
     ($TBx:ident, $tbx:ident, $tbxctl:ident, $tbxex:ident, $tbxiv:ident, $([$CCRn:ident, $tbxcctln:ident, $tbxccrn:ident]),*) => {
-        impl TimerB for pac::$TBx {
+        impl TimerB for pac::$tbx::RegisterBlock {
+            #[inline(always)]
+            unsafe fn steal<'a>() -> &'a Self {
+                &*pac::$TBx::ptr()
+            }
+
             #[inline(always)]
             fn reset(&self) {
                 unsafe { self.$tbxctl.set_bits(|w| w.tbclr().set_bit()) };
@@ -212,122 +316,9 @@ macro_rules! timerb_impl {
             fn tbxiv_rd(&self) -> u16 {
                 self.$tbxiv.read().bits()
             }
-
-            #[inline]
-            #[allow(unreachable_patterns)]
-            fn set_ccrn(&self, ccrn: CCRn, count: u16) {
-                match ccrn {
-                    $(CCRn::$CCRn => self.$tbxccrn.write(|w| unsafe { w.bits(count) }),)*
-                    _ => panic!()
-                }
-            }
-
-            #[inline]
-            #[allow(unreachable_patterns)]
-            fn get_ccrn(&self, ccrn: CCRn) -> u16 {
-                match ccrn {
-                    $(CCRn::$CCRn => self.$tbxccrn.read().bits(),)*
-                    _ => panic!()
-                }
-            }
-
-            #[inline]
-            #[allow(unreachable_patterns)]
-            fn config_outmod(&self, ccrn: CCRn, outmod: Outmod) {
-                match ccrn {
-                    $(CCRn::$CCRn => self.$tbxcctln.write(|w| w.outmod().bits(outmod as u8)),)*
-                    _ => panic!()
-                }
-            }
-
-            #[inline]
-            #[allow(unreachable_patterns)]
-            fn set_cmp_mode(&self, ccrn: CCRn) {
-                match ccrn {
-                    $(CCRn::$CCRn => unsafe { self.$tbxcctln.clear_bits(|w| w.cap().compare()) },)*
-                    _ => panic!()
-                }
-            }
-
-            #[inline]
-            #[allow(unreachable_patterns)]
-            fn set_cap_trigger(&self, ccrn: CCRn, cm: CapTrigger) {
-                match ccrn {
-                    $(CCRn::$CCRn => self.$tbxcctln.modify(|r, w| unsafe{ w.bits(r.bits()) }.cap().capture().scs().sync().cm().bits(cm as u8)),)*
-                    _ => panic!()
-                }
-            }
-
-            #[inline]
-            #[allow(unreachable_patterns)]
-            fn set_cap_select(&self, ccrn: CCRn, ccis: CapSelect) {
-                match ccrn {
-                    $(CCRn::$CCRn => self.$tbxcctln.modify(|r, w| unsafe{ w.bits(r.bits()) }.cap().capture().scs().sync().ccis().bits(ccis as u8)),)*
-                    _ => panic!()
-                }
-            }
-
-            #[inline]
-            #[allow(unreachable_patterns)]
-            fn ccifg_rd(&self, ccrn: CCRn) -> bool {
-                match ccrn {
-                    $(CCRn::$CCRn => self.$tbxcctln.read().ccifg().bit(),)*
-                    _ => panic!()
-                }
-            }
-
-            #[inline]
-            #[allow(unreachable_patterns)]
-            fn ccifg_clr(&self, ccrn: CCRn) {
-                match ccrn {
-                    $(CCRn::$CCRn => unsafe { self.$tbxcctln.clear_bits(|w| w.ccifg().clear_bit()) },)*
-                    _ => panic!()
-                }
-            }
-
-            #[inline]
-            #[allow(unreachable_patterns)]
-            fn ccie_set(&self, ccrn: CCRn) {
-                match ccrn {
-                    $(CCRn::$CCRn => unsafe { self.$tbxcctln.set_bits(|w| w.ccie().set_bit()) },)*
-                    _ => panic!()
-                }
-            }
-
-            #[inline]
-            #[allow(unreachable_patterns)]
-            fn ccie_clr(&self, ccrn: CCRn) {
-                match ccrn {
-                    $(CCRn::$CCRn => unsafe { self.$tbxcctln.clear_bits(|w| w.ccie().clear_bit()) },)*
-                    _ => panic!()
-                }
-            }
-
-            #[inline]
-            #[allow(unreachable_patterns)]
-            fn cov_ccifg_rd(&self, ccrn: CCRn) -> (bool, bool) {
-                match ccrn {
-                    $(CCRn::$CCRn => {
-                        let cctl = self.$tbxcctln.read();
-                        (cctl.cov().bit(), cctl.ccifg().bit())
-
-                    },)*
-                    _ => panic!()
-                }
-            }
-
-            #[inline]
-            #[allow(unreachable_patterns)]
-            fn cov_ccifg_clr(&self, ccrn: CCRn) {
-                match ccrn {
-                    $(CCRn::$CCRn => unsafe {
-                        self.$tbxcctln
-                            .clear_bits(|w| w.ccifg().clear_bit().cov().clear_bit())
-                    },)*
-                    _ => panic!()
-                }
-            }
         }
+
+        $(ccrn_impl!($tbx, $CCRn, $tbxcctln, $tbxccrn);)*
     };
 }
 
