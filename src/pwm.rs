@@ -4,206 +4,219 @@
 //! 6-channel ports. Each channel has its own configurable duty cycle, but share the same period as
 //! other channels in the same port.
 
-use crate::hw_traits::timerb::{CCRn, Outmod, TimerB};
-use crate::timer::TimerClkPin;
-use embedded_hal::Pwm;
+use crate::hw_traits::timerb::{
+    CCRn, Outmod, TimerB, TimerSteal, CCR0, CCR1, CCR2, CCR3, CCR4, CCR5, CCR6,
+};
+use crate::timer::{SevenCCRnTimer, ThreeCCRnTimer, TimerPeriph};
+use core::marker::PhantomData;
+use embedded_hal::PwmPin;
 use msp430fr2355 as pac;
 
 pub use crate::timer::{TimerConfig, TimerDiv, TimerExDiv};
 
-/// Trait indicating that the peripheral can be used as a PWM
-pub trait PwmPeriph: TimerClkPin {
-    #[doc(hidden)]
-    type Channel: Into<CCRn>;
-
-    #[doc(hidden)]
-    // Configure each CCRn register required
+#[doc(hidden)]
+pub trait PwmConfigChannels {
+    // Configures each PWM channel of a peripheral during init
     fn config_channels(&self);
 }
 
-impl PwmPeriph for pac::TB0 {
-    type Channel = PwmTwoChannel;
+type Tb0 = pac::tb0::RegisterBlock;
+type Tb1 = pac::tb1::RegisterBlock;
+type Tb2 = pac::tb2::RegisterBlock;
+type Tb3 = pac::tb3::RegisterBlock;
 
+impl PwmConfigChannels for Tb0 {
     #[inline]
     fn config_channels(&self) {
-        self.config_outmod(CCRn::CCR1, Outmod::ResetSet);
-        self.config_outmod(CCRn::CCR2, Outmod::ResetSet);
+        let timer = unsafe { Self::steal() };
+        CCRn::<CCR1>::config_outmod(timer, Outmod::ResetSet);
+        CCRn::<CCR2>::config_outmod(timer, Outmod::ResetSet);
     }
 }
 
-impl PwmPeriph for pac::TB1 {
-    type Channel = PwmTwoChannel;
-
+impl PwmConfigChannels for Tb1 {
     #[inline]
     fn config_channels(&self) {
-        self.config_outmod(CCRn::CCR1, Outmod::ResetSet);
-        self.config_outmod(CCRn::CCR2, Outmod::ResetSet);
+        let timer = unsafe { Self::steal() };
+        CCRn::<CCR1>::config_outmod(timer, Outmod::ResetSet);
+        CCRn::<CCR2>::config_outmod(timer, Outmod::ResetSet);
     }
 }
 
-impl PwmPeriph for pac::TB2 {
-    type Channel = PwmTwoChannel;
-
+impl PwmConfigChannels for Tb2 {
     #[inline]
     fn config_channels(&self) {
-        self.config_outmod(CCRn::CCR1, Outmod::ResetSet);
-        self.config_outmod(CCRn::CCR2, Outmod::ResetSet);
+        let timer = unsafe { Self::steal() };
+        CCRn::<CCR1>::config_outmod(timer, Outmod::ResetSet);
+        CCRn::<CCR2>::config_outmod(timer, Outmod::ResetSet);
     }
 }
 
-impl PwmPeriph for pac::TB3 {
-    type Channel = PwmSixChannel;
-
+impl PwmConfigChannels for Tb3 {
     #[inline]
     fn config_channels(&self) {
-        self.config_outmod(CCRn::CCR1, Outmod::ResetSet);
-        self.config_outmod(CCRn::CCR2, Outmod::ResetSet);
-        self.config_outmod(CCRn::CCR3, Outmod::ResetSet);
-        self.config_outmod(CCRn::CCR4, Outmod::ResetSet);
-        self.config_outmod(CCRn::CCR5, Outmod::ResetSet);
-        self.config_outmod(CCRn::CCR6, Outmod::ResetSet);
+        let timer = unsafe { Self::steal() };
+        CCRn::<CCR1>::config_outmod(timer, Outmod::ResetSet);
+        CCRn::<CCR2>::config_outmod(timer, Outmod::ResetSet);
+        CCRn::<CCR3>::config_outmod(timer, Outmod::ResetSet);
+        CCRn::<CCR4>::config_outmod(timer, Outmod::ResetSet);
+        CCRn::<CCR5>::config_outmod(timer, Outmod::ResetSet);
+        CCRn::<CCR6>::config_outmod(timer, Outmod::ResetSet);
     }
 }
 
-/// PWM channel for 2-channel PWM ports
-#[derive(Clone, Copy)]
-pub enum PwmTwoChannel {
-    /// Channel 1
-    Chan1,
-    /// Channel 2
-    Chan2,
+//trait PwmGpio {
+//type Pin;
+//}
+
+//impl PwmGpio for (Tb0, CCR0) {
+//type Pin = Pwm
+//}
+
+/// Collection of PWM channels derived from timer peripheral with 3 capture-compare registers
+pub struct ThreeCCRnPins<T: ThreeCCRnTimer> {
+    /// PWM pin 1 (derived from capture-compare register 1)
+    pub pwm1: Pwm<T, CCR1>,
+    /// PWM pin 2 (derived from capture-compare register 2)
+    pub pwm2: Pwm<T, CCR2>,
 }
 
-impl Into<CCRn> for PwmTwoChannel {
-    #[inline]
-    fn into(self) -> CCRn {
-        match self {
-            PwmTwoChannel::Chan1 => CCRn::CCR1,
-            PwmTwoChannel::Chan2 => CCRn::CCR2,
+impl<T: ThreeCCRnTimer> Default for ThreeCCRnPins<T> {
+    fn default() -> Self {
+        Self {
+            pwm1: Default::default(),
+            pwm2: Default::default(),
         }
     }
 }
 
-/// PWM channel for 6-channel PWM ports
-#[derive(Clone, Copy)]
-pub enum PwmSixChannel {
-    /// Channel 1
-    Chan1,
-    /// Channel 2
-    Chan2,
-    /// Channel 3
-    Chan3,
-    /// Channel 4
-    Chan4,
-    /// Channel 5
-    Chan5,
-    /// Channel 6
-    Chan6,
+/// Collection of PWM channels derived from timer peripheral with 7 capture-compare registers
+pub struct SevenCCRnPins<T: SevenCCRnTimer> {
+    /// PWM pin 1 (derived from capture-compare register 1)
+    pub pwm1: Pwm<T, CCR1>,
+    /// PWM pin 2 (derived from capture-compare register 2)
+    pub pwm2: Pwm<T, CCR2>,
+    /// PWM pin 3 (derived from capture-compare register 3)
+    pub pwm3: Pwm<T, CCR3>,
+    /// PWM pin 4 (derived from capture-compare register 4)
+    pub pwm4: Pwm<T, CCR4>,
+    /// PWM pin 5 (derived from capture-compare register 5)
+    pub pwm5: Pwm<T, CCR5>,
+    /// PWM pin 6 (derived from capture-compare register 6)
+    pub pwm6: Pwm<T, CCR6>,
 }
 
-impl Into<CCRn> for PwmSixChannel {
-    #[inline]
-    fn into(self) -> CCRn {
-        match self {
-            PwmSixChannel::Chan1 => CCRn::CCR1,
-            PwmSixChannel::Chan2 => CCRn::CCR2,
-            PwmSixChannel::Chan3 => CCRn::CCR3,
-            PwmSixChannel::Chan4 => CCRn::CCR4,
-            PwmSixChannel::Chan5 => CCRn::CCR5,
-            PwmSixChannel::Chan6 => CCRn::CCR6,
+impl<T: SevenCCRnTimer> Default for SevenCCRnPins<T> {
+    fn default() -> Self {
+        Self {
+            pwm1: Default::default(),
+            pwm2: Default::default(),
+            pwm3: Default::default(),
+            pwm4: Default::default(),
+            pwm5: Default::default(),
+            pwm6: Default::default(),
         }
     }
 }
 
-/// PWM port with multiple channels and a single period
-pub struct PwmPort<T: PwmPeriph> {
-    timer: T,
+//pub struct PwmUninit<T: CCRn<C>, C>(PhantomData<T>, PhantomData<C>);
+
+/// A single PWM channel
+pub struct Pwm<T: CCRn<C>, C>(PhantomData<T>, PhantomData<C>);
+
+impl<T: TimerPeriph + CCRn<C>, C> Default for Pwm<T, C> {
+    fn default() -> Self {
+        Self(PhantomData, PhantomData)
+    }
 }
 
-/// Extension trait for creating PWM ports from timer peripherals
-pub trait PwmExt: Sized + TimerClkPin {
+/// Extension trait for creating PWM pins from timer peripherals
+pub trait PwmExt: Sized {
     #[doc(hidden)]
-    type Pwm;
+    type Timer: TimerPeriph + PwmConfigChannels + CCRn<CCR0>;
+    /// Collection of PWM pins
+    type Pins: Default;
 
-    /// Create new PWM port out of timer
-    fn to_pwm(self, config: TimerConfig<Self>) -> Self::Pwm;
-}
-
-impl<T: PwmPeriph> PwmExt for T {
-    type Pwm = PwmPort<T>;
-
+    /// Create new PWM pins out of timer
     #[inline]
-    fn to_pwm(self, config: TimerConfig<Self>) -> Self::Pwm {
-        config.write_regs(&self);
-        self.config_outmod(CCRn::CCR0, Outmod::Toggle);
-        self.config_channels();
+    fn to_pwm(self, config: TimerConfig<Self::Timer>, period: u16) -> Self::Pins {
+        let timer = unsafe { Self::Timer::steal() };
+        config.write_regs(&timer);
+        CCRn::<CCR0>::set_ccrn(timer, period);
+        CCRn::<CCR0>::config_outmod(timer, Outmod::Toggle);
+        timer.config_channels();
         // Start the timer to run PWM
-        self.upmode();
-        PwmPort { timer: self }
+        timer.upmode();
+        Self::Pins::default()
     }
 }
 
-impl<T: PwmPeriph> PwmPort<T> {
-    #[inline(always)]
-    fn start_all(&mut self) {
-        self.timer.upmode();
-    }
-
-    #[inline(always)]
-    fn pause_all(&mut self) {
-        self.timer.stop();
-    }
+impl PwmExt for pac::TB0 {
+    type Timer = Tb0;
+    type Pins = ThreeCCRnPins<Self::Timer>;
+}
+impl PwmExt for pac::TB1 {
+    type Timer = Tb1;
+    type Pins = ThreeCCRnPins<Self::Timer>;
+}
+impl PwmExt for pac::TB2 {
+    type Timer = Tb2;
+    type Pins = ThreeCCRnPins<Self::Timer>;
+}
+impl PwmExt for pac::TB3 {
+    type Timer = Tb3;
+    type Pins = SevenCCRnPins<Self::Timer>;
 }
 
-impl<T: PwmPeriph> Pwm for PwmPort<T> {
-    type Channel = T::Channel;
-    /// Number of cycles.
-    type Time = u16;
-    /// Number of cycles. Does not depend on the period.
+impl<T: CCRn<CCR0> + CCRn<C>, C> PwmPin for Pwm<T, C> {
+    /// Number of cycles
     type Duty = u16;
 
-    #[inline(always)]
-    fn set_period<P: Into<Self::Time>>(&mut self, period: P) {
-        self.timer.set_ccrn(CCRn::CCR0, period.into());
+    #[inline]
+    /// Sets duty cycle of the PWM. Has no effect while PWM is disabled.
+    fn set_duty(&mut self, duty: Self::Duty) {
+        let timer = unsafe { T::steal() };
+        if !self.is_disabled() {
+            CCRn::<C>::set_ccrn(timer, duty);
+        }
     }
 
-    #[inline(always)]
-    fn set_duty(&mut self, channel: Self::Channel, duty: Self::Duty) {
-        self.timer.set_ccrn(channel.into(), duty);
-    }
-
-    #[inline(always)]
-    fn get_period(&self) -> Self::Time {
-        self.timer.get_ccrn(CCRn::CCR0)
-    }
-
-    #[inline(always)]
-    fn get_duty(&self, channel: Self::Channel) -> Self::Duty {
-        self.timer.get_ccrn(channel.into())
+    #[inline]
+    fn get_duty(&self) -> Self::Duty {
+        let timer = unsafe { T::steal() };
+        CCRn::<C>::get_ccrn(timer)
     }
 
     /// Maximum valid duty is equal to the period. If number of duty cycles exceeds number of
     /// period cycles, then signal stays high (equivalent to 100% duty cycle).
-    #[inline(always)]
+    #[inline]
     fn get_max_duty(&self) -> Self::Duty {
-        self.get_period()
+        let timer = unsafe { T::steal() };
+        CCRn::<CCR0>::get_ccrn(timer)
     }
 
-    // Less efficient than disable_all
     #[inline]
-    fn disable(&mut self, channel: Self::Channel) {
-        self.pause_all();
-        // Forces the channel to always output low signal
-        self.timer.config_outmod(channel.into(), Outmod::Out);
-        self.start_all();
+    fn disable(&mut self) {
+        let timer = unsafe { T::steal() };
+        // Set duty cycle to 0
+        CCRn::<C>::set_ccrn(timer, 0);
     }
 
-    // Less efficient than disable_all
     #[inline]
-    fn enable(&mut self, channel: Self::Channel) {
-        self.pause_all();
-        // Make channel work the same as normal PWM
-        self.timer.config_outmod(channel.into(), Outmod::ResetSet);
-        self.start_all();
+    fn enable(&mut self) {
+        let timer = unsafe { T::steal() };
+        if self.is_disabled() {
+            // Set duty cycle to 1
+            CCRn::<C>::set_ccrn(timer, 1);
+        }
+    }
+}
+
+impl<T: CCRn<C>, C> Pwm<T, C> {
+    /// Check whether the PWM is disabled or not
+    #[inline(always)]
+    pub fn is_disabled(&self) -> bool {
+        let timer = unsafe { T::steal() };
+        timer.get_ccrn() == 0
     }
 }
