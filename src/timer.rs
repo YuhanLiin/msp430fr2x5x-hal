@@ -6,7 +6,9 @@
 
 use crate::clock::{Aclk, Smclk};
 use crate::gpio::{Alternate1, Floating, Input, Pin, Pin2, Pin6, Pin7, Port2, Port5, Port6};
-use crate::hw_traits::timerb::{CCRn, Tbssel, TimerB, CCR0, CCR1, CCR2, CCR3, CCR4, CCR5, CCR6};
+use crate::hw_traits::timerb::{
+    CCRn, Tbssel, TimerB, TimerSteal, CCR0, CCR1, CCR2, CCR3, CCR4, CCR5, CCR6,
+};
 use core::marker::PhantomData;
 use embedded_hal::timer::{Cancel, CountDown, Periodic};
 use msp430fr2355 as pac;
@@ -187,32 +189,38 @@ impl<T: TimerPeriph + CCRn<C>, C> Default for SubTimer<T, C> {
 }
 
 /// Extension trait for creating timers
-pub trait TimerExt: Sized + TimerPeriph {
+pub trait TimerExt: Sized {
     /// Set of timers
     type Parts: Default;
+    /// RegisterBlock type for the timer
+    type Timer: TimerPeriph;
 
     /// Create new set of timers out of a TBx peripheral
     #[inline(always)]
-    fn to_timer(self, config: TimerConfig<Self>) -> Self::Parts {
-        config.write_regs(&self);
+    fn to_timer(self, config: TimerConfig<Self::Timer>) -> Self::Parts {
+        config.write_regs(unsafe { Self::Timer::steal() });
         Self::Parts::default()
     }
 }
 
-impl TimerExt for pac::tb0::RegisterBlock {
-    type Parts = ThreeCCRnParts<Self>;
+impl TimerExt for pac::TB0 {
+    type Parts = ThreeCCRnParts<Self::Timer>;
+    type Timer = pac::tb0::RegisterBlock;
 }
 
-impl TimerExt for pac::tb1::RegisterBlock {
-    type Parts = ThreeCCRnParts<Self>;
+impl TimerExt for pac::TB1 {
+    type Parts = ThreeCCRnParts<Self::Timer>;
+    type Timer = pac::tb1::RegisterBlock;
 }
 
-impl TimerExt for pac::tb2::RegisterBlock {
-    type Parts = ThreeCCRnParts<Self>;
+impl TimerExt for pac::TB2 {
+    type Parts = ThreeCCRnParts<Self::Timer>;
+    type Timer = pac::tb2::RegisterBlock;
 }
 
-impl TimerExt for pac::tb3::RegisterBlock {
-    type Parts = SevenCCRnParts<Self>;
+impl TimerExt for pac::TB3 {
+    type Parts = SevenCCRnParts<Self::Timer>;
+    type Timer = pac::tb3::RegisterBlock;
 }
 
 /// Timer TBIV interrupt vector
@@ -261,7 +269,7 @@ impl<T: TimerPeriph + CCRn<CCR0>> CountDown for Timer<T> {
         timer.upmode();
     }
 
-    #[inline(always)]
+    #[inline]
     fn wait(&mut self) -> nb::Result<(), void::Void> {
         let timer = unsafe { T::steal() };
         if timer.tbifg_rd() {
@@ -301,7 +309,7 @@ impl<T: TimerPeriph> Timer<T> {
         timer.tbie_clr();
     }
 
-    #[inline(always)]
+    #[inline]
     /// Read the timer interrupt vector. Automatically resets corresponding interrupt flag.
     pub fn interrupt_vector(&mut self) -> TimerVector {
         let timer = unsafe { T::steal() };
@@ -310,20 +318,20 @@ impl<T: TimerPeriph> Timer<T> {
 }
 
 impl<T: CCRn<C>, C> SubTimer<T, C> {
-    #[inline(always)]
+    #[inline]
     /// Set the threshold for one of the subtimers. Once the main timer counts to this threshold
     /// the subtimer will fire. Note that the main timer resets once it counts to its own
     /// threshold, not the sub-timer thresholds. It follows that the sub-timer threshold must be
     /// less than the main threshold for it to fire.
-    pub fn set_subtimer_count(&mut self, count: u16) {
+    pub fn set_count(&mut self, count: u16) {
         let timer = unsafe { T::steal() };
         timer.set_ccrn(count);
         timer.ccifg_clr();
     }
 
-    #[inline(always)]
+    #[inline]
     /// Wait for the subtimer to fire
-    pub fn wait_subtimer(&mut self) -> nb::Result<(), void::Void> {
+    pub fn wait(&mut self) -> nb::Result<(), void::Void> {
         let timer = unsafe { T::steal() };
         if timer.ccifg_rd() {
             timer.ccifg_clr();
@@ -335,14 +343,14 @@ impl<T: CCRn<C>, C> SubTimer<T, C> {
 
     #[inline(always)]
     /// Enable the subtimer interrupts, which fire once the subtimer fires.
-    pub fn enable_subtimer_interrupts(&mut self) {
+    pub fn enable_interrupts(&mut self) {
         let timer = unsafe { T::steal() };
         timer.ccie_set();
     }
 
     #[inline(always)]
     /// Disable the subtimer interrupts, which fire once the subtimer fires.
-    pub fn disable_subtimer_interrupts(&mut self) {
+    pub fn disable_interrupts(&mut self) {
         let timer = unsafe { T::steal() };
         timer.ccie_clr();
     }

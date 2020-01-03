@@ -7,12 +7,12 @@ use embedded_hal::prelude::*;
 use msp430fr2x5x_hal::{
     clock::{DcoclkFreqSel, MclkDiv, SmclkDiv},
     prelude::*,
-    timer::{TimerConfig, TimerDiv, TimerExDiv, TimerTwoChannel},
+    timer::{TimerConfig, TimerDiv, TimerExDiv},
 };
 use nb::block;
 use void::ResultVoidExt;
 
-// 1 second on, 0.5 second off
+// 0.5 second on, 0.5 second off
 fn main() {
     let periph = msp430fr2355::Peripherals::take().unwrap();
 
@@ -31,15 +31,19 @@ fn main() {
         .aclk_vloclk()
         .freeze(&mut fram);
 
-    let mut timer = periph
+    let parts = periph
         .TB0
         .to_timer(TimerConfig::aclk(&aclk).clk_div(TimerDiv::_2, TimerExDiv::_5));
+    let mut timer = parts.timer;
+    let mut subtimer = parts.subtimer2;
 
     timer.start(1000u16);
-    timer.set_subtimer_count(TimerTwoChannel::Chan2, 500u16);
+    subtimer.set_count(500u16);
     loop {
-        block!(timer.wait_subtimer(TimerTwoChannel::Chan2)).void_unwrap();
+        block!(subtimer.wait()).void_unwrap();
         p1_0.set_high().void_unwrap();
+        // first 0.5 s of timer countdown expires while subtimer expires, so this should only block
+        // for 0.5 s
         block!(timer.wait()).void_unwrap();
         p1_0.set_low().void_unwrap();
     }
