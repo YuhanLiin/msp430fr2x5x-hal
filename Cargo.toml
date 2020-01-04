@@ -2,7 +2,7 @@ cargo-features = ["profile-overrides"]
 
 [package]
 name = "msp430fr2x5x-hal"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["YuhanLiin <linyuhan0315@hotmail.com>"]
 edition = "2018"
 description = "Implementation of embedded-hal for microcontrollers MSP430FR2355, MSP430FR2353, MSP430FR2153 and MSP430FR2155"
