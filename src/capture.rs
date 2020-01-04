@@ -1,9 +1,12 @@
 //! Capture ports
 //!
-//! Signal capture ports are created from timers. TB0, TB1, and TB2 create 3-channel ports and TB3
-//! creates a 7-channel port. Each capture channel has its own configurable input signal, edge
-//! trigger, and capture storage. Each port has a configurable timer counting from 0 to `2^16-1`,
-//! whose value will be stored whenever a channel capture event is triggered.
+//! Signal capture pins are created from timers. TB0, TB1, and TB2 create 3 pins each and TB3
+//! create 7 pins. Each capture pin has its own configurable input signal, edge
+//! trigger, and capture storage. Each timer has a configurable timer counting from 0 to `2^16-1`,
+//! whose value will be stored in a capture register whenever its capture event is triggered.
+//! Capture pins can choose between two inputs sources for triggering events. These inputs can come
+//! from input GPIOs or internal chip signals. When using a GPIO input, the user must configure the
+//! GPIO pin correctly according to the datasheet for the capture event to work properly.
 
 use crate::hw_traits::timerb::{
     CCRn, Ccis, Cm, TimerB, TimerSteal, CCR0, CCR1, CCR2, CCR3, CCR4, CCR5, CCR6,
@@ -294,7 +297,7 @@ pub trait CapturePin {
     fn capture(&mut self) -> nb::Result<Self::Capture, Self::Error>;
 }
 
-impl<T: CCRn<C>, C> CapturePin for Capture<T, C> {
+impl<T: CapCmpPeriph<C>, C> CapturePin for Capture<T, C> {
     type Capture = u16;
     type Error = OverCapture;
 
@@ -316,7 +319,7 @@ impl<T: CCRn<C>, C> CapturePin for Capture<T, C> {
     }
 }
 
-impl<T: CCRn<C>, C> Capture<T, C> {
+impl<T: CapCmpPeriph<C>, C> Capture<T, C> {
     #[inline]
     /// Enable capture interrupts
     pub fn enable_interrupts(&mut self) {
@@ -359,7 +362,7 @@ pub enum CaptureVector<T> {
 /// register corresponding to the interrupt.
 pub struct InterruptCapture<T, C>(PhantomData<T>, PhantomData<C>);
 
-impl<T: CCRn<C>, C> InterruptCapture<T, C> {
+impl<T: CapCmpPeriph<C>, C> InterruptCapture<T, C> {
     /// Performs a one-time capture read without considering the interrupt flag. Always call this
     /// instead of `capture()` after reading the capture interrupt vector, since reading the vector
     /// already clears the interrupt flag that `capture()` checks for.

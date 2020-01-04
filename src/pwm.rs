@@ -1,8 +1,8 @@
 //! PWM ports
 //!
-//! PWM ports are created from timers. TB0, TB1, and TB2 create 2-channel ports and TB3 create
-//! 6-channel ports. Each channel has its own configurable duty cycle, but share the same period as
-//! other channels in the same port.
+//! PWM pins are created from timer peripherals. TB0, TB1, and TB2 each create 2 PWMs and TB3
+//! creates 6 PWMs. Each PWM has its own duty cycle and and GPIO pin, and all PWMs from the same timer
+//! share the same period.
 
 use crate::gpio::{
     Alternate1, Alternate2, ChangeSelectBits, ChangeSelectBitsSealed, Output, Pin, Pin0, Pin1,
@@ -194,9 +194,9 @@ impl<T: SevenCCRnTimer> Default for SevenCCRnPins<T> {
 }
 
 /// Uninitialzied PWM pin
-pub struct PwmUninit<T: CCRn<C>, C>(PhantomData<T>, PhantomData<C>);
+pub struct PwmUninit<T, C>(PhantomData<T>, PhantomData<C>);
 
-impl<T: CCRn<C>, C> PwmUninit<T, C>
+impl<T: CapCmpPeriph<C>, C> PwmUninit<T, C>
 where
     (T, C): PwmGpio,
 {
@@ -210,14 +210,14 @@ where
     }
 }
 
-impl<T: TimerPeriph + CCRn<C>, C> Default for PwmUninit<T, C> {
+impl<T, C> Default for PwmUninit<T, C> {
     fn default() -> Self {
         Self(PhantomData, PhantomData)
     }
 }
 
 /// A single PWM pin
-pub struct Pwm<T: CCRn<C>, C>
+pub struct Pwm<T: CapCmpPeriph<C>, C>
 where
     (T, C): PwmGpio,
 {
@@ -264,7 +264,7 @@ impl PwmExt for pac::TB3 {
     type Pins = SevenCCRnPins<Self::Timer>;
 }
 
-impl<T: CCRn<CCR0> + CCRn<C>, C> PwmPin for Pwm<T, C>
+impl<T: CapCmpPeriph<CCR0> + CapCmpPeriph<C>, C> PwmPin for Pwm<T, C>
 where
     (T, C): PwmGpio,
 {

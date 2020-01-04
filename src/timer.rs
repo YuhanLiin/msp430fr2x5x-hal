@@ -1,8 +1,8 @@
 //! Timers
 //!
-//! Each timer has a configurable clock source and clock dividers. In addition, the timers each
-//! have their own "sub-timers". Each sub-timer has its own configurable threshold and will set its
-//! own IFG when the main timer counts to its threshold.
+//! Each timer has a configurable clock source and clock dividers. In addition, each timer
+//! peripheral provides their own "sub-timers". Each sub-timer has its own configurable threshold
+//! and will set its own IFG when the main timer counts to its threshold.
 
 use crate::clock::{Aclk, Smclk};
 use crate::gpio::{Alternate1, Floating, Input, Pin, Pin2, Pin6, Pin7, Port2, Port5, Port6};
@@ -185,7 +185,7 @@ impl<T: TimerPeriph> Default for Timer<T> {
 /// Sub-timer with its own interrupts and threshold that shares its countdown with the main timer
 pub struct SubTimer<T, C>(PhantomData<T>, PhantomData<C>);
 
-impl<T: TimerPeriph + CCRn<C>, C> Default for SubTimer<T, C> {
+impl<T: TimerPeriph + CapCmpPeriph<C>, C> Default for SubTimer<T, C> {
     fn default() -> Self {
         Self(PhantomData, PhantomData)
     }
@@ -325,7 +325,7 @@ impl<T: TimerPeriph> Timer<T> {
     }
 }
 
-impl<T: CCRn<C>, C> SubTimer<T, C> {
+impl<T: CapCmpPeriph<C>, C> SubTimer<T, C> {
     #[inline]
     /// Set the threshold for one of the subtimers. Once the main timer counts to this threshold
     /// the subtimer will fire. Note that the main timer resets once it counts to its own
