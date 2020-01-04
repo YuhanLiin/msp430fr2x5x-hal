@@ -5,234 +5,278 @@
 //! trigger, and capture storage. Each port has a configurable timer counting from 0 to `2^16-1`,
 //! whose value will be stored whenever a channel capture event is triggered.
 
-use crate::hw_traits::timerb::CCRn;
-use crate::timer::{read_tbxiv, TimerClkPin};
-use embedded_hal::Capture;
+use crate::hw_traits::timerb::{
+    CCRn, Ccis, Cm, TimerB, TimerSteal, CCR0, CCR1, CCR2, CCR3, CCR4, CCR5, CCR6,
+};
+use crate::timer::{read_tbxiv, SevenCCRnTimer, ThreeCCRnTimer, TimerPeriph, TimerVector};
+use core::marker::PhantomData;
 use msp430fr2355 as pac;
 
-pub use crate::hw_traits::timerb::{CapSelect, CapTrigger};
-pub use crate::timer::{TimerConfig, TimerDiv, TimerExDiv, TimerVector};
+pub use crate::timer::{CapCmpPeriph, TimerConfig, TimerDiv, TimerExDiv};
 
-/// Capture channel for 3-channel capture ports
-#[derive(Clone, Copy)]
-pub enum CapThreeChannel {
-    /// Channel 0
-    Chan0,
-    /// Channel 1
-    Chan1,
-    /// Channel 2
-    Chan2,
+type Tb0 = pac::tb0::RegisterBlock;
+type Tb1 = pac::tb1::RegisterBlock;
+type Tb2 = pac::tb2::RegisterBlock;
+type Tb3 = pac::tb3::RegisterBlock;
+
+/// Capture input selection
+pub enum CapSelect {
+    /// Capture input A
+    CapInputA,
+    /// Capture input B
+    CapInputB,
 }
 
-impl Into<CCRn> for CapThreeChannel {
+impl Into<Ccis> for CapSelect {
     #[inline]
-    fn into(self) -> CCRn {
+    fn into(self) -> Ccis {
         match self {
-            CapThreeChannel::Chan0 => CCRn::CCR0,
-            CapThreeChannel::Chan1 => CCRn::CCR1,
-            CapThreeChannel::Chan2 => CCRn::CCR2,
+            CapSelect::CapInputA => Ccis::InputA,
+            CapSelect::CapInputB => Ccis::InputB,
         }
     }
 }
 
-/// Capture channel for 7-channel capture ports
-#[derive(Clone, Copy)]
-pub enum CapSevenChannel {
-    /// Channel 0
-    Chan0,
-    /// Channel 1
-    Chan1,
-    /// Channel 2
-    Chan2,
-    /// Channel 3
-    Chan3,
-    /// Channel 4
-    Chan4,
-    /// Channel 5
-    Chan5,
-    /// Channel 6
-    Chan6,
+/// Capture edge trigger
+pub enum CapTrigger {
+    /// Capture on rising edge
+    RisingEdge,
+    /// Capture on falling edge
+    FallingEdge,
+    /// Capture on both edges
+    BothEdges,
 }
 
-impl Into<CCRn> for CapSevenChannel {
+impl Into<Cm> for CapTrigger {
     #[inline]
-    fn into(self) -> CCRn {
+    fn into(self) -> Cm {
         match self {
-            CapSevenChannel::Chan0 => CCRn::CCR0,
-            CapSevenChannel::Chan1 => CCRn::CCR1,
-            CapSevenChannel::Chan2 => CCRn::CCR2,
-            CapSevenChannel::Chan3 => CCRn::CCR3,
-            CapSevenChannel::Chan4 => CCRn::CCR4,
-            CapSevenChannel::Chan5 => CCRn::CCR5,
-            CapSevenChannel::Chan6 => CCRn::CCR6,
+            CapTrigger::RisingEdge => Cm::RisingEdge,
+            CapTrigger::FallingEdge => Cm::FallingEdge,
+            CapTrigger::BothEdges => Cm::BothEdges,
         }
     }
 }
 
-/// Trait indicating that a peripheral can be used as a capture port
-pub trait CapturePeriph: TimerClkPin {
+struct PinConfig {
+    select: CapSelect,
+    trigger: CapTrigger,
+}
+
+/// Configuration object for all capture pins of a single port
+pub struct CaptureConfig {
+    cap0: PinConfig,
+    cap1: PinConfig,
+    cap2: PinConfig,
+    cap3: PinConfig,
+    cap4: PinConfig,
+    cap5: PinConfig,
+    cap6: PinConfig,
+}
+
+macro_rules! config_fn {
+    ($config_capture:ident, $cap:ident) => {
+        /// Configure the input select and edge trigger for one of the capture pins
+        #[inline(always)]
+        pub fn $config_capture(self, select: CapSelect, trigger: CapTrigger) -> Self {
+            Self {
+                $cap: PinConfig { select, trigger },
+                ..self
+            }
+        }
+    }
+}
+
+impl CaptureConfig {
+    config_fn!(config_capture0, cap0);
+    config_fn!(config_capture1, cap1);
+    config_fn!(config_capture2, cap2);
+    config_fn!(config_capture3, cap3);
+    config_fn!(config_capture4, cap4);
+    config_fn!(config_capture5, cap5);
+    config_fn!(config_capture6, cap6);
+}
+
+#[doc(hidden)]
+pub trait CaptureConfigChannels {
+    fn config_channels(&self, config: CaptureConfig);
+}
+
+impl CaptureConfigChannels for Tb0 {
+    #[inline]
+    fn config_channels(&self, config: CaptureConfig) {
+        CCRn::<CCR0>::config_cap_mode(self, config.cap0.trigger.into(), config.cap0.select.into());
+        CCRn::<CCR1>::config_cap_mode(self, config.cap1.trigger.into(), config.cap1.select.into());
+        CCRn::<CCR2>::config_cap_mode(self, config.cap2.trigger.into(), config.cap2.select.into());
+    }
+}
+
+impl CaptureConfigChannels for Tb1 {
+    #[inline]
+    fn config_channels(&self, config: CaptureConfig) {
+        CCRn::<CCR0>::config_cap_mode(self, config.cap0.trigger.into(), config.cap0.select.into());
+        CCRn::<CCR1>::config_cap_mode(self, config.cap1.trigger.into(), config.cap1.select.into());
+        CCRn::<CCR2>::config_cap_mode(self, config.cap2.trigger.into(), config.cap2.select.into());
+    }
+}
+
+impl CaptureConfigChannels for Tb2 {
+    #[inline]
+    fn config_channels(&self, config: CaptureConfig) {
+        CCRn::<CCR0>::config_cap_mode(self, config.cap0.trigger.into(), config.cap0.select.into());
+        CCRn::<CCR1>::config_cap_mode(self, config.cap1.trigger.into(), config.cap1.select.into());
+        CCRn::<CCR2>::config_cap_mode(self, config.cap2.trigger.into(), config.cap2.select.into());
+    }
+}
+
+impl CaptureConfigChannels for Tb3 {
+    #[inline]
+    fn config_channels(&self, config: CaptureConfig) {
+        CCRn::<CCR0>::config_cap_mode(self, config.cap0.trigger.into(), config.cap0.select.into());
+        CCRn::<CCR1>::config_cap_mode(self, config.cap1.trigger.into(), config.cap1.select.into());
+        CCRn::<CCR2>::config_cap_mode(self, config.cap2.trigger.into(), config.cap2.select.into());
+        CCRn::<CCR3>::config_cap_mode(self, config.cap3.trigger.into(), config.cap3.select.into());
+        CCRn::<CCR4>::config_cap_mode(self, config.cap4.trigger.into(), config.cap4.select.into());
+        CCRn::<CCR5>::config_cap_mode(self, config.cap5.trigger.into(), config.cap5.select.into());
+        CCRn::<CCR6>::config_cap_mode(self, config.cap6.trigger.into(), config.cap6.select.into());
+    }
+}
+
+/// Extension trait for creating capture pins from timer peripherals
+pub trait CaptureExt: Sized {
     #[doc(hidden)]
-    type Channel: Into<CCRn> + Copy;
+    type Capture: TimerPeriph + CaptureConfigChannels;
+    /// Set of capture pins
+    type Pins: Default;
+
+    /// Create new capture port out of timer
+    #[inline]
+    fn to_capture(
+        self,
+        timer_config: TimerConfig<Self::Capture>,
+        cap_config: CaptureConfig,
+    ) -> Self::Pins {
+        let timer = unsafe { Self::Capture::steal() };
+        timer_config.write_regs(timer);
+        timer.config_channels(cap_config);
+        timer.continuous();
+        Self::Pins::default()
+    }
 }
 
-impl CapturePeriph for pac::TB0 {
-    type Channel = CapThreeChannel;
+impl CaptureExt for pac::TB0 {
+    type Capture = Tb0;
+    type Pins = ThreeCCRnPins<Self::Capture>;
+}
+impl CaptureExt for pac::TB1 {
+    type Capture = Tb1;
+    type Pins = ThreeCCRnPins<Self::Capture>;
+}
+impl CaptureExt for pac::TB2 {
+    type Capture = Tb2;
+    type Pins = ThreeCCRnPins<Self::Capture>;
+}
+impl CaptureExt for pac::TB3 {
+    type Capture = Tb3;
+    type Pins = SevenCCRnPins<Self::Capture>;
 }
 
-impl CapturePeriph for pac::TB1 {
-    type Channel = CapThreeChannel;
+/// Collection of uninitialized capture pins derived from timer peripheral with 3 capture-compare registers
+pub struct ThreeCCRnPins<T: ThreeCCRnTimer> {
+    /// Capture pin 0 (derived from capture-compare register 0)
+    pub cap0: Capture<T, CCR0>,
+    /// Capture pin 1 (derived from capture-compare register 1)
+    pub cap1: Capture<T, CCR1>,
+    /// Capture pin 2 (derived from capture-compare register 2)
+    pub cap2: Capture<T, CCR2>,
 }
 
-impl CapturePeriph for pac::TB2 {
-    type Channel = CapThreeChannel;
-}
-
-impl CapturePeriph for pac::TB3 {
-    type Channel = CapSevenChannel;
-}
-
-/// Capture port with multiple channels. When a channel's input triggers a capture, the current
-/// 16-bit timer value is recorded.
-pub struct CapturePort<T: CapturePeriph> {
-    timer: T,
-}
-
-type CaptureResult = Result<u16, OverCapture>;
-
-/// Capture TBIV interrupt vector
-pub enum CaptureVector {
-    /// No pending interrupt
-    NoInterrupt,
-    /// Interrupt caused by capture register 1. Contains the corresponding capture reading.
-    Capture1(CaptureResult),
-    /// Interrupt caused by capture register 2. Contains the corresponding capture reading.
-    Capture2(CaptureResult),
-    /// Interrupt caused by capture register 3. Contains the corresponding capture reading.
-    Capture3(CaptureResult),
-    /// Interrupt caused by capture register 4. Contains the corresponding capture reading.
-    Capture4(CaptureResult),
-    /// Interrupt caused by capture register 5. Contains the corresponding capture reading.
-    Capture5(CaptureResult),
-    /// Interrupt caused by capture register 6. Contains the corresponding capture reading.
-    Capture6(CaptureResult),
-    /// Interrupt caused by main timer overflow
-    MainTimer,
-}
-
-impl<T: CapturePeriph> CapturePort<T> {
+impl<T: ThreeCCRnTimer> Default for ThreeCCRnPins<T> {
     #[inline(always)]
-    fn start_all(&mut self) {
-        self.timer.continuous();
-    }
-
-    #[inline(always)]
-    fn pause_all(&mut self) {
-        self.timer.stop();
-    }
-
-    #[inline(always)]
-    fn read_capture(&mut self, ccrn: CCRn) -> u16 {
-        self.timer.get_ccrn(ccrn)
-    }
-
-    // Assume correct interrupt has fired and check for overcapture before returning capture
-    fn read_capture_checked(&mut self, ccrn: CCRn) -> CaptureResult {
-        let (cov, _) = self.timer.cov_ccifg_rd(ccrn);
-        let cap = self.read_capture(ccrn);
-        if cov {
-            self.timer.cov_ccifg_clr(ccrn);
-            Err(OverCapture(cap))
-        } else {
-            Ok(cap)
-        }
-    }
-
-    /// Set which input the channel will use to trigger captures. Defaults to capture input A.
-    #[inline]
-    pub fn set_input_select(&mut self, chan: T::Channel, sel: CapSelect) {
-        self.pause_all();
-        // Need to disable capture mode before changing capture settings
-        self.timer.set_cmp_mode(chan.into());
-        self.timer.set_cap_select(chan.into(), sel);
-        self.start_all();
-    }
-
-    /// Set the edge trigger for the channel's capture. Defaults to no-capture.
-    #[inline]
-    pub fn set_capture_trigger(&mut self, chan: T::Channel, mode: CapTrigger) {
-        self.pause_all();
-        // Need to disable capture mode before changing capture settings
-        self.timer.set_cmp_mode(chan.into());
-        self.timer.set_cap_trigger(chan.into(), mode);
-        self.start_all();
-    }
-
-    /// Enable capture interrupts for the selected channel
-    #[inline]
-    pub fn enable_cap_intr(&mut self, chan: T::Channel) {
-        self.timer.ccie_set(chan.into());
-    }
-
-    /// Disable capture interrupts for the selected channel
-    #[inline]
-    pub fn disable_cap_intr(&mut self, chan: T::Channel) {
-        self.timer.ccie_clr(chan.into());
-    }
-
-    #[inline]
-    /// Read the timer interrupt vector. Automatically resets corresponding interrupt flag. If the
-    /// vector corresponds to any of the capture registers, the capture will be read and returned.
-    pub fn interrupt_vector(&mut self) -> CaptureVector {
-        match read_tbxiv(&self.timer) {
-            TimerVector::NoInterrupt => CaptureVector::NoInterrupt,
-            TimerVector::SubTimer1 => {
-                CaptureVector::Capture1(self.read_capture_checked(CCRn::CCR1))
-            }
-            TimerVector::SubTimer2 => {
-                CaptureVector::Capture2(self.read_capture_checked(CCRn::CCR2))
-            }
-            TimerVector::SubTimer3 => {
-                CaptureVector::Capture3(self.read_capture_checked(CCRn::CCR3))
-            }
-            TimerVector::SubTimer4 => {
-                CaptureVector::Capture4(self.read_capture_checked(CCRn::CCR4))
-            }
-            TimerVector::SubTimer5 => {
-                CaptureVector::Capture5(self.read_capture_checked(CCRn::CCR5))
-            }
-            TimerVector::SubTimer6 => {
-                CaptureVector::Capture6(self.read_capture_checked(CCRn::CCR6))
-            }
-            TimerVector::MainTimer => CaptureVector::MainTimer,
+    fn default() -> Self {
+        Self {
+            cap0: Default::default(),
+            cap1: Default::default(),
+            cap2: Default::default(),
         }
     }
 }
 
-/// Error returned when the previous capture was overwritten before being read
-pub struct OverCapture(pub u16);
+/// Collection of uninitialized capture pins derived from timer peripheral with 7 capture-compare registers
+pub struct SevenCCRnPins<T: SevenCCRnTimer> {
+    /// Capture pin 0 (derived from capture-compare register 0)
+    pub cap0: Capture<T, CCR0>,
+    /// Capture pin 1 (derived from capture-compare register 1)
+    pub cap1: Capture<T, CCR1>,
+    /// Capture pin 2 (derived from capture-compare register 2)
+    pub cap2: Capture<T, CCR2>,
+    /// Capture pin 3 (derived from capture-compare register 3)
+    pub cap3: Capture<T, CCR3>,
+    /// Capture pin 4 (derived from capture-compare register 4)
+    pub cap4: Capture<T, CCR4>,
+    /// Capture pin 5 (derived from capture-compare register 5)
+    pub cap5: Capture<T, CCR5>,
+    /// Capture pin 6 (derived from capture-compare register 6)
+    pub cap6: Capture<T, CCR6>,
+}
 
-impl<T: CapturePeriph> Capture for CapturePort<T> {
-    type Error = OverCapture;
-    type Channel = T::Channel;
-    /// Number of cycles. Equivalent to `Self::Capture`.
-    type Time = u16;
-    /// Number of cycles. Equivalent to `Self::Time`.
+impl<T: SevenCCRnTimer> Default for SevenCCRnPins<T> {
+    #[inline(always)]
+    fn default() -> Self {
+        Self {
+            cap0: Default::default(),
+            cap1: Default::default(),
+            cap2: Default::default(),
+            cap3: Default::default(),
+            cap4: Default::default(),
+            cap5: Default::default(),
+            cap6: Default::default(),
+        }
+    }
+}
+
+/// Single capture pin with its own capture register
+pub struct Capture<T, C>(PhantomData<T>, PhantomData<C>);
+
+impl<T, C> Default for Capture<T, C> {
+    fn default() -> Self {
+        Self(PhantomData, PhantomData)
+    }
+}
+
+/// Single input capture pin
+pub trait CapturePin {
+    /// Type  of value returned by capture
+    type Capture;
+    /// Enumeration of `Capture` errors
+    ///
+    /// Possible errors:
+    ///
+    /// - *overcapture*, the previous capture value was overwritten because it
+    ///   was not read in a timely manner// Enumeration of `Capture` errors
+    ///
+    /// Possible errors:
+    ///
+    /// - *overcapture*, the previous capture value was overwritten because it
+    ///   was not read in a timely manner
+    type Error;
+
+    /// "Waits" for a transition in the capture `channel` and returns the value
+    /// of counter at that instant
+    fn capture(&mut self) -> nb::Result<Self::Capture, Self::Error>;
+}
+
+impl<T: CCRn<C>, C> CapturePin for Capture<T, C> {
     type Capture = u16;
-
-    #[inline(always)]
-    fn get_resolution(&self) -> Self::Time {
-        1
-    }
-
-    #[inline(always)]
-    fn set_resolution<U: Into<Self::Time>>(&mut self, _res: U) {}
+    type Error = OverCapture;
 
     #[inline]
-    fn capture(&mut self, chan: Self::Channel) -> nb::Result<Self::Capture, Self::Error> {
-        let (cov, ccifg) = self.timer.cov_ccifg_rd(chan.into());
+    fn capture(&mut self) -> nb::Result<Self::Capture, Self::Error> {
+        let timer = unsafe { T::steal() };
+        let (cov, ccifg) = timer.cov_ccifg_rd();
         if ccifg {
-            let ccrn = self.read_capture(chan.into());
-            self.timer.cov_ccifg_clr(chan.into());
+            let ccrn = timer.get_ccrn();
+            timer.cov_ccifg_clr();
             if cov {
                 Err(nb::Error::Other(OverCapture(ccrn)))
             } else {
@@ -242,31 +286,100 @@ impl<T: CapturePeriph> Capture for CapturePort<T> {
             Err(nb::Error::WouldBlock)
         }
     }
+}
+
+impl<T: CCRn<C>, C> Capture<T, C> {
+    #[inline]
+    /// Enable capture interrupts
+    pub fn enable_interrupts(&mut self) {
+        let timer = unsafe { T::steal() };
+        timer.ccie_set();
+    }
 
     #[inline]
-    fn enable(&mut self, _chan: Self::Channel) {}
-
-    #[inline]
-    fn disable(&mut self, _chan: Self::Channel) {
-        unimplemented!();
+    /// Disable capture interrupts
+    pub fn disable_interrupt(&mut self) {
+        let timer = unsafe { T::steal() };
+        timer.ccie_clr();
     }
 }
 
-/// Extension trait for creating capture ports from timer peripherals
-pub trait CaptureExt: Sized + TimerClkPin {
-    #[doc(hidden)]
-    type Capture;
+/// Error returned when the previous capture was overwritten before being read
+pub struct OverCapture(pub u16);
 
-    /// Create new capture port out of timer
-    fn to_capture(self, config: TimerConfig<Self>) -> Self::Capture;
+/// Capture TBIV interrupt vector
+pub enum CaptureVector<T> {
+    /// No pending interrupt
+    NoInterrupt,
+    /// Interrupt caused by capture register 1.
+    Capture1(InterruptCapture<T, CCR1>),
+    /// Interrupt caused by capture register 2.
+    Capture2(InterruptCapture<T, CCR2>),
+    /// Interrupt caused by capture register 3.
+    Capture3(InterruptCapture<T, CCR3>),
+    /// Interrupt caused by capture register 4.
+    Capture4(InterruptCapture<T, CCR4>),
+    /// Interrupt caused by capture register 5.
+    Capture5(InterruptCapture<T, CCR5>),
+    /// Interrupt caused by capture register 6.
+    Capture6(InterruptCapture<T, CCR6>),
+    /// Interrupt caused by main timer overflow
+    MainTimer,
 }
 
-impl<T: CapturePeriph> CaptureExt for T {
-    type Capture = CapturePort<T>;
+/// Token returned when reading the interrupt vector that allows a one-time read of the capture
+/// register corresponding to the interrupt.
+pub struct InterruptCapture<T, C>(PhantomData<T>, PhantomData<C>);
 
+impl<T: CCRn<C>, C> InterruptCapture<T, C> {
+    /// Performs a one-time capture read without considering the interrupt flag. Always call this
+    /// instead of `capture()` after reading the capture interrupt vector, since reading the vector
+    /// already clears the interrupt flag that `capture()` checks for.
     #[inline]
-    fn to_capture(self, config: TimerConfig<Self>) -> Self::Capture {
-        config.write_regs(&self);
-        CapturePort { timer: self }
+    pub fn interrupt_capture(self, _cap: &mut Capture<T, C>) -> Result<u16, OverCapture> {
+        let timer = unsafe { T::steal() };
+        let (cov, _) = timer.cov_ccifg_rd();
+        let ccrn = timer.get_ccrn();
+        if cov {
+            timer.cov_ccifg_clr();
+            Err(OverCapture(ccrn))
+        } else {
+            Ok(ccrn)
+        }
+    }
+}
+
+/// Interrupt vector register for determining which capture-register caused an ISR
+pub struct TBxIV<T>(PhantomData<T>);
+
+impl<T: TimerB> TBxIV<T> {
+    #[inline]
+    /// Read the capture interrupt vector. Automatically resets corresponding interrupt flag. If
+    /// the vector corresponds to an available capture, a one-time capture read token will be
+    /// returned as well.
+    pub fn interrupt_vector(&mut self) -> CaptureVector<T> {
+        let timer = unsafe { T::steal() };
+        match read_tbxiv(timer) {
+            TimerVector::NoInterrupt => CaptureVector::NoInterrupt,
+            TimerVector::SubTimer1 => {
+                CaptureVector::Capture1(InterruptCapture(PhantomData, PhantomData))
+            }
+            TimerVector::SubTimer2 => {
+                CaptureVector::Capture2(InterruptCapture(PhantomData, PhantomData))
+            }
+            TimerVector::SubTimer3 => {
+                CaptureVector::Capture3(InterruptCapture(PhantomData, PhantomData))
+            }
+            TimerVector::SubTimer4 => {
+                CaptureVector::Capture4(InterruptCapture(PhantomData, PhantomData))
+            }
+            TimerVector::SubTimer5 => {
+                CaptureVector::Capture5(InterruptCapture(PhantomData, PhantomData))
+            }
+            TimerVector::SubTimer6 => {
+                CaptureVector::Capture6(InterruptCapture(PhantomData, PhantomData))
+            }
+            TimerVector::MainTimer => CaptureVector::MainTimer,
+        }
     }
 }

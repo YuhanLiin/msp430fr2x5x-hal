@@ -32,40 +32,36 @@ type Tb3 = pac::tb3::RegisterBlock;
 impl PwmConfigChannels for Tb0 {
     #[inline]
     fn config_channels(&self) {
-        let timer = unsafe { Self::steal() };
-        CCRn::<CCR1>::config_outmod(timer, Outmod::ResetSet);
-        CCRn::<CCR2>::config_outmod(timer, Outmod::ResetSet);
+        CCRn::<CCR1>::config_outmod(self, Outmod::ResetSet);
+        CCRn::<CCR2>::config_outmod(self, Outmod::ResetSet);
     }
 }
 
 impl PwmConfigChannels for Tb1 {
     #[inline]
     fn config_channels(&self) {
-        let timer = unsafe { Self::steal() };
-        CCRn::<CCR1>::config_outmod(timer, Outmod::ResetSet);
-        CCRn::<CCR2>::config_outmod(timer, Outmod::ResetSet);
+        CCRn::<CCR1>::config_outmod(self, Outmod::ResetSet);
+        CCRn::<CCR2>::config_outmod(self, Outmod::ResetSet);
     }
 }
 
 impl PwmConfigChannels for Tb2 {
     #[inline]
     fn config_channels(&self) {
-        let timer = unsafe { Self::steal() };
-        CCRn::<CCR1>::config_outmod(timer, Outmod::ResetSet);
-        CCRn::<CCR2>::config_outmod(timer, Outmod::ResetSet);
+        CCRn::<CCR1>::config_outmod(self, Outmod::ResetSet);
+        CCRn::<CCR2>::config_outmod(self, Outmod::ResetSet);
     }
 }
 
 impl PwmConfigChannels for Tb3 {
     #[inline]
     fn config_channels(&self) {
-        let timer = unsafe { Self::steal() };
-        CCRn::<CCR1>::config_outmod(timer, Outmod::ResetSet);
-        CCRn::<CCR2>::config_outmod(timer, Outmod::ResetSet);
-        CCRn::<CCR3>::config_outmod(timer, Outmod::ResetSet);
-        CCRn::<CCR4>::config_outmod(timer, Outmod::ResetSet);
-        CCRn::<CCR5>::config_outmod(timer, Outmod::ResetSet);
-        CCRn::<CCR6>::config_outmod(timer, Outmod::ResetSet);
+        CCRn::<CCR1>::config_outmod(self, Outmod::ResetSet);
+        CCRn::<CCR2>::config_outmod(self, Outmod::ResetSet);
+        CCRn::<CCR3>::config_outmod(self, Outmod::ResetSet);
+        CCRn::<CCR4>::config_outmod(self, Outmod::ResetSet);
+        CCRn::<CCR5>::config_outmod(self, Outmod::ResetSet);
+        CCRn::<CCR6>::config_outmod(self, Outmod::ResetSet);
     }
 }
 

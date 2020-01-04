@@ -50,27 +50,17 @@ pub enum Outmod {
     ResetSet,
 }
 
-/// Capture trigger
-pub enum CapTrigger {
-    /// No captures will occur
+pub enum Cm {
     NoCap,
-    /// Capture on input rising edge
     RisingEdge,
-    /// Capture on input falling edge
     FallingEdge,
-    /// Capture on input rising and falling edge
     BothEdges,
 }
 
-/// Capture input select
-pub enum CapSelect {
-    /// Capture input A
+pub enum Ccis {
     InputA,
-    /// Capture input B
     InputB,
-    /// Chip ground (always low)
     Gnd,
-    /// Chip VCC (always high)
     Vcc,
 }
 
@@ -113,10 +103,7 @@ pub trait CCRn<C>: TimerSteal {
     fn get_ccrn(&self) -> u16;
 
     fn config_outmod(&self, outmod: Outmod);
-
-    fn set_cmp_mode(&self);
-    fn set_cap_trigger(&self, mode: CapTrigger);
-    fn set_cap_select(&self, ccis: CapSelect);
+    fn config_cap_mode(&self, cm: Cm, ccis: Ccis);
 
     fn ccifg_rd(&self) -> bool;
     fn ccifg_clr(&self);
@@ -140,90 +127,61 @@ macro_rules! ccrn_impl {
     ($tbx:ident, $CCRn:ident, $tbxcctln:ident, $tbxccrn:ident) => {
         impl CCRn<$CCRn> for pac::$tbx::RegisterBlock {
             #[inline(always)]
-            #[allow(unreachable_patterns)]
             fn set_ccrn(&self, count: u16) {
                 self.$tbxccrn.write(|w| unsafe { w.bits(count) });
             }
 
             #[inline(always)]
-            #[allow(unreachable_patterns)]
             fn get_ccrn(&self) -> u16 {
                 self.$tbxccrn.read().bits()
             }
 
             #[inline(always)]
-            #[allow(unreachable_patterns)]
             fn config_outmod(&self, outmod: Outmod) {
                 self.$tbxcctln.write(|w| w.outmod().bits(outmod as u8));
             }
 
             #[inline(always)]
-            #[allow(unreachable_patterns)]
-            fn set_cmp_mode(&self) {
-                unsafe { self.$tbxcctln.clear_bits(|w| w.cap().compare()) };
-            }
-
-            #[inline(always)]
-            #[allow(unreachable_patterns)]
-            fn set_cap_trigger(&self, cm: CapTrigger) {
-                self.$tbxcctln.modify(|r, w| {
-                    unsafe { w.bits(r.bits()) }
-                        .cap()
+            fn config_cap_mode(&self, cm: Cm, ccis: Ccis) {
+                self.$tbxcctln.write(|w| {
+                    w.cap()
                         .capture()
                         .scs()
                         .sync()
                         .cm()
                         .bits(cm as u8)
-                });
-            }
-
-            #[inline(always)]
-            #[allow(unreachable_patterns)]
-            fn set_cap_select(&self, ccis: CapSelect) {
-                self.$tbxcctln.modify(|r, w| {
-                    unsafe { w.bits(r.bits()) }
-                        .cap()
-                        .capture()
-                        .scs()
-                        .sync()
                         .ccis()
                         .bits(ccis as u8)
                 });
             }
 
             #[inline(always)]
-            #[allow(unreachable_patterns)]
             fn ccifg_rd(&self) -> bool {
                 self.$tbxcctln.read().ccifg().bit()
             }
 
             #[inline(always)]
-            #[allow(unreachable_patterns)]
             fn ccifg_clr(&self) {
                 unsafe { self.$tbxcctln.clear_bits(|w| w.ccifg().clear_bit()) };
             }
 
             #[inline(always)]
-            #[allow(unreachable_patterns)]
             fn ccie_set(&self) {
                 unsafe { self.$tbxcctln.set_bits(|w| w.ccie().set_bit()) };
             }
 
             #[inline(always)]
-            #[allow(unreachable_patterns)]
             fn ccie_clr(&self) {
                 unsafe { self.$tbxcctln.clear_bits(|w| w.ccie().clear_bit()) };
             }
 
             #[inline(always)]
-            #[allow(unreachable_patterns)]
             fn cov_ccifg_rd(&self) -> (bool, bool) {
                 let cctl = self.$tbxcctln.read();
                 (cctl.cov().bit(), cctl.ccifg().bit())
             }
 
             #[inline(always)]
-            #[allow(unreachable_patterns)]
             fn cov_ccifg_clr(&self) {
                 unsafe {
                     self.$tbxcctln

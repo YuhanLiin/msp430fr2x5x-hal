@@ -262,7 +262,7 @@ pub(crate) fn read_tbxiv<T: TimerB>(timer: &T) -> TimerVector {
 }
 
 /// Interrupt vector register for determining which timer caused an ISR
-pub struct TBxIV<T: TimerB>(PhantomData<T>);
+pub struct TBxIV<T>(PhantomData<T>);
 
 impl<T: TimerB> TBxIV<T> {
     #[inline]
