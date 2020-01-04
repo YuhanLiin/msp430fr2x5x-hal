@@ -63,6 +63,15 @@ struct PinConfig {
     trigger: CapTrigger,
 }
 
+impl PinConfig {
+    fn new() -> Self {
+        Self {
+            select: CapSelect::CapInputA,
+            trigger: CapTrigger::RisingEdge,
+        }
+    }
+}
+
 /// Configuration object for all capture pins of a single port
 pub struct CaptureConfig {
     cap0: PinConfig,
@@ -95,6 +104,19 @@ impl CaptureConfig {
     config_fn!(config_capture4, cap4);
     config_fn!(config_capture5, cap5);
     config_fn!(config_capture6, cap6);
+
+    /// Create new capture config. All pins default to input A and rising edge trigger.
+    pub fn new() -> Self {
+        Self {
+            cap0: PinConfig::new(),
+            cap1: PinConfig::new(),
+            cap2: PinConfig::new(),
+            cap3: PinConfig::new(),
+            cap4: PinConfig::new(),
+            cap5: PinConfig::new(),
+            cap6: PinConfig::new(),
+        }
+    }
 }
 
 #[doc(hidden)]
