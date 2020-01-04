@@ -115,12 +115,19 @@ pub trait CCRn<C>: TimerSteal {
     fn cov_ccifg_clr(&self);
 }
 
+/// Label for capture-compare register 0
 pub struct CCR0;
+/// Label for capture-compare register 1
 pub struct CCR1;
+/// Label for capture-compare register 2
 pub struct CCR2;
+/// Label for capture-compare register 3
 pub struct CCR3;
+/// Label for capture-compare register 4
 pub struct CCR4;
+/// Label for capture-compare register 5
 pub struct CCR5;
+/// Label for capture-compare register 6
 pub struct CCR6;
 
 macro_rules! ccrn_impl {

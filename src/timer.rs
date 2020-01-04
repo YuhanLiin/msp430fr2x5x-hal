@@ -6,14 +6,14 @@
 
 use crate::clock::{Aclk, Smclk};
 use crate::gpio::{Alternate1, Floating, Input, Pin, Pin2, Pin6, Pin7, Port2, Port5, Port6};
-use crate::hw_traits::timerb::{
-    CCRn, Tbssel, TimerB, TimerSteal, CCR0, CCR1, CCR2, CCR3, CCR4, CCR5, CCR6,
-};
+use crate::hw_traits::timerb::{CCRn, Tbssel, TimerB, TimerSteal};
 use core::marker::PhantomData;
 use embedded_hal::timer::{Cancel, CountDown, Periodic};
 use msp430fr2355 as pac;
 
-pub use crate::hw_traits::timerb::{TimerDiv, TimerExDiv};
+pub use crate::hw_traits::timerb::{
+    TimerDiv, TimerExDiv, CCR0, CCR1, CCR2, CCR3, CCR4, CCR5, CCR6,
+};
 
 /// Trait indicating that the peripheral can be used as a sub-timer or PWM
 pub trait CapCmpPeriph<C>: CCRn<C> {}

@@ -6,15 +6,21 @@ use embedded_hal::digital::v2::ToggleableOutputPin;
 use msp430::interrupt::{enable, free, Mutex};
 use msp430fr2355::interrupt;
 use msp430fr2x5x_hal::{
-    capture::{CapSelect, CapThreeChannel, CapTrigger, CapturePort, CaptureVector, TimerConfig},
+    capture::{
+        CapCmpPeriph, CapSelect, CapTrigger, Capture, CaptureConfig, CaptureVector, TBxIV,
+        TimerConfig,
+    },
     clock::{DcoclkFreqSel, MclkDiv, SmclkDiv},
     gpio::*,
     prelude::*,
+    timer::CCR1,
 };
 use panic_msp430 as _;
 use void::ResultVoidExt;
 
-static CAPTURE: Mutex<RefCell<Option<CapturePort<msp430fr2355::TB0>>>> =
+static CAPTURE: Mutex<RefCell<Option<Capture<msp430fr2355::tb0::RegisterBlock, CCR1>>>> =
+    Mutex::new(RefCell::new(None));
+static VECTOR: Mutex<RefCell<Option<TBxIV<msp430fr2355::tb0::RegisterBlock>>>> =
     Mutex::new(RefCell::new(None));
 static RED_LED: Mutex<RefCell<Option<Pin<Port1, Pin0, Output>>>> = Mutex::new(RefCell::new(None));
 
@@ -40,23 +46,32 @@ fn main() {
         .aclk_vloclk()
         .freeze(&mut fram);
 
-    let mut capture = periph.TB0.to_capture(TimerConfig::aclk(&aclk));
-    const CHAN1: CapThreeChannel = CapThreeChannel::Chan1;
-    capture.set_capture_trigger(CHAN1, CapTrigger::FallingEdge);
-    capture.set_input_select(CHAN1, CapSelect::InputA);
+    let captures = periph.TB0.to_capture(
+        TimerConfig::aclk(&aclk),
+        CaptureConfig::new().config_capture1(CapSelect::CapInputA, CapTrigger::FallingEdge),
+    );
+    let mut capture = captures.cap1;
+    let vectors = captures.tbxiv;
 
     p1.pin6.to_alternate2();
-    capture.enable_cap_intr(CHAN1);
-    free(|cs| *CAPTURE.borrow(&cs).borrow_mut() = Some(capture));
+    setup_capture(&mut capture);
+    free(|cs| {
+        *CAPTURE.borrow(&cs).borrow_mut() = Some(capture);
+        *VECTOR.borrow(&cs).borrow_mut() = Some(vectors)
+    });
     unsafe { enable() };
 
     loop {}
 }
 
+fn setup_capture<T: CapCmpPeriph<C>, C>(capture: &mut Capture<T, C>) {
+    capture.enable_interrupts();
+}
+
 interrupt!(TIMER0_B1, capture_isr);
 fn capture_isr() {
     free(|cs| {
-        match CAPTURE
+        match VECTOR
             .borrow(&cs)
             .borrow_mut()
             .as_mut()
@@ -64,7 +79,10 @@ fn capture_isr() {
             .interrupt_vector()
         {
             CaptureVector::Capture1(cap) => {
-                if cap.is_ok() {
+                if cap
+                    .interrupt_capture(CAPTURE.borrow(&cs).borrow_mut().as_mut().unwrap())
+                    .is_ok()
+                {
                     RED_LED
                         .borrow(&cs)
                         .borrow_mut()

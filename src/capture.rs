@@ -8,11 +8,11 @@
 use crate::hw_traits::timerb::{
     CCRn, Ccis, Cm, TimerB, TimerSteal, CCR0, CCR1, CCR2, CCR3, CCR4, CCR5, CCR6,
 };
-use crate::timer::{read_tbxiv, SevenCCRnTimer, ThreeCCRnTimer, TimerPeriph, TimerVector};
+use crate::timer::{read_tbxiv, SevenCCRnTimer, ThreeCCRnTimer, TimerVector};
 use core::marker::PhantomData;
 use msp430fr2355 as pac;
 
-pub use crate::timer::{CapCmpPeriph, TimerConfig, TimerDiv, TimerExDiv};
+pub use crate::timer::{CapCmpPeriph, TimerConfig, TimerDiv, TimerExDiv, TimerPeriph};
 
 type Tb0 = pac::tb0::RegisterBlock;
 type Tb1 = pac::tb1::RegisterBlock;
@@ -211,6 +211,8 @@ pub struct ThreeCCRnPins<T: ThreeCCRnTimer> {
     pub cap1: Capture<T, CCR1>,
     /// Capture pin 2 (derived from capture-compare register 2)
     pub cap2: Capture<T, CCR2>,
+    /// Interrupt vector register
+    pub tbxiv: TBxIV<T>,
 }
 
 impl<T: ThreeCCRnTimer> Default for ThreeCCRnPins<T> {
@@ -220,6 +222,7 @@ impl<T: ThreeCCRnTimer> Default for ThreeCCRnPins<T> {
             cap0: Default::default(),
             cap1: Default::default(),
             cap2: Default::default(),
+            tbxiv: TBxIV(PhantomData),
         }
     }
 }
@@ -240,6 +243,8 @@ pub struct SevenCCRnPins<T: SevenCCRnTimer> {
     pub cap5: Capture<T, CCR5>,
     /// Capture pin 6 (derived from capture-compare register 6)
     pub cap6: Capture<T, CCR6>,
+    /// Interrupt vector register
+    pub tbxiv: TBxIV<T>,
 }
 
 impl<T: SevenCCRnTimer> Default for SevenCCRnPins<T> {
@@ -253,6 +258,7 @@ impl<T: SevenCCRnTimer> Default for SevenCCRnPins<T> {
             cap4: Default::default(),
             cap5: Default::default(),
             cap6: Default::default(),
+            tbxiv: TBxIV(PhantomData),
         }
     }
 }
