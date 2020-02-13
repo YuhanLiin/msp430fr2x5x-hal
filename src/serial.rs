@@ -433,7 +433,7 @@ impl<USCI: SerialUsci> SerialConfig<USCI, ClockSet> {
     /// # Panics
     /// Panics if configured baudrate is higher than the clock rate or less than clock rate / 0xFFFF.
     #[inline]
-    pub fn tx_only<T: Into<USCI::TxPin>>(self, _tx: T) -> (Tx<USCI>) {
+    pub fn tx_only<T: Into<USCI::TxPin>>(self, _tx: T) -> Tx<USCI> {
         self.config_hw();
         Tx(PhantomData)
     }
@@ -443,7 +443,7 @@ impl<USCI: SerialUsci> SerialConfig<USCI, ClockSet> {
     /// # Panics
     /// Panics if configured baudrate is higher than the clock rate or less than clock rate / 0xFFFF.
     #[inline]
-    pub fn rx_only<R: Into<USCI::RxPin>>(self, _rx: R) -> (Rx<USCI>) {
+    pub fn rx_only<R: Into<USCI::RxPin>>(self, _rx: R) -> Rx<USCI> {
         self.config_hw();
         Rx(PhantomData)
     }
