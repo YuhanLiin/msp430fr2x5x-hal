@@ -3,7 +3,7 @@
 //!
 //! As of this writing, the only supported board is the MSP430FR2355.
 //!
-//! [`embedded_hal`]: https://github.com/japaric/embedded-hal
+//! [`embedded_hal`]: https://github.com/rust-embedded/embedded-hal
 //! [`datasheet`]: http://www.ti.com/lit/ds/symlink/msp430fr2355.pdf
 //! [`User's guide`]: http://www.ti.com/lit/ug/slau445i/slau445i.pdf
 //!
