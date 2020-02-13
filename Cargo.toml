@@ -1,5 +1,3 @@
-cargo-features = ["profile-overrides"]
-
 [package]
 name = "msp430fr2x5x-hal"
 version = "0.1.1"
