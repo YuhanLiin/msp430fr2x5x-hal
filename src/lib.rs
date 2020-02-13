@@ -39,5 +39,5 @@ pub mod serial;
 pub mod timer;
 pub mod watchdog;
 
-mod bits;
 mod hw_traits;
+mod util;

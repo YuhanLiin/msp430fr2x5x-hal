@@ -12,6 +12,7 @@ use crate::hw_traits::timerb::{
     CCRn, Outmod, TimerB, TimerSteal, CCR0, CCR1, CCR2, CCR3, CCR4, CCR5, CCR6,
 };
 use crate::timer::{SevenCCRnTimer, ThreeCCRnTimer};
+use crate::util::SealedDefault;
 use core::marker::PhantomData;
 use embedded_hal::PwmPin;
 use msp430fr2355 as pac;
@@ -182,11 +183,11 @@ pub struct ThreeCCRnPins<T: ThreeCCRnTimer> {
     pub pwm2: PwmUninit<T, CCR2>,
 }
 
-impl<T: ThreeCCRnTimer> Default for ThreeCCRnPins<T> {
+impl<T: ThreeCCRnTimer> SealedDefault for ThreeCCRnPins<T> {
     fn default() -> Self {
         Self {
-            pwm1: Default::default(),
-            pwm2: Default::default(),
+            pwm1: SealedDefault::default(),
+            pwm2: SealedDefault::default(),
         }
     }
 }
@@ -207,15 +208,15 @@ pub struct SevenCCRnPins<T: SevenCCRnTimer> {
     pub pwm6: PwmUninit<T, CCR6>,
 }
 
-impl<T: SevenCCRnTimer> Default for SevenCCRnPins<T> {
+impl<T: SevenCCRnTimer> SealedDefault for SevenCCRnPins<T> {
     fn default() -> Self {
         Self {
-            pwm1: Default::default(),
-            pwm2: Default::default(),
-            pwm3: Default::default(),
-            pwm4: Default::default(),
-            pwm5: Default::default(),
-            pwm6: Default::default(),
+            pwm1: SealedDefault::default(),
+            pwm2: SealedDefault::default(),
+            pwm3: SealedDefault::default(),
+            pwm4: SealedDefault::default(),
+            pwm5: SealedDefault::default(),
+            pwm6: SealedDefault::default(),
         }
     }
 }
@@ -237,7 +238,7 @@ where
     }
 }
 
-impl<T, C> Default for PwmUninit<T, C> {
+impl<T, C> SealedDefault for PwmUninit<T, C> {
     fn default() -> Self {
         Self(PhantomData, PhantomData)
     }
@@ -258,7 +259,7 @@ pub trait PwmExt: Sized + sealed::SealedPwmExt {
     /// Timer peripheral's `RegisterBlock`
     type Timer: TimerPeriph + PwmConfigChannels;
     /// Collection of PWM pins
-    type Pins: Default;
+    type Pins: SealedDefault;
 
     /// Create new PWM pins out of timer
     #[inline]

@@ -7,6 +7,7 @@
 use crate::clock::{Aclk, Smclk};
 use crate::gpio::{Alternate1, Floating, Input, Pin, Pin2, Pin6, Pin7, Port2, Port5, Port6};
 use crate::hw_traits::timerb::{CCRn, Tbssel, TimerB, TimerSteal};
+use crate::util::SealedDefault;
 use core::marker::PhantomData;
 use embedded_hal::timer::{Cancel, CountDown, Periodic};
 use msp430fr2355 as pac;
@@ -129,13 +130,13 @@ pub struct ThreeCCRnParts<T: ThreeCCRnTimer> {
     pub subtimer2: SubTimer<T, CCR2>,
 }
 
-impl<T: ThreeCCRnTimer> Default for ThreeCCRnParts<T> {
+impl<T: ThreeCCRnTimer> SealedDefault for ThreeCCRnParts<T> {
     fn default() -> Self {
         Self {
-            timer: Default::default(),
+            timer: SealedDefault::default(),
             tbxiv: TBxIV(PhantomData),
-            subtimer1: Default::default(),
-            subtimer2: Default::default(),
+            subtimer1: SealedDefault::default(),
+            subtimer2: SealedDefault::default(),
         }
     }
 }
@@ -160,17 +161,17 @@ pub struct SevenCCRnParts<T: SevenCCRnTimer> {
     pub subtimer6: SubTimer<T, CCR6>,
 }
 
-impl<T: SevenCCRnTimer> Default for SevenCCRnParts<T> {
+impl<T: SevenCCRnTimer> SealedDefault for SevenCCRnParts<T> {
     fn default() -> Self {
         Self {
-            timer: Default::default(),
+            timer: SealedDefault::default(),
             tbxiv: TBxIV(PhantomData),
-            subtimer1: Default::default(),
-            subtimer2: Default::default(),
-            subtimer3: Default::default(),
-            subtimer4: Default::default(),
-            subtimer5: Default::default(),
-            subtimer6: Default::default(),
+            subtimer1: SealedDefault::default(),
+            subtimer2: SealedDefault::default(),
+            subtimer3: SealedDefault::default(),
+            subtimer4: SealedDefault::default(),
+            subtimer5: SealedDefault::default(),
+            subtimer6: SealedDefault::default(),
         }
     }
 }
@@ -178,7 +179,7 @@ impl<T: SevenCCRnTimer> Default for SevenCCRnParts<T> {
 /// Periodic countdown timer
 pub struct Timer<T: TimerPeriph>(PhantomData<T>);
 
-impl<T: TimerPeriph> Default for Timer<T> {
+impl<T: TimerPeriph> SealedDefault for Timer<T> {
     fn default() -> Self {
         Self(PhantomData)
     }
@@ -187,7 +188,7 @@ impl<T: TimerPeriph> Default for Timer<T> {
 /// Sub-timer with its own interrupts and threshold that shares its countdown with the main timer
 pub struct SubTimer<T: CCRn<C>, C>(PhantomData<T>, PhantomData<C>);
 
-impl<T: CapCmpPeriph<C>, C> Default for SubTimer<T, C> {
+impl<T: CapCmpPeriph<C>, C> SealedDefault for SubTimer<T, C> {
     fn default() -> Self {
         Self(PhantomData, PhantomData)
     }
@@ -207,7 +208,7 @@ mod sealed {
 /// Extension trait for creating timers
 pub trait TimerExt: Sized + sealed::SealedTimerExt {
     /// Set of timers
-    type Parts: Default;
+    type Parts: SealedDefault;
     /// RegisterBlock type for the timer
     type Timer: TimerPeriph;
 

@@ -14,8 +14,8 @@
 //! [`datasheet`]: http://www.ti.com/lit/ds/symlink/msp430fr2355.pdf
 
 pub use crate::batch_gpio::*;
-use crate::bits::BitsExt;
 use crate::hw_traits::gpio::{GpioPeriph, IntrPeriph};
+use crate::util::BitsExt;
 use core::marker::PhantomData;
 use embedded_hal::digital::v2::{InputPin, OutputPin, StatefulOutputPin, ToggleableOutputPin};
 use msp430fr2355 as pac;

@@ -1,4 +1,4 @@
-pub trait BitsExt {
+pub(crate) trait BitsExt {
     fn set(self, shift: u8) -> Self;
     fn clear(self, shift: u8) -> Self;
     fn check(self, shift: u8) -> Self;
@@ -31,4 +31,10 @@ impl BitsExt for u8 {
     fn clear_mask(self, mask: Self) -> Self {
         self & !mask
     }
+}
+
+// Like Default, except it's private so HAL user's can't call it, preventing users from creating
+// HAL objects out of thin air
+pub trait SealedDefault {
+    fn default() -> Self;
 }

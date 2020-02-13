@@ -12,6 +12,7 @@ use crate::hw_traits::timerb::{
     CCRn, Ccis, Cm, TimerB, TimerSteal, CCR0, CCR1, CCR2, CCR3, CCR4, CCR5, CCR6,
 };
 use crate::timer::{read_tbxiv, SevenCCRnTimer, ThreeCCRnTimer, TimerVector};
+use crate::util::SealedDefault;
 use core::marker::PhantomData;
 use msp430fr2355 as pac;
 
@@ -185,7 +186,7 @@ pub trait CaptureExt: Sized + sealed::SealedCaptureExt {
     /// Timer peripheral's `RegisterBlock`
     type Capture: TimerPeriph + CaptureConfigChannels;
     /// Set of capture pins
-    type Pins: Default;
+    type Pins: SealedDefault;
 
     /// Create new capture port out of timer
     #[inline]
@@ -231,13 +232,13 @@ pub struct ThreeCCRnPins<T: ThreeCCRnTimer> {
     pub tbxiv: TBxIV<T>,
 }
 
-impl<T: ThreeCCRnTimer> Default for ThreeCCRnPins<T> {
+impl<T: ThreeCCRnTimer> SealedDefault for ThreeCCRnPins<T> {
     #[inline(always)]
     fn default() -> Self {
         Self {
-            cap0: Default::default(),
-            cap1: Default::default(),
-            cap2: Default::default(),
+            cap0: SealedDefault::default(),
+            cap1: SealedDefault::default(),
+            cap2: SealedDefault::default(),
             tbxiv: TBxIV(PhantomData),
         }
     }
@@ -263,17 +264,17 @@ pub struct SevenCCRnPins<T: SevenCCRnTimer> {
     pub tbxiv: TBxIV<T>,
 }
 
-impl<T: SevenCCRnTimer> Default for SevenCCRnPins<T> {
+impl<T: SevenCCRnTimer> SealedDefault for SevenCCRnPins<T> {
     #[inline(always)]
     fn default() -> Self {
         Self {
-            cap0: Default::default(),
-            cap1: Default::default(),
-            cap2: Default::default(),
-            cap3: Default::default(),
-            cap4: Default::default(),
-            cap5: Default::default(),
-            cap6: Default::default(),
+            cap0: SealedDefault::default(),
+            cap1: SealedDefault::default(),
+            cap2: SealedDefault::default(),
+            cap3: SealedDefault::default(),
+            cap4: SealedDefault::default(),
+            cap5: SealedDefault::default(),
+            cap6: SealedDefault::default(),
             tbxiv: TBxIV(PhantomData),
         }
     }
@@ -282,7 +283,7 @@ impl<T: SevenCCRnTimer> Default for SevenCCRnPins<T> {
 /// Single capture pin with its own capture register
 pub struct Capture<T: CCRn<C>, C>(PhantomData<T>, PhantomData<C>);
 
-impl<T: CCRn<C>, C> Default for Capture<T, C> {
+impl<T: CCRn<C>, C> SealedDefault for Capture<T, C> {
     fn default() -> Self {
         Self(PhantomData, PhantomData)
     }
