@@ -41,5 +41,5 @@ opt-level = "s"
 codegen-units = 1
 debug = true
 
-[profile.dev.overrides."*"]
+[profile.dev.package."*"]
 opt-level = "z"
