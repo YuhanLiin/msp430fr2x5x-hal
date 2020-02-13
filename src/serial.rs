@@ -114,8 +114,17 @@ impl Loopback {
     }
 }
 
+mod sealed {
+    use super::*;
+
+    pub trait SealedSerialUsci {}
+
+    impl SealedSerialUsci for pac::E_USCI_A0 {}
+    impl SealedSerialUsci for pac::E_USCI_A1 {}
+}
+
 /// Marks a USCI type that can be used as a serial UART
-pub trait SerialUsci: Sized {
+pub trait SerialUsci: Sized + sealed::SealedSerialUsci {
     /// Peripheral type
     type Periph: EUsciUart;
     /// Pin used for serial UCLK

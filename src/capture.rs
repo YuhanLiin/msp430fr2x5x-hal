@@ -17,6 +17,17 @@ use msp430fr2355 as pac;
 
 pub use crate::timer::{CapCmpPeriph, TimerConfig, TimerDiv, TimerExDiv, TimerPeriph};
 
+mod sealed {
+    use super::*;
+
+    pub trait SealedCaptureExt {}
+
+    impl SealedCaptureExt for pac::TB0 {}
+    impl SealedCaptureExt for pac::TB1 {}
+    impl SealedCaptureExt for pac::TB2 {}
+    impl SealedCaptureExt for pac::TB3 {}
+}
+
 type Tb0 = pac::tb0::RegisterBlock;
 type Tb1 = pac::tb1::RegisterBlock;
 type Tb2 = pac::tb2::RegisterBlock;
@@ -122,6 +133,8 @@ impl CaptureConfig {
     }
 }
 
+// Implemented for RegisterBlocks, which the user will never name when using the HAL, so we can
+// keep this trait hidden.
 #[doc(hidden)]
 pub trait CaptureConfigChannels {
     fn config_channels(&self, config: CaptureConfig);
@@ -168,8 +181,8 @@ impl CaptureConfigChannels for Tb3 {
 }
 
 /// Extension trait for creating capture pins from timer peripherals
-pub trait CaptureExt: Sized {
-    #[doc(hidden)]
+pub trait CaptureExt: Sized + sealed::SealedCaptureExt {
+    /// Timer peripheral's `RegisterBlock`
     type Capture: TimerPeriph + CaptureConfigChannels;
     /// Set of capture pins
     type Pins: Default;
@@ -275,6 +288,7 @@ impl<T, C> Default for Capture<T, C> {
     }
 }
 
+// Candidate for embedded_hal inclusion
 /// Single input capture pin
 pub trait CapturePin {
     /// Type  of value returned by capture

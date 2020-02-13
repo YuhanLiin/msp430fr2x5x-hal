@@ -21,8 +21,43 @@ use embedded_hal::digital::v2::{InputPin, OutputPin, StatefulOutputPin, Toggleab
 use msp430fr2355 as pac;
 use pac::{P1, P2, P3, P4, P5, P6};
 
+mod sealed {
+    use super::*;
+
+    pub trait SealedPinNum {}
+    pub trait SealedPortNum {}
+    pub trait SealedGpioPort {}
+    pub trait SealedGpioFunction {}
+
+    impl SealedPinNum for Pin0 {}
+    impl SealedPinNum for Pin1 {}
+    impl SealedPinNum for Pin2 {}
+    impl SealedPinNum for Pin3 {}
+    impl SealedPinNum for Pin4 {}
+    impl SealedPinNum for Pin5 {}
+    impl SealedPinNum for Pin6 {}
+    impl SealedPinNum for Pin7 {}
+
+    impl SealedPortNum for Port1 {}
+    impl SealedPortNum for Port2 {}
+    impl SealedPortNum for Port3 {}
+    impl SealedPortNum for Port4 {}
+    impl SealedPortNum for Port5 {}
+    impl SealedPortNum for Port6 {}
+
+    impl SealedGpioPort for P1 {}
+    impl SealedGpioPort for P2 {}
+    impl SealedGpioPort for P3 {}
+    impl SealedGpioPort for P4 {}
+    impl SealedGpioPort for P5 {}
+    impl SealedGpioPort for P6 {}
+
+    impl SealedGpioFunction for Output {}
+    impl<PULL> SealedGpioFunction for Input<PULL> {}
+}
+
 /// Trait that encompasses all `Pinx` types for specifying a pin number.
-pub trait PinNum {
+pub trait PinNum: sealed::SealedPinNum {
     /// Pin number
     const NUM: u8;
 
@@ -33,11 +68,12 @@ pub trait PinNum {
 }
 
 /// Trait that encompasses all `Portx` types for specifying GPIO port
-pub trait PortNum {
+pub trait PortNum: sealed::SealedPortNum {
     #[doc(hidden)]
     type Port: GpioPeriph;
 }
 
+// Don't need to seal, since PortNum is already sealed
 /// Marker trait for all Ports that support interrupts
 pub trait IntrPortNum: PortNum {
     #[doc(hidden)]
@@ -52,7 +88,7 @@ where
 }
 
 /// Trait implemented on PAC GPIO types to map the PAC type to its respective port number type
-pub trait GpioPort {
+pub trait GpioPort: sealed::SealedGpioPort {
     /// Port number
     type PortNum: PortNum;
 }
@@ -160,7 +196,7 @@ impl GpioPort for P6 {
 }
 
 /// Marker trait for GPIO typestates representing pins in GPIO (non-alternate) state
-pub trait GpioFunction {}
+pub trait GpioFunction: sealed::SealedGpioFunction {}
 
 /// Direction typestate for GPIO output
 pub struct Output;
@@ -490,57 +526,50 @@ impl<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
     }
 }
 
+// Trait will not be used as a bound outside the HAL, since it's only used as an associated type
+// bound inside the HAL, so just keep it hidden
 #[doc(hidden)]
-pub trait ChangeSelectBits: sealed::ChangeSelectBitsSealed {}
-impl<T: sealed::ChangeSelectBitsSealed> ChangeSelectBits for T {}
-
-pub(crate) mod sealed {
-    use super::*;
-
-    pub trait ChangeSelectBitsSealed {
-        fn set_sel0(&mut self);
-        fn set_sel1(&mut self);
-        fn clear_sel0(&mut self);
-        fn clear_sel1(&mut self);
-        fn flip_selc(&mut self);
-    }
-
-    // Methods for managing sel1, sel0, and selc registers
-    impl<PORT: PortNum, PIN: PinNum, DIR> ChangeSelectBitsSealed for Pin<PORT, PIN, DIR> {
-        #[inline]
-        fn set_sel0(&mut self) {
-            let p = unsafe { PORT::Port::steal() };
-            p.pxsel0_set(PIN::SET_MASK);
-        }
-
-        #[inline]
-        fn set_sel1(&mut self) {
-            let p = unsafe { PORT::Port::steal() };
-            p.pxsel1_set(PIN::SET_MASK);
-        }
-
-        #[inline]
-        fn clear_sel0(&mut self) {
-            let p = unsafe { PORT::Port::steal() };
-            p.pxsel0_clear(PIN::CLR_MASK);
-        }
-
-        #[inline]
-        fn clear_sel1(&mut self) {
-            let p = unsafe { PORT::Port::steal() };
-            p.pxsel1_clear(PIN::CLR_MASK);
-        }
-
-        #[inline]
-        fn flip_selc(&mut self) {
-            let p = unsafe { PORT::Port::steal() };
-            // Change both sel0 and sel1 bits at once
-            p.pxselc_wr(0u8.set(PIN::NUM));
-        }
-    }
+pub trait ChangeSelectBits {
+    fn set_sel0(&mut self);
+    fn set_sel1(&mut self);
+    fn clear_sel0(&mut self);
+    fn clear_sel1(&mut self);
+    fn flip_selc(&mut self);
 }
 
-pub(crate) use sealed::ChangeSelectBitsSealed;
+// Methods for managing sel1, sel0, and selc registers
+impl<PORT: PortNum, PIN: PinNum, DIR> ChangeSelectBits for Pin<PORT, PIN, DIR> {
+    #[inline]
+    fn set_sel0(&mut self) {
+        let p = unsafe { PORT::Port::steal() };
+        p.pxsel0_set(PIN::SET_MASK);
+    }
+
+    #[inline]
+    fn set_sel1(&mut self) {
+        let p = unsafe { PORT::Port::steal() };
+        p.pxsel1_set(PIN::SET_MASK);
+    }
+
+    #[inline]
+    fn clear_sel0(&mut self) {
+        let p = unsafe { PORT::Port::steal() };
+        p.pxsel0_clear(PIN::CLR_MASK);
+    }
+
+    #[inline]
+    fn clear_sel1(&mut self) {
+        let p = unsafe { PORT::Port::steal() };
+        p.pxsel1_clear(PIN::CLR_MASK);
+    }
+
+    #[inline]
+    fn flip_selc(&mut self) {
+        let p = unsafe { PORT::Port::steal() };
+        // Change both sel0 and sel1 bits at once
+        p.pxselc_wr(0u8.set(PIN::NUM));
+    }
+}
 
 /// Typestate for GPIO alternate function 1
 pub struct Alternate1<DIR>(PhantomData<DIR>);
@@ -551,11 +580,13 @@ pub struct Alternate2<DIR>(PhantomData<DIR>);
 /// Typestate for GPIO alternate function 3
 pub struct Alternate3<DIR>(PhantomData<DIR>);
 
-#[doc(hidden)]
+// Sealing these traits takes a lot of work, and I'll never add any items in the future, so they
+// are unsealed
+/// Marker trait for all Pins that have alternate function 1 available
 pub trait ToAlternate1 {}
-#[doc(hidden)]
+/// Marker trait for all Pins that have alternate function 2 available
 pub trait ToAlternate2 {}
-#[doc(hidden)]
+/// Marker trait for all Pins that have alternate function 3 available
 pub trait ToAlternate3 {}
 
 impl<PORT: PortNum, PIN: PinNum, DIR: GpioFunction> Pin<PORT, PIN, DIR>

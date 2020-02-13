@@ -15,20 +15,22 @@ pub use crate::hw_traits::timerb::{
     TimerDiv, TimerExDiv, CCR0, CCR1, CCR2, CCR3, CCR4, CCR5, CCR6,
 };
 
-/// Trait indicating that the peripheral can be used as a sub-timer or PWM
+// Trait effectively sealed by CCRn
+/// Trait indicating that the peripheral can be used as a sub-timer, PWM, or capture
 pub trait CapCmpPeriph<C>: CCRn<C> {}
 impl<T: CCRn<C>, C> CapCmpPeriph<C> for T {}
 
+// Trait effectively sealed by CCRn
 /// Trait indicating that the peripheral can be used as a timer
 pub trait TimerPeriph: TimerB + CCRn<CCR0> {
-    // Pin type used for external TBxCLK of this timer
-    #[doc(hidden)]
+    /// Pin type used for external TBxCLK of this timer
     type Tbxclk;
 }
 
-#[doc(hidden)]
+// Traits effectively sealed by CCRn
+/// Trait indicating that the peripheral has 3 capture compare registers
 pub trait ThreeCCRnTimer: TimerPeriph + CCRn<CCR1> + CCRn<CCR2> {}
-#[doc(hidden)]
+/// Trait indicating that the peripheral has 7 capture compare registers
 pub trait SevenCCRnTimer:
     TimerPeriph + CCRn<CCR1> + CCRn<CCR2> + CCRn<CCR3> + CCRn<CCR4> + CCRn<CCR5> + CCRn<CCR6>
 {
@@ -174,7 +176,7 @@ impl<T: SevenCCRnTimer> Default for SevenCCRnParts<T> {
 }
 
 /// Periodic countdown timer
-pub struct Timer<T>(PhantomData<T>);
+pub struct Timer<T: TimerPeriph>(PhantomData<T>);
 
 impl<T: TimerPeriph> Default for Timer<T> {
     fn default() -> Self {
@@ -183,16 +185,27 @@ impl<T: TimerPeriph> Default for Timer<T> {
 }
 
 /// Sub-timer with its own interrupts and threshold that shares its countdown with the main timer
-pub struct SubTimer<T, C>(PhantomData<T>, PhantomData<C>);
+pub struct SubTimer<T: CapCmpPeriph<C>, C>(PhantomData<T>, PhantomData<C>);
 
-impl<T: TimerPeriph + CapCmpPeriph<C>, C> Default for SubTimer<T, C> {
+impl<T: CapCmpPeriph<C>, C> Default for SubTimer<T, C> {
     fn default() -> Self {
         Self(PhantomData, PhantomData)
     }
 }
 
+mod sealed {
+    use super::*;
+
+    pub trait SealedTimerExt {}
+
+    impl SealedTimerExt for pac::TB0 {}
+    impl SealedTimerExt for pac::TB1 {}
+    impl SealedTimerExt for pac::TB2 {}
+    impl SealedTimerExt for pac::TB3 {}
+}
+
 /// Extension trait for creating timers
-pub trait TimerExt: Sized {
+pub trait TimerExt: Sized + sealed::SealedTimerExt {
     /// Set of timers
     type Parts: Default;
     /// RegisterBlock type for the timer

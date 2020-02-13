@@ -7,8 +7,20 @@ use msp430fr2355 as pac;
 use pac::{rtc::rtcctl::RTCSS_A, RTC};
 use void::Void;
 
-#[doc(hidden)]
-pub trait RtcClockSrc {
+mod sealed {
+    use super::*;
+
+    pub trait SealedRtcExt {}
+    pub trait SealedRtcClockSrc {}
+
+    impl SealedRtcExt for RTC {}
+    impl SealedRtcClockSrc for RtcSmclk {}
+    impl SealedRtcClockSrc for RtcVloclk {}
+}
+
+/// Marker trait for RTC clock sources
+pub trait RtcClockSrc: sealed::SealedRtcClockSrc {
+    #[doc(hidden)]
     const CLK_SRC: RTCSS_A;
 }
 
@@ -27,7 +39,7 @@ impl RtcClockSrc for RtcVloclk {
 }
 
 /// Extension trait to convert the RTC peripheral to a HAL object
-pub trait RtcExt {
+pub trait RtcExt: sealed::SealedRtcExt {
     /// Convert into RTC object with VLOCLK as clock source
     fn constrain(self) -> Rtc<RtcVloclk>;
 }

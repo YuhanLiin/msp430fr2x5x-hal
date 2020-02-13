@@ -7,7 +7,7 @@ use embedded_hal::prelude::*;
 use msp430fr2x5x_hal::{
     clock::{DcoclkFreqSel, MclkDiv, SmclkDiv},
     prelude::*,
-    timer::{CapCmpPeriph, SubTimer, ThreeCCRnTimer, Timer, TimerConfig, TimerDiv, TimerExDiv},
+    timer::{CapCmpPeriph, SubTimer, Timer, TimerConfig, TimerDiv, TimerExDiv, TimerPeriph},
 };
 use nb::block;
 use void::ResultVoidExt;
@@ -48,7 +48,7 @@ fn main() {
     }
 }
 
-fn set_time<T: ThreeCCRnTimer + CapCmpPeriph<C>, C>(
+fn set_time<T: TimerPeriph + CapCmpPeriph<C>, C>(
     timer: &mut Timer<T>,
     subtimer: &mut SubTimer<T, C>,
     delay: u16,

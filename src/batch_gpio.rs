@@ -243,8 +243,16 @@ impl<P: IntrPeriph> InterruptOperations for P {
     }
 }
 
+mod sealed {
+    use super::*;
+
+    pub trait SealedGpioExt {}
+
+    impl<P: GpioPort> SealedGpioExt for P {}
+}
+
 /// Extension trait to split the GPIO object
-pub trait GpioExt {
+pub trait GpioExt: sealed::SealedGpioExt {
     /// The struct to split the GPIO into.
     type Batch;
 
