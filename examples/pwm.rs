@@ -6,7 +6,7 @@ use embedded_hal::prelude::*;
 use msp430fr2x5x_hal::{
     clock::{DcoclkFreqSel, MclkDiv, SmclkDiv},
     prelude::*,
-    pwm::{CapCmpPeriph, Pwm, PwmGpio, TimerConfig, TimerPeriph},
+    pwm::{CapCmpPeriph, Pwm, PwmGpio, TimerConfig},
 };
 
 // P6.4 LED should be bright, P6.3 LED should be dim
@@ -40,7 +40,7 @@ fn main() {
 fn config_pwm<T, C>(pwm: &mut Pwm<T, C>, duty: u16)
 where
     (T, C): PwmGpio,
-    T: CapCmpPeriph<C> + TimerPeriph,
+    T: CapCmpPeriph<C>,
 {
     pwm.enable();
     pwm.set_duty(duty);

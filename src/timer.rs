@@ -17,8 +17,8 @@ pub use crate::hw_traits::timerb::{
 
 // Trait effectively sealed by CCRn
 /// Trait indicating that the peripheral can be used as a sub-timer, PWM, or capture
-pub trait CapCmpPeriph<C>: CCRn<C> {}
-impl<T: CCRn<C>, C> CapCmpPeriph<C> for T {}
+pub trait CapCmpPeriph<C>: CCRn<C> + CCRn<CCR0> {}
+impl<T: CCRn<C> + CCRn<CCR0>, C> CapCmpPeriph<C> for T {}
 
 // Trait effectively sealed by CCRn
 /// Trait indicating that the peripheral can be used as a timer
@@ -185,7 +185,7 @@ impl<T: TimerPeriph> Default for Timer<T> {
 }
 
 /// Sub-timer with its own interrupts and threshold that shares its countdown with the main timer
-pub struct SubTimer<T: CapCmpPeriph<C>, C>(PhantomData<T>, PhantomData<C>);
+pub struct SubTimer<T: CCRn<C>, C>(PhantomData<T>, PhantomData<C>);
 
 impl<T: CapCmpPeriph<C>, C> Default for SubTimer<T, C> {
     fn default() -> Self {
@@ -338,7 +338,7 @@ impl<T: TimerPeriph> Timer<T> {
     }
 }
 
-impl<T: CapCmpPeriph<C>, C> SubTimer<T, C> {
+impl<T: CCRn<C>, C> SubTimer<T, C> {
     #[inline]
     /// Set the threshold for one of the subtimers. Once the main timer counts to this threshold
     /// the subtimer will fire. Note that the main timer resets once it counts to its own

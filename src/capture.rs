@@ -280,9 +280,9 @@ impl<T: SevenCCRnTimer> Default for SevenCCRnPins<T> {
 }
 
 /// Single capture pin with its own capture register
-pub struct Capture<T: CapCmpPeriph<C>, C>(PhantomData<T>, PhantomData<C>);
+pub struct Capture<T: CCRn<C>, C>(PhantomData<T>, PhantomData<C>);
 
-impl<T: CapCmpPeriph<C>, C> Default for Capture<T, C> {
+impl<T: CCRn<C>, C> Default for Capture<T, C> {
     fn default() -> Self {
         Self(PhantomData, PhantomData)
     }
@@ -311,7 +311,7 @@ pub trait CapturePin {
     fn capture(&mut self) -> nb::Result<Self::Capture, Self::Error>;
 }
 
-impl<T: CapCmpPeriph<C>, C> CapturePin for Capture<T, C> {
+impl<T: CCRn<C>, C> CapturePin for Capture<T, C> {
     type Capture = u16;
     type Error = OverCapture;
 
@@ -333,7 +333,7 @@ impl<T: CapCmpPeriph<C>, C> CapturePin for Capture<T, C> {
     }
 }
 
-impl<T: CapCmpPeriph<C>, C> Capture<T, C> {
+impl<T: CCRn<C>, C> Capture<T, C> {
     #[inline]
     /// Enable capture interrupts
     pub fn enable_interrupts(&mut self) {
@@ -376,7 +376,7 @@ pub enum CaptureVector<T> {
 /// register corresponding to the interrupt.
 pub struct InterruptCapture<T, C>(PhantomData<T>, PhantomData<C>);
 
-impl<T: CapCmpPeriph<C>, C> InterruptCapture<T, C> {
+impl<T: CCRn<C>, C> InterruptCapture<T, C> {
     /// Performs a one-time capture read without considering the interrupt flag. Always call this
     /// instead of `capture()` after reading the capture interrupt vector, since reading the vector
     /// already clears the interrupt flag that `capture()` checks for.
