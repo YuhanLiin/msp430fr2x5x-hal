@@ -209,7 +209,7 @@ mod sealed {
 pub trait TimerExt: Sized + sealed::SealedTimerExt {
     /// Set of timers
     type Parts: SealedDefault;
-    /// RegisterBlock type for the timer
+    #[doc(hidden)]
     type Timer: TimerPeriph;
 
     /// Create new set of timers out of a TBx peripheral

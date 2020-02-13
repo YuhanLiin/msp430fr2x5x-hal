@@ -183,7 +183,7 @@ impl CaptureConfigChannels for Tb3 {
 
 /// Extension trait for creating capture pins from timer peripherals
 pub trait CaptureExt: Sized + sealed::SealedCaptureExt {
-    /// Timer peripheral's `RegisterBlock`
+    #[doc(hidden)]
     type Capture: TimerPeriph + CaptureConfigChannels;
     /// Set of capture pins
     type Pins: SealedDefault;

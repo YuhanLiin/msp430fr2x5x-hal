@@ -58,12 +58,15 @@ mod sealed {
 
 /// Trait that encompasses all `Pinx` types for specifying a pin number.
 pub trait PinNum: sealed::SealedPinNum {
-    /// Pin number
+    // Pin number
+    #[doc(hidden)]
     const NUM: u8;
 
-    /// Bitmask with all zeros except for the bit corresponding to the pin.
+    // Bitmask with all zeros except for the bit corresponding to the pin.
+    #[doc(hidden)]
     const SET_MASK: u8 = 1 << Self::NUM;
-    /// Bitmask with all ones except for the bit corresponding to the pin.
+    // Bitmask with all ones except for the bit corresponding to the pin.
+    #[doc(hidden)]
     const CLR_MASK: u8 = !Self::SET_MASK;
 }
 

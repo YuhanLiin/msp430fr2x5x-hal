@@ -125,7 +125,7 @@ mod sealed {
 
 /// Marks a USCI type that can be used as a serial UART
 pub trait SerialUsci: Sized + sealed::SealedSerialUsci {
-    /// Peripheral type
+    #[doc(hidden)]
     type Periph: EUsciUart;
     /// Pin used for serial UCLK
     type ClockPin;

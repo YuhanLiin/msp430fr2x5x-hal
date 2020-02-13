@@ -103,7 +103,7 @@ pub enum Alt {
 pub trait PwmGpio: sealed::SealedPwmGpio {
     /// GPIO type
     type Gpio: ChangeSelectBits;
-    /// Whether the PWM pin uses GPIO alternate 1 or alternate 2
+    #[doc(hidden)]
     const ALT: Alt;
 
     #[doc(hidden)]
@@ -256,7 +256,7 @@ where
 
 /// Extension trait for creating PWM pins from timer peripherals
 pub trait PwmExt: Sized + sealed::SealedPwmExt {
-    /// Timer peripheral's `RegisterBlock`
+    #[doc(hidden)]
     type Timer: TimerPeriph + PwmConfigChannels;
     /// Collection of PWM pins
     type Pins: SealedDefault;
