@@ -1,7 +1,6 @@
 //! Prelude
 
 pub use crate::batch_gpio::GpioExt as _msp430fr2x5x_hal_GpioExt;
-pub use crate::capture::CaptureConfigChannels as _msp430fr2x5x_hal_CaptureConfigChannels;
 pub use crate::capture::CaptureExt as _msp430fr2x5x_hal_CaptureExt;
 pub use crate::capture::CapturePin as _msp430fr2x5x_hal_CapturePin;
 pub use crate::clock::Clock as _msp430fr2x5x_hal_Clock;
