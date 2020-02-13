@@ -280,9 +280,9 @@ impl<T: SevenCCRnTimer> Default for SevenCCRnPins<T> {
 }
 
 /// Single capture pin with its own capture register
-pub struct Capture<T, C>(PhantomData<T>, PhantomData<C>);
+pub struct Capture<T: CapCmpPeriph<C>, C>(PhantomData<T>, PhantomData<C>);
 
-impl<T, C> Default for Capture<T, C> {
+impl<T: CapCmpPeriph<C>, C> Default for Capture<T, C> {
     fn default() -> Self {
         Self(PhantomData, PhantomData)
     }
@@ -395,9 +395,9 @@ impl<T: CapCmpPeriph<C>, C> InterruptCapture<T, C> {
 }
 
 /// Interrupt vector register for determining which capture-register caused an ISR
-pub struct TBxIV<T>(PhantomData<T>);
+pub struct TBxIV<T: TimerPeriph>(PhantomData<T>);
 
-impl<T: TimerB> TBxIV<T> {
+impl<T: TimerPeriph> TBxIV<T> {
     #[inline]
     /// Read the capture interrupt vector. Automatically resets corresponding interrupt flag. If
     /// the vector corresponds to an available capture, a one-time capture read token will be

@@ -57,7 +57,7 @@ impl TimerPeriph for pac::tb3::RegisterBlock {
 impl SevenCCRnTimer for pac::tb3::RegisterBlock {}
 
 /// Configures all HAL objects that use the TimerB timers
-pub struct TimerConfig<T> {
+pub struct TimerConfig<T: TimerPeriph> {
     _timer: PhantomData<T>,
     sel: Tbssel,
     div: TimerDiv,
