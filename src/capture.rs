@@ -12,10 +12,22 @@ use crate::hw_traits::timerb::{
     CCRn, Ccis, Cm, TimerB, TimerSteal, CCR0, CCR1, CCR2, CCR3, CCR4, CCR5, CCR6,
 };
 use crate::timer::{read_tbxiv, SevenCCRnTimer, ThreeCCRnTimer, TimerVector};
+use crate::util::SealedDefault;
 use core::marker::PhantomData;
 use msp430fr2355 as pac;
 
 pub use crate::timer::{CapCmpPeriph, TimerConfig, TimerDiv, TimerExDiv, TimerPeriph};
+
+mod sealed {
+    use super::*;
+
+    pub trait SealedCaptureExt {}
+
+    impl SealedCaptureExt for pac::TB0 {}
+    impl SealedCaptureExt for pac::TB1 {}
+    impl SealedCaptureExt for pac::TB2 {}
+    impl SealedCaptureExt for pac::TB3 {}
+}
 
 type Tb0 = pac::tb0::RegisterBlock;
 type Tb1 = pac::tb1::RegisterBlock;
@@ -122,6 +134,8 @@ impl CaptureConfig {
     }
 }
 
+// Implemented for RegisterBlocks, which the user will never name when using the HAL, so we can
+// keep this trait hidden.
 #[doc(hidden)]
 pub trait CaptureConfigChannels {
     fn config_channels(&self, config: CaptureConfig);
@@ -168,11 +182,11 @@ impl CaptureConfigChannels for Tb3 {
 }
 
 /// Extension trait for creating capture pins from timer peripherals
-pub trait CaptureExt: Sized {
+pub trait CaptureExt: Sized + sealed::SealedCaptureExt {
     #[doc(hidden)]
     type Capture: TimerPeriph + CaptureConfigChannels;
     /// Set of capture pins
-    type Pins: Default;
+    type Pins: SealedDefault;
 
     /// Create new capture port out of timer
     #[inline]
@@ -218,13 +232,13 @@ pub struct ThreeCCRnPins<T: ThreeCCRnTimer> {
     pub tbxiv: TBxIV<T>,
 }
 
-impl<T: ThreeCCRnTimer> Default for ThreeCCRnPins<T> {
+impl<T: ThreeCCRnTimer> SealedDefault for ThreeCCRnPins<T> {
     #[inline(always)]
     fn default() -> Self {
         Self {
-            cap0: Default::default(),
-            cap1: Default::default(),
-            cap2: Default::default(),
+            cap0: SealedDefault::default(),
+            cap1: SealedDefault::default(),
+            cap2: SealedDefault::default(),
             tbxiv: TBxIV(PhantomData),
         }
     }
@@ -250,31 +264,32 @@ pub struct SevenCCRnPins<T: SevenCCRnTimer> {
     pub tbxiv: TBxIV<T>,
 }
 
-impl<T: SevenCCRnTimer> Default for SevenCCRnPins<T> {
+impl<T: SevenCCRnTimer> SealedDefault for SevenCCRnPins<T> {
     #[inline(always)]
     fn default() -> Self {
         Self {
-            cap0: Default::default(),
-            cap1: Default::default(),
-            cap2: Default::default(),
-            cap3: Default::default(),
-            cap4: Default::default(),
-            cap5: Default::default(),
-            cap6: Default::default(),
+            cap0: SealedDefault::default(),
+            cap1: SealedDefault::default(),
+            cap2: SealedDefault::default(),
+            cap3: SealedDefault::default(),
+            cap4: SealedDefault::default(),
+            cap5: SealedDefault::default(),
+            cap6: SealedDefault::default(),
             tbxiv: TBxIV(PhantomData),
         }
     }
 }
 
 /// Single capture pin with its own capture register
-pub struct Capture<T, C>(PhantomData<T>, PhantomData<C>);
+pub struct Capture<T: CCRn<C>, C>(PhantomData<T>, PhantomData<C>);
 
-impl<T, C> Default for Capture<T, C> {
+impl<T: CCRn<C>, C> SealedDefault for Capture<T, C> {
     fn default() -> Self {
         Self(PhantomData, PhantomData)
     }
 }
 
+// Candidate for embedded_hal inclusion
 /// Single input capture pin
 pub trait CapturePin {
     /// Type  of value returned by capture
@@ -297,7 +312,7 @@ pub trait CapturePin {
     fn capture(&mut self) -> nb::Result<Self::Capture, Self::Error>;
 }
 
-impl<T: CapCmpPeriph<C>, C> CapturePin for Capture<T, C> {
+impl<T: CCRn<C>, C> CapturePin for Capture<T, C> {
     type Capture = u16;
     type Error = OverCapture;
 
@@ -319,7 +334,7 @@ impl<T: CapCmpPeriph<C>, C> CapturePin for Capture<T, C> {
     }
 }
 
-impl<T: CapCmpPeriph<C>, C> Capture<T, C> {
+impl<T: CCRn<C>, C> Capture<T, C> {
     #[inline]
     /// Enable capture interrupts
     pub fn enable_interrupts(&mut self) {
@@ -362,7 +377,7 @@ pub enum CaptureVector<T> {
 /// register corresponding to the interrupt.
 pub struct InterruptCapture<T, C>(PhantomData<T>, PhantomData<C>);
 
-impl<T: CapCmpPeriph<C>, C> InterruptCapture<T, C> {
+impl<T: CCRn<C>, C> InterruptCapture<T, C> {
     /// Performs a one-time capture read without considering the interrupt flag. Always call this
     /// instead of `capture()` after reading the capture interrupt vector, since reading the vector
     /// already clears the interrupt flag that `capture()` checks for.
@@ -381,9 +396,9 @@ impl<T: CapCmpPeriph<C>, C> InterruptCapture<T, C> {
 }
 
 /// Interrupt vector register for determining which capture-register caused an ISR
-pub struct TBxIV<T>(PhantomData<T>);
+pub struct TBxIV<T: TimerPeriph>(PhantomData<T>);
 
-impl<T: TimerB> TBxIV<T> {
+impl<T: TimerPeriph> TBxIV<T> {
     #[inline]
     /// Read the capture interrupt vector. Automatically resets corresponding interrupt flag. If
     /// the vector corresponds to an available capture, a one-time capture read token will be

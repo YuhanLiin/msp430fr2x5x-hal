@@ -5,19 +5,47 @@
 //! share the same period.
 
 use crate::gpio::{
-    Alternate1, Alternate2, ChangeSelectBits, ChangeSelectBitsSealed, Output, Pin, Pin0, Pin1,
-    Pin2, Pin3, Pin4, Pin5, Pin6, Pin7, Port1, Port2, Port5, Port6,
+    Alternate1, Alternate2, ChangeSelectBits, Output, Pin, Pin0, Pin1, Pin2, Pin3, Pin4, Pin5,
+    Pin6, Pin7, Port1, Port2, Port5, Port6,
 };
 use crate::hw_traits::timerb::{
     CCRn, Outmod, TimerB, TimerSteal, CCR0, CCR1, CCR2, CCR3, CCR4, CCR5, CCR6,
 };
 use crate::timer::{SevenCCRnTimer, ThreeCCRnTimer};
+use crate::util::SealedDefault;
 use core::marker::PhantomData;
 use embedded_hal::PwmPin;
 use msp430fr2355 as pac;
 
 pub use crate::timer::{CapCmpPeriph, TimerConfig, TimerDiv, TimerExDiv, TimerPeriph};
 
+mod sealed {
+    use super::*;
+
+    pub trait SealedPwmGpio {}
+    pub trait SealedPwmExt {}
+
+    impl SealedPwmGpio for (Tb0, CCR1) {}
+    impl SealedPwmGpio for (Tb0, CCR2) {}
+    impl SealedPwmGpio for (Tb1, CCR1) {}
+    impl SealedPwmGpio for (Tb1, CCR2) {}
+    impl SealedPwmGpio for (Tb2, CCR1) {}
+    impl SealedPwmGpio for (Tb2, CCR2) {}
+    impl SealedPwmGpio for (Tb3, CCR1) {}
+    impl SealedPwmGpio for (Tb3, CCR2) {}
+    impl SealedPwmGpio for (Tb3, CCR3) {}
+    impl SealedPwmGpio for (Tb3, CCR4) {}
+    impl SealedPwmGpio for (Tb3, CCR5) {}
+    impl SealedPwmGpio for (Tb3, CCR6) {}
+
+    impl SealedPwmExt for pac::TB0 {}
+    impl SealedPwmExt for pac::TB1 {}
+    impl SealedPwmExt for pac::TB2 {}
+    impl SealedPwmExt for pac::TB3 {}
+}
+
+// This trait applies to RegisterBlock types rather than peripheral types, so users likely won't
+// use the trait in their own code, so it can stay hidden
 #[doc(hidden)]
 pub trait PwmConfigChannels {
     // Configures each PWM channel of a peripheral during init
@@ -72,7 +100,7 @@ pub enum Alt {
 }
 
 /// Associates PWM pins with specific GPIO pins
-pub trait PwmGpio {
+pub trait PwmGpio: sealed::SealedPwmGpio {
     /// GPIO type
     type Gpio: ChangeSelectBits;
     #[doc(hidden)]
@@ -155,11 +183,11 @@ pub struct ThreeCCRnPins<T: ThreeCCRnTimer> {
     pub pwm2: PwmUninit<T, CCR2>,
 }
 
-impl<T: ThreeCCRnTimer> Default for ThreeCCRnPins<T> {
+impl<T: ThreeCCRnTimer> SealedDefault for ThreeCCRnPins<T> {
     fn default() -> Self {
         Self {
-            pwm1: Default::default(),
-            pwm2: Default::default(),
+            pwm1: SealedDefault::default(),
+            pwm2: SealedDefault::default(),
         }
     }
 }
@@ -180,15 +208,15 @@ pub struct SevenCCRnPins<T: SevenCCRnTimer> {
     pub pwm6: PwmUninit<T, CCR6>,
 }
 
-impl<T: SevenCCRnTimer> Default for SevenCCRnPins<T> {
+impl<T: SevenCCRnTimer> SealedDefault for SevenCCRnPins<T> {
     fn default() -> Self {
         Self {
-            pwm1: Default::default(),
-            pwm2: Default::default(),
-            pwm3: Default::default(),
-            pwm4: Default::default(),
-            pwm5: Default::default(),
-            pwm6: Default::default(),
+            pwm1: SealedDefault::default(),
+            pwm2: SealedDefault::default(),
+            pwm3: SealedDefault::default(),
+            pwm4: SealedDefault::default(),
+            pwm5: SealedDefault::default(),
+            pwm6: SealedDefault::default(),
         }
     }
 }
@@ -210,7 +238,7 @@ where
     }
 }
 
-impl<T, C> Default for PwmUninit<T, C> {
+impl<T, C> SealedDefault for PwmUninit<T, C> {
     fn default() -> Self {
         Self(PhantomData, PhantomData)
     }
@@ -227,11 +255,11 @@ where
 }
 
 /// Extension trait for creating PWM pins from timer peripherals
-pub trait PwmExt: Sized {
+pub trait PwmExt: Sized + sealed::SealedPwmExt {
     #[doc(hidden)]
     type Timer: TimerPeriph + PwmConfigChannels;
     /// Collection of PWM pins
-    type Pins: Default;
+    type Pins: SealedDefault;
 
     /// Create new PWM pins out of timer
     #[inline]

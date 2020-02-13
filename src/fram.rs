@@ -3,8 +3,16 @@
 use msp430fr2355 as pac;
 use pac::FRCTL;
 
+mod sealed {
+    use super::*;
+
+    pub trait SealedFramExt {}
+
+    impl SealedFramExt for pac::FRCTL {}
+}
+
 /// Extension trait for making FRAM controllers
-pub trait FramExt {
+pub trait FramExt: sealed::SealedFramExt {
     /// Turn FRCTL into `Fram`
     fn constrain(self) -> Fram;
 }

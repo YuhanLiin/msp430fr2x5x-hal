@@ -7,10 +7,10 @@
 //! configures P2.3 as a pullup input pin and P2.1 as an output pin and then writes the
 //! configuration to the hardware in a single set of writes.
 
-use crate::bits::BitsExt;
 use crate::gpio::*;
 use crate::hw_traits::gpio::{GpioPeriph, IntrPeriph};
 use crate::pmm::Pmm;
+use crate::util::BitsExt;
 use core::marker::PhantomData;
 
 /// Proxy for a GPIO pin used for batch writes.
@@ -243,8 +243,16 @@ impl<P: IntrPeriph> InterruptOperations for P {
     }
 }
 
+mod sealed {
+    use super::*;
+
+    pub trait SealedGpioExt {}
+
+    impl<P: GpioPort> SealedGpioExt for P {}
+}
+
 /// Extension trait to split the GPIO object
-pub trait GpioExt {
+pub trait GpioExt: sealed::SealedGpioExt {
     /// The struct to split the GPIO into.
     type Batch;
 

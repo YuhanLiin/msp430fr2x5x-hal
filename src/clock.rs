@@ -127,15 +127,17 @@ impl DcoclkFreqSel {
     }
 }
 
-#[doc(hidden)]
+/// Typestate for clock configuration, for when no configuration has been done
 pub struct NoClockDefined;
-#[doc(hidden)]
+/// Typestate for clock configuration, for when MCLK has been configured
 pub struct MclkDefined(MclkSel);
-#[doc(hidden)]
+/// Typestate for clock configuration, for when SMCLK has been configured
 pub struct SmclkDefined(SmclkDiv);
-#[doc(hidden)]
+/// Typestate for clock configuration, for when SMCLK has been disabled
 pub struct SmclkDisabled;
 
+// Using SmclkState as a trait bound outside the HAL will never be useful, since we only configure
+// the clock once, so just keep it hidden
 #[doc(hidden)]
 pub trait SmclkState {
     fn div(&self) -> Option<SmclkDiv>;
@@ -176,9 +178,17 @@ macro_rules! make_clkconf {
     };
 }
 
+mod sealed {
+    use super::*;
+
+    pub trait SealedCsExt {}
+
+    impl SealedCsExt for pac::CS {}
+}
+
 /// Extension trait allowing the PAC CS struct to be converted into the HAL clock configuration
 /// builder object.
-pub trait CsExt {
+pub trait CsExt: sealed::SealedCsExt {
     /// Converts CS into clock configuration builder object
     fn constrain(self) -> ClockConfig<NoClockDefined, NoClockDefined>;
 }

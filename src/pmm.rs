@@ -5,8 +5,16 @@ use msp430fr2355::PMM;
 /// PMM type
 pub struct Pmm(());
 
+mod sealed {
+    use super::*;
+
+    pub trait SealedPmmExt {}
+
+    impl SealedPmmExt for PMM {}
+}
+
 /// Extension for PMM peripheral
-pub trait PmmExt {
+pub trait PmmExt: sealed::SealedPmmExt {
     /// Sets the LOCKLPM5 bit and returns a `Pmm`
     fn freeze(self) -> Pmm;
 }

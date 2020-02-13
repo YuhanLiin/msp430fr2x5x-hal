@@ -16,8 +16,19 @@ const PASSWORD: u8 = 0x5A;
 
 pub use pac::wdt_a::wdtctl::WDTIS_A as WdtClkPeriods;
 
+mod sealed {
+    use super::*;
+
+    pub trait SealedWdtExt {}
+    pub trait SealedWatchdogSelect {}
+
+    impl SealedWdtExt for pac::WDT_A {}
+    impl SealedWatchdogSelect for WatchdogMode {}
+    impl SealedWatchdogSelect for IntervalMode {}
+}
+
 /// Extension trait to constrain watchdog peripheral into HAL watchdog
-pub trait WdtExt {
+pub trait WdtExt: sealed::SealedWdtExt {
     /// Constrain watchdog PAC peripheral into HAL watchdog and disable watchdog.
     fn constrain(self) -> Wdt<WatchdogMode>;
 }
@@ -46,8 +57,9 @@ pub struct WatchdogMode;
 /// Interval mode
 pub struct IntervalMode;
 
-#[doc(hidden)]
-pub trait WatchdogSelect {
+/// Marker trait for watchdog modes
+pub trait WatchdogSelect: sealed::SealedWatchdogSelect {
+    #[doc(hidden)]
     fn mode_bit() -> bool;
 }
 impl WatchdogSelect for WatchdogMode {
