@@ -6,10 +6,7 @@ use embedded_hal::digital::v2::ToggleableOutputPin;
 use msp430::interrupt::{enable, free, Mutex};
 use msp430fr2355::interrupt;
 use msp430fr2x5x_hal::{
-    capture::{
-        CapCmpPeriph, CapSelect, CapTrigger, Capture, CaptureConfig, CaptureVector, TBxIV,
-        TimerConfig,
-    },
+    capture::{CapCmpPeriph, CapTrigger, Capture, CaptureVector, TBxIV, TimerConfig},
     clock::{DcoclkFreqSel, MclkDiv, SmclkDiv},
     gpio::*,
     prelude::*,
@@ -46,14 +43,15 @@ fn main() {
         .aclk_vloclk()
         .freeze(&mut fram);
 
-    let captures = periph.TB0.to_capture(
-        TimerConfig::aclk(&aclk),
-        CaptureConfig::new().config_capture1(CapSelect::CapInputA, CapTrigger::FallingEdge),
-    );
+    let captures = periph
+        .TB0
+        .to_capture(TimerConfig::aclk(&aclk))
+        .config_cap1_input_A(p1.pin6.to_alternate2())
+        .config_cap1_trigger(CapTrigger::FallingEdge)
+        .commit();
     let mut capture = captures.cap1;
     let vectors = captures.tbxiv;
 
-    p1.pin6.to_alternate2();
     setup_capture(&mut capture);
     free(|cs| {
         *CAPTURE.borrow(&cs).borrow_mut() = Some(capture);

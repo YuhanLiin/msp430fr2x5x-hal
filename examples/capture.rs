@@ -3,7 +3,7 @@
 use embedded_hal::digital::v2::*;
 use embedded_hal::prelude::*;
 use msp430fr2x5x_hal::{
-    capture::{CapSelect, CapTrigger, CaptureConfig, OverCapture, TimerConfig},
+    capture::{CapTrigger, OverCapture, TimerConfig},
     clock::{DcoclkFreqSel, MclkDiv, SmclkDiv},
     prelude::*,
     serial::*,
@@ -45,13 +45,13 @@ fn main() {
         .use_smclk(&smclk)
         .tx_only(p4.pin3.to_alternate1());
 
-    let captures = periph.TB0.to_capture(
-        TimerConfig::aclk(&aclk),
-        CaptureConfig::new().config_capture1(CapSelect::CapInputA, CapTrigger::FallingEdge),
-    );
+    let captures = periph
+        .TB0
+        .to_capture(TimerConfig::aclk(&aclk))
+        .config_cap1_input_A(p1.pin6.to_alternate2())
+        .config_cap1_trigger(CapTrigger::FallingEdge)
+        .commit();
     let mut capture = captures.cap1;
-
-    p1.pin6.to_alternate2();
 
     let mut last_cap = 0;
     loop {
