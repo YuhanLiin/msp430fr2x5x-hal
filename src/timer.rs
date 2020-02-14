@@ -271,7 +271,7 @@ pub(crate) fn read_tbxiv<T: TimerB>(timer: &T) -> TimerVector {
         10 => TimerVector::SubTimer5,
         12 => TimerVector::SubTimer6,
         14 => TimerVector::MainTimer,
-        _ => unreachable!(),
+        _ => unsafe { core::hint::unreachable_unchecked() },
     }
 }
 

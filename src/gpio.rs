@@ -362,7 +362,7 @@ impl<PORT: IntrPortNum> PxIV<PORT> {
             12 => GpioVector::Pin5Isr,
             14 => GpioVector::Pin6Isr,
             16 => GpioVector::Pin7Isr,
-            _ => unreachable!(),
+            _ => unsafe { core::hint::unreachable_unchecked() },
         }
     }
 }

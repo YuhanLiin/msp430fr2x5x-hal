@@ -30,6 +30,7 @@ features = ["rt"]
 
 [dev-dependencies]
 panic-msp430 = "0.2.0"
+panic-never = "0.1.0"
 
 [profile.release]
 lto = "fat"

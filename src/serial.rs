@@ -317,10 +317,10 @@ struct BaudConfig {
 // worlds, assuming release mode has LTO enabled
 #[cfg_attr(not(debug_assertions), inline(always))]
 fn calculate_baud_config(clk_freq: u32, bps: u32) -> BaudConfig {
-    assert!(bps != 0);
-    let n = clk_freq / bps;
-    assert!(n > 0, "BPS too high");
-    assert!(n <= 0xFFFF, "BPS too low");
+    // Prevent division by 0
+    let bps = bps.max(1);
+    // Ensure n stays within the 16 bit boundary
+    let n = (clk_freq / bps).max(1).min(0xFFFF);
 
     let brs = lookup_brs(clk_freq, bps);
 
