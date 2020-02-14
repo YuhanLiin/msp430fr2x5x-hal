@@ -1,19 +1,21 @@
+#![no_main]
 #![no_std]
-
-extern crate panic_msp430;
 
 use embedded_hal::digital::v2::*;
 use embedded_hal::timer::CountDown;
 use embedded_hal::watchdog::WatchdogEnable;
+use msp430_rt::entry;
 use msp430fr2x5x_hal::{
     clock::{DcoclkFreqSel, MclkDiv, SmclkDiv},
     prelude::*,
     watchdog::WdtClkPeriods,
 };
 use nb::block;
+use panic_msp430 as _;
 
 // Red LED should blink 1 second on, 1 second off
-fn main() {
+#[entry]
+fn main() -> ! {
     let periph = msp430fr2355::Peripherals::take().unwrap();
 
     let mut fram = periph.FRCTL.constrain();

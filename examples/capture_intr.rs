@@ -1,9 +1,11 @@
+#![no_main]
 #![no_std]
 #![feature(abi_msp430_interrupt)]
 
 use core::cell::RefCell;
 use embedded_hal::digital::v2::ToggleableOutputPin;
 use msp430::interrupt::{enable, free, Mutex};
+use msp430_rt::entry;
 use msp430fr2355::interrupt;
 use msp430fr2x5x_hal::{
     capture::{CapCmpPeriph, CapTrigger, Capture, CaptureVector, TBxIV, TimerConfig},
@@ -23,7 +25,8 @@ static RED_LED: Mutex<RefCell<Option<Pin<Port1, Pin0, Output>>>> = Mutex::new(Re
 
 // Connect push button input to P1.6. When button is pressed, red LED should toggle. No debouncing,
 // so sometimes inputs are missed.
-fn main() {
+#[entry]
+fn main() -> ! {
     let periph = msp430fr2355::Peripherals::take().unwrap();
 
     let mut fram = periph.FRCTL.constrain();
@@ -66,8 +69,8 @@ fn setup_capture<T: CapCmpPeriph<C>, C>(capture: &mut Capture<T, C>) {
     capture.enable_interrupts();
 }
 
-interrupt!(TIMER0_B1, capture_isr);
-fn capture_isr() {
+#[interrupt]
+fn TIMER0_B1() {
     free(|cs| {
         match VECTOR
             .borrow(&cs)

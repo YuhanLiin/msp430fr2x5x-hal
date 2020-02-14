@@ -1,19 +1,21 @@
+#![no_main]
 #![no_std]
-
-extern crate panic_msp430;
 
 use embedded_hal::digital::v2::*;
 use embedded_hal::prelude::*;
+use msp430_rt::entry;
 use msp430fr2x5x_hal::{
     clock::{DcoclkFreqSel, MclkDiv, SmclkDiv},
     prelude::*,
     timer::{CapCmpPeriph, SubTimer, Timer, TimerConfig, TimerDiv, TimerExDiv, TimerPeriph},
 };
 use nb::block;
+use panic_msp430 as _;
 use void::ResultVoidExt;
 
 // 0.5 second on, 0.5 second off
-fn main() {
+#[entry]
+fn main() -> ! {
     let periph = msp430fr2355::Peripherals::take().unwrap();
 
     let mut fram = periph.FRCTL.constrain();

@@ -1,8 +1,10 @@
+#![no_main]
 #![no_std]
 
 use embedded_hal::digital::v2::OutputPin;
 use embedded_hal::prelude::*;
 use embedded_hal::serial::Read;
+use msp430_rt::entry;
 use msp430fr2x5x_hal::{
     clock::{DcoclkFreqSel, MclkDiv, Smclk, SmclkDiv},
     prelude::*,
@@ -41,7 +43,8 @@ fn read_unwrap<R: Read<u8>>(rx: &mut R, err: char) -> u8 {
 
 // Echoes serial input on UART1 by roundtripping to UART0
 // Only UART1 settings matter for the host
-fn main() {
+#[entry]
+fn main() -> ! {
     let periph = msp430fr2355::Peripherals::take().unwrap();
 
     let mut fram = periph.FRCTL.constrain();
