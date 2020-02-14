@@ -1,12 +1,15 @@
+#![no_main]
 #![no_std]
 
 use embedded_hal::digital::v2::*;
+use msp430_rt::entry;
 use msp430fr2x5x_hal::prelude::*;
 use panic_msp430 as _;
 
 // Red onboard LED should blink at a steady period.
 // Green onboard LED should go on when P2.3 button is pressed
-fn main() {
+#[entry]
+fn main() -> ! {
     let periph = msp430fr2355::Peripherals::take().unwrap();
     let _wdt = periph.WDT_A.constrain();
 

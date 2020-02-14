@@ -1,19 +1,21 @@
+#![no_main]
 #![no_std]
-
-extern crate panic_msp430;
 
 use embedded_hal::digital::v2::*;
 use embedded_hal::prelude::*;
 use embedded_hal::timer::Cancel;
+use msp430_rt::entry;
 use msp430fr2x5x_hal::{
     clock::{MclkDiv, SmclkDiv},
     prelude::*,
     rtc::RtcDiv,
 };
+use panic_msp430 as _;
 
 // Red LED blinks 2 seconds on, 2 off
 // Pressing P2.3 button toggles red LED and halts program
-fn main() {
+#[entry]
+fn main() -> ! {
     let periph = msp430fr2355::Peripherals::take().unwrap();
 
     periph.WDT_A.constrain();

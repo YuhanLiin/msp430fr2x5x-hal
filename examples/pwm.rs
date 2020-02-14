@@ -1,16 +1,18 @@
+#![no_main]
 #![no_std]
 
-extern crate panic_msp430;
-
 use embedded_hal::prelude::*;
+use msp430_rt::entry;
 use msp430fr2x5x_hal::{
     clock::{DcoclkFreqSel, MclkDiv, SmclkDiv},
     prelude::*,
     pwm::{CapCmpPeriph, Pwm, PwmGpio, TimerConfig},
 };
+use panic_msp430 as _;
 
 // P6.4 LED should be bright, P6.3 LED should be dim
-fn main() {
+#[entry]
+fn main() -> ! {
     let periph = msp430fr2355::Peripherals::take().unwrap();
 
     let mut fram = periph.FRCTL.constrain();

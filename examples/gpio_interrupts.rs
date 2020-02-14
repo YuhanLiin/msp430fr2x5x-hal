@@ -1,3 +1,4 @@
+#![no_main]
 #![no_std]
 #![feature(abi_msp430_interrupt)]
 
@@ -7,6 +8,7 @@ use core::cell::RefCell;
 use embedded_hal::digital::v2::*;
 use embedded_hal::timer::*;
 use msp430::interrupt::{enable as enable_int, free, Mutex};
+use msp430_rt::entry;
 use msp430fr2x5x_hal::{
     clock::{MclkDiv, SmclkDiv},
     gpio::{GpioVector, Output, Pin, Pin0, Port1, Port2, PxIV},
@@ -21,7 +23,8 @@ static P2IV: Mutex<RefCell<Option<PxIV<Port2>>>> = Mutex::new(RefCell::new(None)
 
 // Red LED should blink 2 seconds on, 2 seconds off
 // Both green and red LEDs should blink when P2.3 LED is pressed
-fn main() {
+#[entry]
+fn main() -> ! {
     let periph = msp430fr2355::Peripherals::take().unwrap();
     let (_smclk, aclk) = periph
         .CS
@@ -64,8 +67,8 @@ fn main() {
     }
 }
 
-interrupt!(PORT2, pin_isr);
-fn pin_isr() {
+#[interrupt]
+fn PORT2() {
     free(|cs| {
         RED_LED.borrow(&cs).borrow_mut().as_mut().map(|red_led| {
             match P2IV
@@ -82,8 +85,8 @@ fn pin_isr() {
     });
 }
 
-interrupt!(WDT, wdt_isr);
-fn wdt_isr() {
+#[interrupt]
+fn WDT() {
     free(|cs| {
         RED_LED.borrow(&cs).borrow_mut().as_mut().map(|red_led| {
             red_led.toggle().ok();

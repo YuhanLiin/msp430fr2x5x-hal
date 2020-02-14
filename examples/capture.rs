@@ -1,7 +1,9 @@
+#![no_main]
 #![no_std]
 
 use embedded_hal::digital::v2::*;
 use embedded_hal::prelude::*;
+use msp430_rt::entry;
 use msp430fr2x5x_hal::{
     capture::{CapTrigger, OverCapture, TimerConfig},
     clock::{DcoclkFreqSel, MclkDiv, SmclkDiv},
@@ -14,7 +16,8 @@ use void::ResultVoidExt;
 
 // Connect push button input to P1.6. When button is pressed, putty should print the # of cycles
 // since the last press. Sometimes we get 2 consecutive readings due to lack of debouncing.
-fn main() {
+#[entry]
+fn main() -> ! {
     let periph = msp430fr2355::Peripherals::take().unwrap();
 
     let mut fram = periph.FRCTL.constrain();
