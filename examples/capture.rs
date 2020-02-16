@@ -7,6 +7,7 @@ use msp430_rt::entry;
 use msp430fr2x5x_hal::{
     capture::{CapTrigger, OverCapture, TimerConfig},
     clock::{DcoclkFreqSel, MclkDiv, SmclkDiv},
+    pac,
     prelude::*,
     serial::*,
 };
@@ -18,7 +19,7 @@ use void::ResultVoidExt;
 // since the last press. Sometimes we get 2 consecutive readings due to lack of debouncing.
 #[entry]
 fn main() -> ! {
-    let periph = msp430fr2355::Peripherals::take().unwrap();
+    let periph = pac::Peripherals::take().unwrap();
 
     let mut fram = periph.FRCTL.constrain();
     periph.WDT_A.constrain();
