@@ -12,15 +12,16 @@ use crate::gpio::{
     Alternate1, Alternate2, Floating, Input, Pin, Pin0, Pin1, Pin2, Pin3, Pin4, Pin5, Pin6, Pin7,
     Port1, Port2, Port5, Port6,
 };
-use crate::hw_traits::timerb::{
-    CCRn, Ccis, Cm, TimerB, TimerSteal, CCR0, CCR1, CCR2, CCR3, CCR4, CCR5, CCR6,
-};
+use crate::hw_traits::timerb::{CCRn, Ccis, Cm, TimerB, TimerSteal};
 use crate::timer::{read_tbxiv, SevenCCRnTimer, ThreeCCRnTimer, TimerVector};
 use crate::util::SealedDefault;
 use core::marker::PhantomData;
 use msp430fr2355 as pac;
 
-pub use crate::timer::{CapCmpPeriph, TimerConfig, TimerDiv, TimerExDiv, TimerPeriph};
+pub use crate::timer::{
+    CapCmpPeriph, TimerConfig, TimerDiv, TimerExDiv, TimerPeriph, CCR0, CCR1, CCR2, CCR3, CCR4,
+    CCR5, CCR6,
+};
 
 mod sealed {
     use super::*;
@@ -483,7 +484,7 @@ impl<T: CCRn<C>, C> Capture<T, C> {
 
     #[inline]
     /// Disable capture interrupts
-    pub fn disable_interrupt(&mut self) {
+    pub fn disable_interrupts(&mut self) {
         let timer = unsafe { T::steal() };
         timer.ccie_clr();
     }

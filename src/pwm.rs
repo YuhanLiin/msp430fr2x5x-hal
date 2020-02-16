@@ -8,16 +8,17 @@ use crate::gpio::{
     Alternate1, Alternate2, ChangeSelectBits, Output, Pin, Pin0, Pin1, Pin2, Pin3, Pin4, Pin5,
     Pin6, Pin7, Port1, Port2, Port5, Port6,
 };
-use crate::hw_traits::timerb::{
-    CCRn, Outmod, TimerB, TimerSteal, CCR0, CCR1, CCR2, CCR3, CCR4, CCR5, CCR6,
-};
+use crate::hw_traits::timerb::{CCRn, Outmod, TimerB, TimerSteal};
 use crate::timer::{SevenCCRnTimer, ThreeCCRnTimer};
 use crate::util::SealedDefault;
 use core::marker::PhantomData;
 use embedded_hal::PwmPin;
 use msp430fr2355 as pac;
 
-pub use crate::timer::{CapCmpPeriph, TimerConfig, TimerDiv, TimerExDiv, TimerPeriph};
+pub use crate::timer::{
+    CapCmpPeriph, TimerConfig, TimerDiv, TimerExDiv, TimerPeriph, CCR0, CCR1, CCR2, CCR3, CCR4,
+    CCR5, CCR6,
+};
 
 mod sealed {
     use super::*;
@@ -292,7 +293,7 @@ impl PwmExt for pac::TB3 {
     type Pins = SevenCCRnPins<Self::Timer>;
 }
 
-impl<T: CapCmpPeriph<CCR0> + CapCmpPeriph<C>, C> PwmPin for Pwm<T, C>
+impl<T: CapCmpPeriph<C>, C> PwmPin for Pwm<T, C>
 where
     (T, C): PwmGpio,
 {

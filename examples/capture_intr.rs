@@ -8,11 +8,10 @@ use msp430::interrupt::{enable, free, Mutex};
 use msp430_rt::entry;
 use msp430fr2355::interrupt;
 use msp430fr2x5x_hal::{
-    capture::{CapCmpPeriph, CapTrigger, Capture, CaptureVector, TBxIV, TimerConfig},
+    capture::{CapCmpPeriph, CapTrigger, Capture, CaptureVector, TBxIV, TimerConfig, CCR1},
     clock::{DcoclkFreqSel, MclkDiv, SmclkDiv},
     gpio::*,
     prelude::*,
-    timer::CCR1,
 };
 use void::ResultVoidExt;
 
