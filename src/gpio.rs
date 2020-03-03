@@ -90,12 +90,6 @@ where
     type IPort = PORT::Port;
 }
 
-/// Trait implemented on PAC GPIO types to map the PAC type to its respective port number type
-pub trait GpioPort: sealed::SealedGpioPort {
-    /// Port number
-    type PortNum: PortNum;
-}
-
 /// Pin number 0
 pub struct Pin0;
 impl PinNum for Pin0 {
@@ -149,17 +143,11 @@ pub struct Port1;
 impl PortNum for Port1 {
     type Port = pac::p1::RegisterBlock;
 }
-impl GpioPort for P1 {
-    type PortNum = Port1;
-}
 
 /// Port P2
 pub struct Port2;
 impl PortNum for Port2 {
     type Port = pac::p2::RegisterBlock;
-}
-impl GpioPort for P2 {
-    type PortNum = Port2;
 }
 
 /// Port P3
@@ -167,17 +155,11 @@ pub struct Port3;
 impl PortNum for Port3 {
     type Port = pac::p3::RegisterBlock;
 }
-impl GpioPort for P3 {
-    type PortNum = Port3;
-}
 
 /// Port P4
 pub struct Port4;
 impl PortNum for Port4 {
     type Port = pac::p4::RegisterBlock;
-}
-impl GpioPort for P4 {
-    type PortNum = Port4;
 }
 
 /// Port P5
@@ -185,17 +167,11 @@ pub struct Port5;
 impl PortNum for Port5 {
     type Port = pac::p5::RegisterBlock;
 }
-impl GpioPort for P5 {
-    type PortNum = Port5;
-}
 
 /// Port P6
 pub struct Port6;
 impl PortNum for Port6 {
     type Port = pac::p6::RegisterBlock;
-}
-impl GpioPort for P6 {
-    type PortNum = Port6;
 }
 
 /// Marker trait for GPIO typestates representing pins in GPIO (non-alternate) state
@@ -510,7 +486,7 @@ impl<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
     /// Converts all parts into a GPIO batch so the entire port can be configured at once
     #[inline]
     pub fn batch(self) -> Batch<PORT, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7> {
-        Batch::new()
+        Batch::create()
     }
 
     #[inline]

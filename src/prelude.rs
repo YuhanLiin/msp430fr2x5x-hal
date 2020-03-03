@@ -1,6 +1,5 @@
 //! Prelude
 
-pub use crate::batch_gpio::GpioExt as _msp430fr2x5x_hal_GpioExt;
 pub use crate::capture::CaptureExt as _msp430fr2x5x_hal_CaptureExt;
 pub use crate::capture::CapturePin as _msp430fr2x5x_hal_CapturePin;
 pub use crate::clock::Clock as _msp430fr2x5x_hal_Clock;
@@ -9,7 +8,6 @@ pub use crate::gpio::Alternate1 as _msp430fr2x5x_hal_Alternate1;
 pub use crate::gpio::Alternate2 as _msp430fr2x5x_hal_Alternate2;
 pub use crate::gpio::Alternate3 as _msp430fr2x5x_hal_Alternate3;
 pub use crate::gpio::GpioFunction as _msp430fr2x5x_hal_GpioFunction;
-pub use crate::gpio::GpioPort as _msp430fr2x5x_hal_GpioPort;
 pub use crate::gpio::IntrPortNum as _msp430fr2x5x_hal_IntrPortNum;
 pub use crate::gpio::PinNum as _msp430fr2x5x_hal_PinNum;
 pub use crate::gpio::PortNum as _msp430fr2x5x_hal_PortNum;

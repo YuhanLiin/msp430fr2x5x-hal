@@ -243,39 +243,22 @@ impl<P: IntrPeriph> InterruptOperations for P {
     }
 }
 
-mod sealed {
-    use super::*;
-
-    pub trait SealedGpioExt {}
-
-    impl<P: GpioPort> SealedGpioExt for P {}
-}
-
-/// Extension trait to split the GPIO object
-pub trait GpioExt: sealed::SealedGpioExt {
-    /// The struct to split the GPIO into.
-    type Batch;
-
+impl<P: PortNum>
+    Batch<
+        P,
+        Input<Floating>,
+        Input<Floating>,
+        Input<Floating>,
+        Input<Floating>,
+        Input<Floating>,
+        Input<Floating>,
+        Input<Floating>,
+        Input<Floating>,
+    >
+{
     /// Split into a batch of individual GPIO pin proxies
-    fn batch(self) -> Self::Batch;
-}
-
-impl<P: GpioPort> GpioExt for P {
-    type Batch = Batch<
-        P::PortNum,
-        Input<Floating>,
-        Input<Floating>,
-        Input<Floating>,
-        Input<Floating>,
-        Input<Floating>,
-        Input<Floating>,
-        Input<Floating>,
-        Input<Floating>,
-    >;
-
-    #[inline(always)]
-    fn batch(self) -> Self::Batch {
-        Self::Batch::new()
+    pub fn new(_port: P::Port) -> Self {
+        Self::create()
     }
 }
 
@@ -358,7 +341,7 @@ impl<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
     }
 
     #[inline(always)]
-    pub(super) fn new() -> Self {
+    pub(super) fn create() -> Self {
         Self {
             pin0: make_proxy!(),
             pin1: make_proxy!(),
