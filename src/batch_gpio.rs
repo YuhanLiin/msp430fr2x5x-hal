@@ -257,7 +257,7 @@ impl<P: PortNum>
     >
 {
     /// Split into a batch of individual GPIO pin proxies
-    pub fn new(_port: P::Port) -> Self {
+    pub fn new(_port: <P::Port as GpioPeriph>::Owned) -> Self {
         Self::create()
     }
 }

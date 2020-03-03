@@ -1,6 +1,9 @@
+use core::ops::Deref;
 use msp430fr2355 as pac;
 
 pub trait GpioPeriph {
+    type Owned: Deref<Target = Self>;
+
     unsafe fn steal<'a>() -> &'a Self;
 
     fn pxin_rd(&self) -> u8;
@@ -86,6 +89,8 @@ macro_rules! gpio_impl {
             use super::*;
 
             impl GpioPeriph for pac::$px::RegisterBlock {
+                type Owned = pac::$Px;
+
                 #[inline(always)]
                 unsafe fn steal<'a>() -> &'a Self {
                     &*pac::$Px::ptr()
