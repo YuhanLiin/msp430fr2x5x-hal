@@ -19,37 +19,29 @@ pub use pac::wdt_a::wdtctl::WDTIS_A as WdtClkPeriods;
 mod sealed {
     use super::*;
 
-    pub trait SealedWdtExt {}
     pub trait SealedWatchdogSelect {}
 
-    impl SealedWdtExt for pac::WDT_A {}
     impl SealedWatchdogSelect for WatchdogMode {}
     impl SealedWatchdogSelect for IntervalMode {}
-}
-
-/// Extension trait to constrain watchdog peripheral into HAL watchdog
-pub trait WdtExt: sealed::SealedWdtExt {
-    /// Constrain watchdog PAC peripheral into HAL watchdog and disable watchdog.
-    fn constrain(self) -> Wdt<WatchdogMode>;
-}
-
-impl WdtExt for pac::WDT_A {
-    #[inline]
-    fn constrain(self) -> Wdt<WatchdogMode> {
-        // Disable first
-        self.wdtctl
-            .write(|w| unsafe { w.wdtpw().bits(PASSWORD) }.wdthold().hold());
-        Wdt {
-            _mode: PhantomData,
-            periph: self,
-        }
-    }
 }
 
 /// Watchdog timer which can be configured to watchdog or interval (timer) mode
 pub struct Wdt<MODE> {
     _mode: PhantomData<MODE>,
     periph: pac::WDT_A,
+}
+
+impl Wdt<WatchdogMode> {
+    /// Constrain watchdog PAC peripheral into HAL watchdog and disable watchdog.
+    pub fn new(wdt: pac::WDT_A) -> Self {
+        // Disable first
+        wdt.wdtctl
+            .write(|w| unsafe { w.wdtpw().bits(PASSWORD) }.wdthold().hold());
+        Wdt {
+            _mode: PhantomData,
+            periph: wdt,
+        }
+    }
 }
 
 /// Watchdog mode

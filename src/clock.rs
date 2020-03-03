@@ -178,27 +178,11 @@ macro_rules! make_clkconf {
     };
 }
 
-mod sealed {
-    use super::*;
-
-    pub trait SealedCsExt {}
-
-    impl SealedCsExt for pac::CS {}
-}
-
-/// Extension trait allowing the PAC CS struct to be converted into the HAL clock configuration
-/// builder object.
-pub trait CsExt: sealed::SealedCsExt {
+impl ClockConfig<NoClockDefined, NoClockDefined> {
     /// Converts CS into clock configuration builder object
-    fn constrain(self) -> ClockConfig<NoClockDefined, NoClockDefined>;
-}
-
-impl CsExt for pac::CS {
-    #[inline]
-    fn constrain(self) -> ClockConfig<NoClockDefined, NoClockDefined> {
-        // These are the microcontroller default settings
+    pub fn new(cs: pac::CS) -> Self {
         ClockConfig {
-            periph: self,
+            periph: cs,
             smclk: NoClockDefined,
             mclk: NoClockDefined,
             mclk_div: MclkDiv::_1,

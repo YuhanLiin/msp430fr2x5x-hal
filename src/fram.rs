@@ -3,30 +3,16 @@
 use msp430fr2355 as pac;
 use pac::FRCTL;
 
-mod sealed {
-    use super::*;
-
-    pub trait SealedFramExt {}
-
-    impl SealedFramExt for pac::FRCTL {}
-}
-
-/// Extension trait for making FRAM controllers
-pub trait FramExt: sealed::SealedFramExt {
-    /// Turn FRCTL into `Fram`
-    fn constrain(self) -> Fram;
-}
-
-impl FramExt for FRCTL {
-    #[inline(always)]
-    fn constrain(self) -> Fram {
-        Fram { periph: self }
-    }
-}
-
 /// FRAM controller
 pub struct Fram {
     periph: FRCTL,
+}
+
+impl Fram {
+    /// Turn FRCTL into `Fram`
+    pub fn new(fram: FRCTL) -> Self {
+        Fram { periph: fram }
+    }
 }
 
 const PASSWORD: u8 = 0xA5;
