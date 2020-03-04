@@ -17,16 +17,16 @@ pub use crate::batch_gpio::*;
 use crate::hw_traits::gpio::{GpioPeriph, IntrPeriph};
 use crate::util::BitsExt;
 use core::marker::PhantomData;
+use core::ops::Deref;
 use embedded_hal::digital::v2::{InputPin, OutputPin, StatefulOutputPin, ToggleableOutputPin};
 use msp430fr2355 as pac;
-use pac::{P1, P2, P3, P4, P5, P6};
+pub use pac::{P1, P2, P3, P4, P5, P6};
 
 mod sealed {
     use super::*;
 
     pub trait SealedPinNum {}
     pub trait SealedPortNum {}
-    pub trait SealedGpioPort {}
     pub trait SealedGpioFunction {}
 
     impl SealedPinNum for Pin0 {}
@@ -38,19 +38,12 @@ mod sealed {
     impl SealedPinNum for Pin6 {}
     impl SealedPinNum for Pin7 {}
 
-    impl SealedPortNum for Port1 {}
-    impl SealedPortNum for Port2 {}
-    impl SealedPortNum for Port3 {}
-    impl SealedPortNum for Port4 {}
-    impl SealedPortNum for Port5 {}
-    impl SealedPortNum for Port6 {}
-
-    impl SealedGpioPort for P1 {}
-    impl SealedGpioPort for P2 {}
-    impl SealedGpioPort for P3 {}
-    impl SealedGpioPort for P4 {}
-    impl SealedGpioPort for P5 {}
-    impl SealedGpioPort for P6 {}
+    impl SealedPortNum for P1 {}
+    impl SealedPortNum for P2 {}
+    impl SealedPortNum for P3 {}
+    impl SealedPortNum for P4 {}
+    impl SealedPortNum for P5 {}
+    impl SealedPortNum for P6 {}
 
     impl SealedGpioFunction for Output {}
     impl<PULL> SealedGpioFunction for Input<PULL> {}
@@ -70,12 +63,10 @@ pub trait PinNum: sealed::SealedPinNum {
     const CLR_MASK: u8 = !Self::SET_MASK;
 }
 
-/// Trait that encompasses all `Portx` types for specifying GPIO port
+/// Trait that encompasses all GPIO port types
 pub trait PortNum: sealed::SealedPortNum {
     #[doc(hidden)]
     type Port: GpioPeriph;
-    #[doc(hidden)]
-    type Owned: core::ops::Deref<Target = Self::Port> + GpioPort;
 }
 
 // Don't need to seal, since PortNum is already sealed
@@ -85,9 +76,11 @@ pub trait IntrPortNum: PortNum {
     type IPort: IntrPeriph;
 }
 
-#[doc(hidden)]
-pub trait GpioPort: sealed::SealedGpioPort {
-    type Num: PortNum;
+impl<PORT: Deref + sealed::SealedPortNum> PortNum for PORT
+where
+    PORT::Target: GpioPeriph + Sized,
+{
+    type Port = PORT::Target;
 }
 
 impl<PORT: PortNum> IntrPortNum for PORT
@@ -143,66 +136,6 @@ impl PinNum for Pin6 {
 pub struct Pin7;
 impl PinNum for Pin7 {
     const NUM: u8 = 7;
-}
-
-/// Port P1
-pub struct Port1;
-impl PortNum for Port1 {
-    type Port = pac::p1::RegisterBlock;
-    type Owned = pac::P1;
-}
-impl GpioPort for P1 {
-    type Num = Port1;
-}
-
-/// Port P2
-pub struct Port2;
-impl PortNum for Port2 {
-    type Port = pac::p2::RegisterBlock;
-    type Owned = pac::P2;
-}
-impl GpioPort for P2 {
-    type Num = Port2;
-}
-
-/// Port P3
-pub struct Port3;
-impl PortNum for Port3 {
-    type Port = pac::p3::RegisterBlock;
-    type Owned = pac::P3;
-}
-impl GpioPort for P3 {
-    type Num = Port3;
-}
-
-/// Port P4
-pub struct Port4;
-impl PortNum for Port4 {
-    type Port = pac::p4::RegisterBlock;
-    type Owned = pac::P4;
-}
-impl GpioPort for P4 {
-    type Num = Port4;
-}
-
-/// Port P5
-pub struct Port5;
-impl PortNum for Port5 {
-    type Port = pac::p5::RegisterBlock;
-    type Owned = pac::P5;
-}
-impl GpioPort for P5 {
-    type Num = Port5;
-}
-
-/// Port P6
-pub struct Port6;
-impl PortNum for Port6 {
-    type Port = pac::p6::RegisterBlock;
-    type Owned = pac::P6;
-}
-impl GpioPort for P6 {
-    type Num = Port6;
 }
 
 /// Marker trait for GPIO typestates representing pins in GPIO (non-alternate) state
@@ -516,7 +449,7 @@ impl<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
 {
     /// Converts all parts into a GPIO batch so the entire port can be configured at once
     #[inline]
-    pub fn batch(self) -> Batch<PORT::Owned, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7> {
+    pub fn batch(self) -> Batch<PORT, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7> {
         Batch::create()
     }
 
@@ -738,63 +671,63 @@ where
 }
 
 // P1 alternate 1
-impl<PIN: PinNum, DIR> ToAlternate1 for Pin<Port1, PIN, DIR> {}
+impl<PIN: PinNum, DIR> ToAlternate1 for Pin<P1, PIN, DIR> {}
 // P1 alternate 2
-impl<DIR> ToAlternate2 for Pin<Port1, Pin0, DIR> {}
-impl<DIR> ToAlternate2 for Pin<Port1, Pin1, DIR> {}
-impl<PULL> ToAlternate2 for Pin<Port1, Pin2, Input<PULL>> {}
-impl<DIR> ToAlternate2 for Pin<Port1, Pin6, DIR> {}
-impl<DIR> ToAlternate2 for Pin<Port1, Pin7, DIR> {}
+impl<DIR> ToAlternate2 for Pin<P1, Pin0, DIR> {}
+impl<DIR> ToAlternate2 for Pin<P1, Pin1, DIR> {}
+impl<PULL> ToAlternate2 for Pin<P1, Pin2, Input<PULL>> {}
+impl<DIR> ToAlternate2 for Pin<P1, Pin6, DIR> {}
+impl<DIR> ToAlternate2 for Pin<P1, Pin7, DIR> {}
 // P1 alternate 3
-impl<PIN: PinNum, DIR> ToAlternate3 for Pin<Port1, PIN, DIR> {}
+impl<PIN: PinNum, DIR> ToAlternate3 for Pin<P1, PIN, DIR> {}
 
 // P2 alternate 1
-impl<DIR> ToAlternate1 for Pin<Port2, Pin0, DIR> {}
-impl<DIR> ToAlternate1 for Pin<Port2, Pin1, DIR> {}
-impl<PULL> ToAlternate1 for Pin<Port2, Pin2, Input<PULL>> {}
-impl<DIR> ToAlternate1 for Pin<Port2, Pin3, DIR> {}
-impl<DIR> ToAlternate1 for Pin<Port2, Pin6, DIR> {}
-impl<DIR> ToAlternate1 for Pin<Port2, Pin7, DIR> {}
+impl<DIR> ToAlternate1 for Pin<P2, Pin0, DIR> {}
+impl<DIR> ToAlternate1 for Pin<P2, Pin1, DIR> {}
+impl<PULL> ToAlternate1 for Pin<P2, Pin2, Input<PULL>> {}
+impl<DIR> ToAlternate1 for Pin<P2, Pin3, DIR> {}
+impl<DIR> ToAlternate1 for Pin<P2, Pin6, DIR> {}
+impl<DIR> ToAlternate1 for Pin<P2, Pin7, DIR> {}
 // P2 alternate 2
-impl ToAlternate2 for Pin<Port2, Pin0, Output> {}
-impl ToAlternate2 for Pin<Port2, Pin1, Output> {}
-impl<DIR> ToAlternate2 for Pin<Port2, Pin6, DIR> {}
-impl<DIR> ToAlternate2 for Pin<Port2, Pin7, DIR> {}
+impl ToAlternate2 for Pin<P2, Pin0, Output> {}
+impl ToAlternate2 for Pin<P2, Pin1, Output> {}
+impl<DIR> ToAlternate2 for Pin<P2, Pin6, DIR> {}
+impl<DIR> ToAlternate2 for Pin<P2, Pin7, DIR> {}
 // P2 alternate 3
-impl<DIR> ToAlternate3 for Pin<Port2, Pin4, DIR> {}
-impl<DIR> ToAlternate3 for Pin<Port2, Pin5, DIR> {}
+impl<DIR> ToAlternate3 for Pin<P2, Pin4, DIR> {}
+impl<DIR> ToAlternate3 for Pin<P2, Pin5, DIR> {}
 
 // P3 alternate 1
-impl<DIR> ToAlternate1 for Pin<Port3, Pin0, DIR> {}
-impl<DIR> ToAlternate1 for Pin<Port3, Pin4, DIR> {}
+impl<DIR> ToAlternate1 for Pin<P3, Pin0, DIR> {}
+impl<DIR> ToAlternate1 for Pin<P3, Pin4, DIR> {}
 // P3 alternate 3
-impl<DIR> ToAlternate3 for Pin<Port3, Pin1, DIR> {}
-impl<DIR> ToAlternate3 for Pin<Port3, Pin2, DIR> {}
-impl<DIR> ToAlternate3 for Pin<Port3, Pin3, DIR> {}
-impl<DIR> ToAlternate3 for Pin<Port3, Pin5, DIR> {}
-impl<DIR> ToAlternate3 for Pin<Port3, Pin6, DIR> {}
-impl<DIR> ToAlternate3 for Pin<Port3, Pin7, DIR> {}
+impl<DIR> ToAlternate3 for Pin<P3, Pin1, DIR> {}
+impl<DIR> ToAlternate3 for Pin<P3, Pin2, DIR> {}
+impl<DIR> ToAlternate3 for Pin<P3, Pin3, DIR> {}
+impl<DIR> ToAlternate3 for Pin<P3, Pin5, DIR> {}
+impl<DIR> ToAlternate3 for Pin<P3, Pin6, DIR> {}
+impl<DIR> ToAlternate3 for Pin<P3, Pin7, DIR> {}
 
 // P4 alternate 1
-impl<PIN: PinNum, DIR> ToAlternate1 for Pin<Port4, PIN, DIR> {}
+impl<PIN: PinNum, DIR> ToAlternate1 for Pin<P4, PIN, DIR> {}
 // P4 alternate 2
-impl<DIR> ToAlternate2 for Pin<Port4, Pin0, DIR> {}
-impl<DIR> ToAlternate2 for Pin<Port4, Pin2, DIR> {}
-impl<DIR> ToAlternate2 for Pin<Port4, Pin3, DIR> {}
+impl<DIR> ToAlternate2 for Pin<P4, Pin0, DIR> {}
+impl<DIR> ToAlternate2 for Pin<P4, Pin2, DIR> {}
+impl<DIR> ToAlternate2 for Pin<P4, Pin3, DIR> {}
 
 // P5 alternate 1
-impl<DIR> ToAlternate1 for Pin<Port5, Pin0, DIR> {}
-impl<DIR> ToAlternate1 for Pin<Port5, Pin1, DIR> {}
-impl<DIR> ToAlternate1 for Pin<Port5, Pin2, DIR> {}
-impl<DIR> ToAlternate1 for Pin<Port5, Pin3, DIR> {}
+impl<DIR> ToAlternate1 for Pin<P5, Pin0, DIR> {}
+impl<DIR> ToAlternate1 for Pin<P5, Pin1, DIR> {}
+impl<DIR> ToAlternate1 for Pin<P5, Pin2, DIR> {}
+impl<DIR> ToAlternate1 for Pin<P5, Pin3, DIR> {}
 // P5 alternate 2
-impl<DIR> ToAlternate2 for Pin<Port5, Pin0, DIR> {}
-impl<DIR> ToAlternate2 for Pin<Port5, Pin1, DIR> {}
+impl<DIR> ToAlternate2 for Pin<P5, Pin0, DIR> {}
+impl<DIR> ToAlternate2 for Pin<P5, Pin1, DIR> {}
 // P5 alternate 3
-impl<DIR> ToAlternate3 for Pin<Port5, Pin0, DIR> {}
-impl<DIR> ToAlternate3 for Pin<Port5, Pin1, DIR> {}
-impl<DIR> ToAlternate3 for Pin<Port5, Pin2, DIR> {}
-impl<DIR> ToAlternate3 for Pin<Port5, Pin3, DIR> {}
+impl<DIR> ToAlternate3 for Pin<P5, Pin0, DIR> {}
+impl<DIR> ToAlternate3 for Pin<P5, Pin1, DIR> {}
+impl<DIR> ToAlternate3 for Pin<P5, Pin2, DIR> {}
+impl<DIR> ToAlternate3 for Pin<P5, Pin3, DIR> {}
 
 // P6 alternate 1
-impl<PIN: PinNum, DIR> ToAlternate1 for Pin<Port6, PIN, DIR> {}
+impl<PIN: PinNum, DIR> ToAlternate1 for Pin<P6, PIN, DIR> {}

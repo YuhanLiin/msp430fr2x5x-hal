@@ -243,7 +243,7 @@ impl<P: IntrPeriph> InterruptOperations for P {
     }
 }
 
-impl<P: GpioPort>
+impl<P: PortNum>
     Batch<
         P,
         Input<Floating>,
@@ -264,18 +264,18 @@ impl<P: GpioPort>
 
 /// Collection of proxies for pins 0 to 7 of a specific port, used to commit configurations for
 /// all pins in a single step, reducing the total number of register accesses.
-pub struct Batch<PORT: GpioPort, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7> {
-    pin0: PinProxy<PORT::Num, Pin0, DIR0>,
-    pin1: PinProxy<PORT::Num, Pin1, DIR1>,
-    pin2: PinProxy<PORT::Num, Pin2, DIR2>,
-    pin3: PinProxy<PORT::Num, Pin3, DIR3>,
-    pin4: PinProxy<PORT::Num, Pin4, DIR4>,
-    pin5: PinProxy<PORT::Num, Pin5, DIR5>,
-    pin6: PinProxy<PORT::Num, Pin6, DIR6>,
-    pin7: PinProxy<PORT::Num, Pin7, DIR7>,
+pub struct Batch<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7> {
+    pin0: PinProxy<PORT, Pin0, DIR0>,
+    pin1: PinProxy<PORT, Pin1, DIR1>,
+    pin2: PinProxy<PORT, Pin2, DIR2>,
+    pin3: PinProxy<PORT, Pin3, DIR3>,
+    pin4: PinProxy<PORT, Pin4, DIR4>,
+    pin5: PinProxy<PORT, Pin5, DIR5>,
+    pin6: PinProxy<PORT, Pin6, DIR6>,
+    pin7: PinProxy<PORT, Pin7, DIR7>,
 }
 
-impl<PORT: GpioPort, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
+impl<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
     Batch<PORT, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
 {
     #[inline]
@@ -330,7 +330,7 @@ impl<PORT: GpioPort, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
             .set_mask(self.pin6.pxsel1_mask())
             .set_mask(self.pin7.pxsel1_mask());
 
-        let p = unsafe { <PORT::Num as PortNum>::Port::steal() };
+        let p = unsafe { PORT::Port::steal() };
         // Turn off interrupts first so nothing fires during subsequent register writes
         p.maybe_set_pxie(0);
         p.pxsel0_wr(pxsel0);
@@ -361,20 +361,14 @@ impl<PORT: GpioPort, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
     /// ensured when passing `&Pmm` into the method, since a `Pmm` is created only be setting
     /// LOCKLPM5.
     #[inline]
-    pub fn split(
-        self,
-        _pmm: &Pmm,
-    ) -> Parts<PORT::Num, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7> {
+    pub fn split(self, _pmm: &Pmm) -> Parts<PORT, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7> {
         self.write_regs();
         Parts::new()
     }
 
     /// Edit configuration of pin 0
     #[inline(always)]
-    pub fn config_pin0<
-        NEW,
-        F: FnOnce(PinProxy<PORT::Num, Pin0, DIR0>) -> PinProxy<PORT::Num, Pin0, NEW>,
-    >(
+    pub fn config_pin0<NEW, F: FnOnce(PinProxy<PORT, Pin0, DIR0>) -> PinProxy<PORT, Pin0, NEW>>(
         self,
         f: F,
     ) -> Batch<PORT, NEW, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7> {
@@ -392,10 +386,7 @@ impl<PORT: GpioPort, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
 
     /// Edit configuration of pin 1
     #[inline(always)]
-    pub fn config_pin1<
-        NEW,
-        F: FnOnce(PinProxy<PORT::Num, Pin1, DIR1>) -> PinProxy<PORT::Num, Pin1, NEW>,
-    >(
+    pub fn config_pin1<NEW, F: FnOnce(PinProxy<PORT, Pin1, DIR1>) -> PinProxy<PORT, Pin1, NEW>>(
         self,
         f: F,
     ) -> Batch<PORT, DIR0, NEW, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7> {
@@ -413,10 +404,7 @@ impl<PORT: GpioPort, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
 
     /// Edit configuration of pin 2
     #[inline(always)]
-    pub fn config_pin2<
-        NEW,
-        F: FnOnce(PinProxy<PORT::Num, Pin2, DIR2>) -> PinProxy<PORT::Num, Pin2, NEW>,
-    >(
+    pub fn config_pin2<NEW, F: FnOnce(PinProxy<PORT, Pin2, DIR2>) -> PinProxy<PORT, Pin2, NEW>>(
         self,
         f: F,
     ) -> Batch<PORT, DIR0, DIR1, NEW, DIR3, DIR4, DIR5, DIR6, DIR7> {
@@ -434,10 +422,7 @@ impl<PORT: GpioPort, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
 
     /// Edit configuration of pin 3
     #[inline(always)]
-    pub fn config_pin3<
-        NEW,
-        F: FnOnce(PinProxy<PORT::Num, Pin3, DIR3>) -> PinProxy<PORT::Num, Pin3, NEW>,
-    >(
+    pub fn config_pin3<NEW, F: FnOnce(PinProxy<PORT, Pin3, DIR3>) -> PinProxy<PORT, Pin3, NEW>>(
         self,
         f: F,
     ) -> Batch<PORT, DIR0, DIR1, DIR2, NEW, DIR4, DIR5, DIR6, DIR7> {
@@ -455,10 +440,7 @@ impl<PORT: GpioPort, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
 
     /// Edit configuration of pin 4
     #[inline(always)]
-    pub fn config_pin4<
-        NEW,
-        F: FnOnce(PinProxy<PORT::Num, Pin4, DIR4>) -> PinProxy<PORT::Num, Pin4, NEW>,
-    >(
+    pub fn config_pin4<NEW, F: FnOnce(PinProxy<PORT, Pin4, DIR4>) -> PinProxy<PORT, Pin4, NEW>>(
         self,
         f: F,
     ) -> Batch<PORT, DIR0, DIR1, DIR2, DIR3, NEW, DIR5, DIR6, DIR7> {
@@ -476,10 +458,7 @@ impl<PORT: GpioPort, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
 
     /// Edit configuration of pin 5
     #[inline(always)]
-    pub fn config_pin5<
-        NEW,
-        F: FnOnce(PinProxy<PORT::Num, Pin5, DIR5>) -> PinProxy<PORT::Num, Pin5, NEW>,
-    >(
+    pub fn config_pin5<NEW, F: FnOnce(PinProxy<PORT, Pin5, DIR5>) -> PinProxy<PORT, Pin5, NEW>>(
         self,
         f: F,
     ) -> Batch<PORT, DIR0, DIR1, DIR2, DIR3, DIR4, NEW, DIR6, DIR7> {
@@ -497,10 +476,7 @@ impl<PORT: GpioPort, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
 
     /// Edit configuration of pin 6
     #[inline(always)]
-    pub fn config_pin6<
-        NEW,
-        F: FnOnce(PinProxy<PORT::Num, Pin6, DIR6>) -> PinProxy<PORT::Num, Pin6, NEW>,
-    >(
+    pub fn config_pin6<NEW, F: FnOnce(PinProxy<PORT, Pin6, DIR6>) -> PinProxy<PORT, Pin6, NEW>>(
         self,
         f: F,
     ) -> Batch<PORT, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, NEW, DIR7> {
@@ -518,10 +494,7 @@ impl<PORT: GpioPort, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
 
     /// Edit configuration of pin 7
     #[inline(always)]
-    pub fn config_pin7<
-        NEW,
-        F: FnOnce(PinProxy<PORT::Num, Pin7, DIR7>) -> PinProxy<PORT::Num, Pin7, NEW>,
-    >(
+    pub fn config_pin7<NEW, F: FnOnce(PinProxy<PORT, Pin7, DIR7>) -> PinProxy<PORT, Pin7, NEW>>(
         self,
         f: F,
     ) -> Batch<PORT, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, NEW> {

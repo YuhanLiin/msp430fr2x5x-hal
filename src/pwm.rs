@@ -6,7 +6,7 @@
 
 use crate::gpio::{
     Alternate1, Alternate2, ChangeSelectBits, Output, Pin, Pin0, Pin1, Pin2, Pin3, Pin4, Pin5,
-    Pin6, Pin7, Port1, Port2, Port5, Port6,
+    Pin6, Pin7, P1, P2, P5, P6,
 };
 use crate::hw_traits::timerb::{CCRn, Outmod, TimerB, TimerSteal};
 use crate::timer::{SevenCCRnTimer, ThreeCCRnTimer};
@@ -125,54 +125,54 @@ pub trait PwmGpio: sealed::SealedPwmGpio {
 }
 
 impl PwmGpio for (Tb0, CCR1) {
-    type Gpio = Pin<Port1, Pin6, Alternate2<Output>>;
+    type Gpio = Pin<P1, Pin6, Alternate2<Output>>;
     const ALT: Alt = Alt::Alt2;
 }
 impl PwmGpio for (Tb0, CCR2) {
-    type Gpio = Pin<Port1, Pin7, Alternate2<Output>>;
+    type Gpio = Pin<P1, Pin7, Alternate2<Output>>;
     const ALT: Alt = Alt::Alt2;
 }
 
 impl PwmGpio for (Tb1, CCR1) {
-    type Gpio = Pin<Port2, Pin0, Alternate1<Output>>;
+    type Gpio = Pin<P2, Pin0, Alternate1<Output>>;
     const ALT: Alt = Alt::Alt1;
 }
 impl PwmGpio for (Tb1, CCR2) {
-    type Gpio = Pin<Port2, Pin1, Alternate1<Output>>;
+    type Gpio = Pin<P2, Pin1, Alternate1<Output>>;
     const ALT: Alt = Alt::Alt1;
 }
 
 impl PwmGpio for (Tb2, CCR1) {
-    type Gpio = Pin<Port5, Pin0, Alternate1<Output>>;
+    type Gpio = Pin<P5, Pin0, Alternate1<Output>>;
     const ALT: Alt = Alt::Alt1;
 }
 impl PwmGpio for (Tb2, CCR2) {
-    type Gpio = Pin<Port5, Pin1, Alternate1<Output>>;
+    type Gpio = Pin<P5, Pin1, Alternate1<Output>>;
     const ALT: Alt = Alt::Alt1;
 }
 
 impl PwmGpio for (Tb3, CCR1) {
-    type Gpio = Pin<Port6, Pin0, Alternate1<Output>>;
+    type Gpio = Pin<P6, Pin0, Alternate1<Output>>;
     const ALT: Alt = Alt::Alt1;
 }
 impl PwmGpio for (Tb3, CCR2) {
-    type Gpio = Pin<Port6, Pin1, Alternate1<Output>>;
+    type Gpio = Pin<P6, Pin1, Alternate1<Output>>;
     const ALT: Alt = Alt::Alt1;
 }
 impl PwmGpio for (Tb3, CCR3) {
-    type Gpio = Pin<Port6, Pin2, Alternate1<Output>>;
+    type Gpio = Pin<P6, Pin2, Alternate1<Output>>;
     const ALT: Alt = Alt::Alt1;
 }
 impl PwmGpio for (Tb3, CCR4) {
-    type Gpio = Pin<Port6, Pin3, Alternate1<Output>>;
+    type Gpio = Pin<P6, Pin3, Alternate1<Output>>;
     const ALT: Alt = Alt::Alt1;
 }
 impl PwmGpio for (Tb3, CCR5) {
-    type Gpio = Pin<Port6, Pin4, Alternate1<Output>>;
+    type Gpio = Pin<P6, Pin4, Alternate1<Output>>;
     const ALT: Alt = Alt::Alt1;
 }
 impl PwmGpio for (Tb3, CCR6) {
-    type Gpio = Pin<Port6, Pin5, Alternate1<Output>>;
+    type Gpio = Pin<P6, Pin5, Alternate1<Output>>;
     const ALT: Alt = Alt::Alt1;
 }
 

@@ -5,7 +5,7 @@
 //! and will set its own IFG when the main timer counts to its threshold.
 
 use crate::clock::{Aclk, Smclk};
-use crate::gpio::{Alternate1, Floating, Input, Pin, Pin2, Pin6, Pin7, Port2, Port5, Port6};
+use crate::gpio::{Alternate1, Floating, Input, Pin, Pin2, Pin6, Pin7, P2, P5, P6};
 use crate::hw_traits::timerb::{CCRn, Tbssel, TimerB, TimerSteal};
 use crate::util::SealedDefault;
 use core::marker::PhantomData;
@@ -38,22 +38,22 @@ pub trait SevenCCRnTimer:
 }
 
 impl TimerPeriph for pac::tb0::RegisterBlock {
-    type Tbxclk = Pin<Port2, Pin7, Alternate1<Input<Floating>>>;
+    type Tbxclk = Pin<P2, Pin7, Alternate1<Input<Floating>>>;
 }
 impl ThreeCCRnTimer for pac::tb0::RegisterBlock {}
 
 impl TimerPeriph for pac::tb1::RegisterBlock {
-    type Tbxclk = Pin<Port2, Pin2, Alternate1<Input<Floating>>>;
+    type Tbxclk = Pin<P2, Pin2, Alternate1<Input<Floating>>>;
 }
 impl ThreeCCRnTimer for pac::tb1::RegisterBlock {}
 
 impl TimerPeriph for pac::tb2::RegisterBlock {
-    type Tbxclk = Pin<Port5, Pin2, Alternate1<Input<Floating>>>;
+    type Tbxclk = Pin<P5, Pin2, Alternate1<Input<Floating>>>;
 }
 impl ThreeCCRnTimer for pac::tb2::RegisterBlock {}
 
 impl TimerPeriph for pac::tb3::RegisterBlock {
-    type Tbxclk = Pin<Port6, Pin6, Alternate1<Input<Floating>>>;
+    type Tbxclk = Pin<P6, Pin6, Alternate1<Input<Floating>>>;
 }
 impl SevenCCRnTimer for pac::tb3::RegisterBlock {}
 

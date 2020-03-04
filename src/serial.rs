@@ -1,7 +1,7 @@
 //! Serial UART
 
 use crate::clock::{Aclk, Clock, Smclk};
-use crate::gpio::{Alternate1, Pin, Pin1, Pin2, Pin3, Pin5, Pin6, Pin7, Port1, Port4};
+use crate::gpio::{Alternate1, Pin, Pin1, Pin2, Pin3, Pin5, Pin6, Pin7, P1, P4};
 use crate::hw_traits::eusci::UcxCtl0;
 use crate::hw_traits::eusci::{EUsci, EUsciUart, UcaxStatw, Ucssel};
 use core::marker::PhantomData;
@@ -166,7 +166,7 @@ impl SerialUsci for pac::E_USCI_A0 {
 
 /// UCLK pin for E_USCI_A0
 pub struct UsciA0ClockPin;
-impl<DIR> Into<UsciA0ClockPin> for Pin<Port1, Pin5, Alternate1<DIR>> {
+impl<DIR> Into<UsciA0ClockPin> for Pin<P1, Pin5, Alternate1<DIR>> {
     #[inline(always)]
     fn into(self) -> UsciA0ClockPin {
         UsciA0ClockPin
@@ -175,7 +175,7 @@ impl<DIR> Into<UsciA0ClockPin> for Pin<Port1, Pin5, Alternate1<DIR>> {
 
 /// Tx pin for E_USCI_A0
 pub struct UsciA0TxPin;
-impl<DIR> Into<UsciA0TxPin> for Pin<Port1, Pin7, Alternate1<DIR>> {
+impl<DIR> Into<UsciA0TxPin> for Pin<P1, Pin7, Alternate1<DIR>> {
     #[inline(always)]
     fn into(self) -> UsciA0TxPin {
         UsciA0TxPin
@@ -184,7 +184,7 @@ impl<DIR> Into<UsciA0TxPin> for Pin<Port1, Pin7, Alternate1<DIR>> {
 
 /// Rx pin for E_USCI_A0
 pub struct UsciA0RxPin;
-impl<DIR> Into<UsciA0RxPin> for Pin<Port1, Pin6, Alternate1<DIR>> {
+impl<DIR> Into<UsciA0RxPin> for Pin<P1, Pin6, Alternate1<DIR>> {
     #[inline(always)]
     fn into(self) -> UsciA0RxPin {
         UsciA0RxPin
@@ -200,7 +200,7 @@ impl SerialUsci for pac::E_USCI_A1 {
 
 /// UCLK pin for E_USCI_A1
 pub struct UsciA1ClockPin;
-impl<DIR> Into<UsciA1ClockPin> for Pin<Port4, Pin1, Alternate1<DIR>> {
+impl<DIR> Into<UsciA1ClockPin> for Pin<P4, Pin1, Alternate1<DIR>> {
     #[inline(always)]
     fn into(self) -> UsciA1ClockPin {
         UsciA1ClockPin
@@ -209,7 +209,7 @@ impl<DIR> Into<UsciA1ClockPin> for Pin<Port4, Pin1, Alternate1<DIR>> {
 
 /// Tx pin for E_USCI_A1
 pub struct UsciA1TxPin;
-impl<DIR> Into<UsciA1TxPin> for Pin<Port4, Pin3, Alternate1<DIR>> {
+impl<DIR> Into<UsciA1TxPin> for Pin<P4, Pin3, Alternate1<DIR>> {
     #[inline(always)]
     fn into(self) -> UsciA1TxPin {
         UsciA1TxPin
@@ -218,7 +218,7 @@ impl<DIR> Into<UsciA1TxPin> for Pin<Port4, Pin3, Alternate1<DIR>> {
 
 /// Rx pin for E_USCI_A1
 pub struct UsciA1RxPin;
-impl<DIR> Into<UsciA1RxPin> for Pin<Port4, Pin2, Alternate1<DIR>> {
+impl<DIR> Into<UsciA1RxPin> for Pin<P4, Pin2, Alternate1<DIR>> {
     #[inline(always)]
     fn into(self) -> UsciA1RxPin {
         UsciA1RxPin
