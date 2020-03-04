@@ -311,11 +311,7 @@ struct BaudConfig {
     ucos16: bool,
 }
 
-// Optimization hack to make sure this expensive magic baudrate calculation is always inlined
-// during release mode. Specifically, inlining causes this function to be const-propagated away
-// when LTO is enabled, but blows up code size without LTO. This attribute achieves both of best
-// worlds, assuming release mode has LTO enabled
-#[cfg_attr(not(debug_assertions), inline(always))]
+#[inline]
 fn calculate_baud_config(clk_freq: u32, bps: u32) -> BaudConfig {
     // Prevent division by 0
     let bps = bps.max(1);
