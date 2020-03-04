@@ -5,6 +5,7 @@ use crate::gpio::{Alternate1, Pin, Pin1, Pin2, Pin3, Pin5, Pin6, Pin7, P1, P4};
 use crate::hw_traits::eusci::UcxCtl0;
 use crate::hw_traits::eusci::{EUsci, EUsciUart, UcaxStatw, Ucssel};
 use core::marker::PhantomData;
+use core::ops::Deref;
 use embedded_hal::serial::{Read, Write};
 use msp430fr2355 as pac;
 
@@ -124,7 +125,7 @@ mod sealed {
 }
 
 /// Marks a USCI type that can be used as a serial UART
-pub trait SerialUsci: Sized + sealed::SealedSerialUsci {
+pub trait SerialUsci: sealed::SealedSerialUsci + Deref {
     #[doc(hidden)]
     type Periph: EUsciUart;
     /// Pin used for serial UCLK
@@ -133,28 +134,6 @@ pub trait SerialUsci: Sized + sealed::SealedSerialUsci {
     type TxPin;
     /// Pin used for Rx
     type RxPin;
-
-    /// Transform the peripheral into a Serial object
-    #[inline]
-    fn to_serial(
-        self,
-        order: BitOrder,
-        cnt: BitCount,
-        stopbits: StopBits,
-        parity: Parity,
-        loopback: Loopback,
-        baudrate: u32,
-    ) -> SerialConfig<Self, NoClockSet> {
-        SerialConfig {
-            order,
-            cnt,
-            stopbits,
-            parity,
-            loopback,
-            _usci: PhantomData,
-            state: NoClockSet { baudrate },
-        }
-    }
 }
 
 impl SerialUsci for pac::E_USCI_A0 {
@@ -238,7 +217,7 @@ pub struct ClockSet {
 
 /// Configuration object for serial UART
 pub struct SerialConfig<USCI: SerialUsci, S> {
-    _usci: PhantomData<USCI>,
+    usci: USCI,
     order: BitOrder,
     cnt: BitCount,
     stopbits: StopBits,
@@ -250,7 +229,7 @@ pub struct SerialConfig<USCI: SerialUsci, S> {
 macro_rules! serial_config {
     ($conf:expr, $state:expr) => {
         SerialConfig {
-            _usci: PhantomData,
+            usci: $conf.usci,
             order: $conf.order,
             cnt: $conf.cnt,
             stopbits: $conf.stopbits,
@@ -262,6 +241,28 @@ macro_rules! serial_config {
 }
 
 impl<USCI: SerialUsci> SerialConfig<USCI, NoClockSet> {
+    /// Create a new serial configuration using a EUSCI peripheral
+    #[inline]
+    pub fn new(
+        usci: USCI,
+        order: BitOrder,
+        cnt: BitCount,
+        stopbits: StopBits,
+        parity: Parity,
+        loopback: Loopback,
+        baudrate: u32,
+    ) -> Self {
+        SerialConfig {
+            order,
+            cnt,
+            stopbits,
+            parity,
+            loopback,
+            usci,
+            state: NoClockSet { baudrate },
+        }
+    }
+
     /// Configure serial UART to use external UCLK, passing in the appropriately configured pin
     /// used as the clock signal as well as the frequency of the clock.
     #[inline(always)]

@@ -6,9 +6,12 @@ use embedded_hal::prelude::*;
 use embedded_hal::serial::Read;
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
-    clock::{DcoclkFreqSel, MclkDiv, Smclk, SmclkDiv},
-    prelude::*,
+    clock::{ClockConfig, DcoclkFreqSel, MclkDiv, Smclk, SmclkDiv},
+    fram::Fram,
+    gpio::Batch,
+    pmm::Pmm,
     serial::*,
+    watchdog::Wdt,
 };
 use nb::block;
 use panic_msp430 as _;
@@ -22,7 +25,8 @@ fn setup_uart<S: SerialUsci>(
     baudrate: u32,
     smclk: &Smclk,
 ) -> (Tx<S>, Rx<S>) {
-    usci.to_serial(
+    SerialConfig::new(
+        usci,
         BitOrder::LsbFirst,
         BitCount::EightBits,
         StopBits::TwoStopBits,
@@ -47,20 +51,18 @@ fn read_unwrap<R: Read<u8>>(rx: &mut R, err: char) -> u8 {
 fn main() -> ! {
     let periph = msp430fr2355::Peripherals::take().unwrap();
 
-    let mut fram = periph.FRCTL.constrain();
-    let _wdt = periph.WDT_A.constrain();
+    let mut fram = Fram::new(periph.FRCTL);
+    let _wdt = Wdt::constrain(periph.WDT_A);
 
-    let (smclk, _aclk) = periph
-        .CS
-        .constrain()
+    let (smclk, _aclk) = ClockConfig::new(periph.CS)
         .mclk_dcoclk(DcoclkFreqSel::_4MHz, MclkDiv::_1)
         .smclk_on(SmclkDiv::_2)
         .aclk_refoclk()
         .freeze(&mut fram);
 
-    let pmm = periph.PMM.freeze();
-    let p1 = periph.P1.batch().split(&pmm);
-    let p4 = periph.P4.batch().split(&pmm);
+    let pmm = Pmm::new(periph.PMM);
+    let p1 = Batch::new(periph.P1).split(&pmm);
+    let p4 = Batch::new(periph.P4).split(&pmm);
     let mut led = p1.pin0.to_output();
     led.set_low().ok();
 
