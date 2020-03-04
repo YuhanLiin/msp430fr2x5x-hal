@@ -33,7 +33,7 @@ pub struct Wdt<MODE> {
 
 impl Wdt<WatchdogMode> {
     /// Constrain watchdog PAC peripheral into HAL watchdog and disable watchdog.
-    pub fn new(wdt: pac::WDT_A) -> Self {
+    pub fn constrain(wdt: pac::WDT_A) -> Self {
         // Disable first
         wdt.wdtctl
             .write(|w| unsafe { w.wdtpw().bits(PASSWORD) }.wdthold().hold());
