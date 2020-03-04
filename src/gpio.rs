@@ -74,6 +74,8 @@ pub trait PinNum: sealed::SealedPinNum {
 pub trait PortNum: sealed::SealedPortNum {
     #[doc(hidden)]
     type Port: GpioPeriph;
+    #[doc(hidden)]
+    type Owned: core::ops::Deref<Target = Self::Port> + GpioPort;
 }
 
 // Don't need to seal, since PortNum is already sealed
@@ -81,6 +83,11 @@ pub trait PortNum: sealed::SealedPortNum {
 pub trait IntrPortNum: PortNum {
     #[doc(hidden)]
     type IPort: IntrPeriph;
+}
+
+#[doc(hidden)]
+pub trait GpioPort: sealed::SealedGpioPort {
+    type Num: PortNum;
 }
 
 impl<PORT: PortNum> IntrPortNum for PORT
@@ -142,36 +149,60 @@ impl PinNum for Pin7 {
 pub struct Port1;
 impl PortNum for Port1 {
     type Port = pac::p1::RegisterBlock;
+    type Owned = pac::P1;
+}
+impl GpioPort for P1 {
+    type Num = Port1;
 }
 
 /// Port P2
 pub struct Port2;
 impl PortNum for Port2 {
     type Port = pac::p2::RegisterBlock;
+    type Owned = pac::P2;
+}
+impl GpioPort for P2 {
+    type Num = Port2;
 }
 
 /// Port P3
 pub struct Port3;
 impl PortNum for Port3 {
     type Port = pac::p3::RegisterBlock;
+    type Owned = pac::P3;
+}
+impl GpioPort for P3 {
+    type Num = Port3;
 }
 
 /// Port P4
 pub struct Port4;
 impl PortNum for Port4 {
     type Port = pac::p4::RegisterBlock;
+    type Owned = pac::P4;
+}
+impl GpioPort for P4 {
+    type Num = Port4;
 }
 
 /// Port P5
 pub struct Port5;
 impl PortNum for Port5 {
     type Port = pac::p5::RegisterBlock;
+    type Owned = pac::P5;
+}
+impl GpioPort for P5 {
+    type Num = Port5;
 }
 
 /// Port P6
 pub struct Port6;
 impl PortNum for Port6 {
     type Port = pac::p6::RegisterBlock;
+    type Owned = pac::P6;
+}
+impl GpioPort for P6 {
+    type Num = Port6;
 }
 
 /// Marker trait for GPIO typestates representing pins in GPIO (non-alternate) state
@@ -485,7 +516,7 @@ impl<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
 {
     /// Converts all parts into a GPIO batch so the entire port can be configured at once
     #[inline]
-    pub fn batch(self) -> Batch<PORT, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7> {
+    pub fn batch(self) -> Batch<PORT::Owned, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7> {
         Batch::create()
     }
 
