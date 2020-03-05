@@ -12,32 +12,16 @@ use crate::gpio::{
     Alternate1, Alternate2, Floating, Input, Pin, Pin0, Pin1, Pin2, Pin3, Pin4, Pin5, Pin6, Pin7,
     P1, P2, P5, P6,
 };
-use crate::hw_traits::timerb::{CCRn, Ccis, Cm, TimerB, TimerSteal};
+use crate::hw_traits::timerb::{CCRn, Ccis, Cm};
 use crate::timer::{read_tbxiv, SevenCCRnTimer, ThreeCCRnTimer, TimerVector};
 use crate::util::SealedDefault;
 use core::marker::PhantomData;
 use msp430fr2355 as pac;
 
 pub use crate::timer::{
-    CapCmpPeriph, TimerConfig, TimerDiv, TimerExDiv, TimerPeriph, CCR0, CCR1, CCR2, CCR3, CCR4,
-    CCR5, CCR6,
+    CapCmp, TimerConfig, TimerDiv, TimerExDiv, TimerPeriph, CCR0, CCR1, CCR2, CCR3, CCR4, CCR5,
+    CCR6,
 };
-
-mod sealed {
-    use super::*;
-
-    pub trait SealedCaptureExt {}
-
-    impl SealedCaptureExt for pac::TB0 {}
-    impl SealedCaptureExt for pac::TB1 {}
-    impl SealedCaptureExt for pac::TB2 {}
-    impl SealedCaptureExt for pac::TB3 {}
-}
-
-type Tb0 = pac::tb0::RegisterBlock;
-type Tb1 = pac::tb1::RegisterBlock;
-type Tb2 = pac::tb2::RegisterBlock;
-type Tb3 = pac::tb3::RegisterBlock;
 
 /// Capture edge trigger
 pub enum CapTrigger {
@@ -75,12 +59,7 @@ impl Default for PinConfig {
 }
 
 /// Extension trait for creating capture pins from timer peripherals
-pub trait CaptureExt: Sized + sealed::SealedCaptureExt {
-    #[doc(hidden)]
-    type Capture: TimerPeriph;
-    /// Capture configuration object
-    type Config;
-
+pub trait CapturePeriph: TimerPeriph {
     /// GPIO pin that supplies input A for capture pin 1
     type Gpio1;
     /// GPIO pin that supplies input A for capture pin 2
@@ -93,69 +72,41 @@ pub trait CaptureExt: Sized + sealed::SealedCaptureExt {
     type Gpio5;
     /// GPIO pin that supplies input A for capture pin 6
     type Gpio6;
-
-    /// Create new capture port out of timer
-    fn to_capture(self, timer_config: TimerConfig<Self::Capture>) -> Self::Config;
 }
-
-impl CaptureExt for pac::TB0 {
-    type Capture = Tb0;
-    type Config = ThreeCCRnConfig<Self>;
+impl CapturePeriph for pac::TB0 {
     type Gpio1 = Pin<P1, Pin6, Alternate2<Input<Floating>>>;
     type Gpio2 = Pin<P1, Pin7, Alternate2<Input<Floating>>>;
     type Gpio3 = ();
     type Gpio4 = ();
     type Gpio5 = ();
     type Gpio6 = ();
-
-    fn to_capture(self, timer_config: TimerConfig<Self::Capture>) -> Self::Config {
-        Self::Config::new(timer_config)
-    }
 }
 
-impl CaptureExt for pac::TB1 {
-    type Capture = Tb1;
-    type Config = ThreeCCRnConfig<Self>;
+impl CapturePeriph for pac::TB1 {
     type Gpio1 = Pin<P2, Pin0, Alternate1<Input<Floating>>>;
     type Gpio2 = Pin<P2, Pin1, Alternate1<Input<Floating>>>;
     type Gpio3 = ();
     type Gpio4 = ();
     type Gpio5 = ();
     type Gpio6 = ();
-
-    fn to_capture(self, timer_config: TimerConfig<Self::Capture>) -> Self::Config {
-        Self::Config::new(timer_config)
-    }
 }
 
-impl CaptureExt for pac::TB2 {
-    type Capture = Tb2;
-    type Config = ThreeCCRnConfig<Self>;
+impl CapturePeriph for pac::TB2 {
     type Gpio1 = Pin<P5, Pin0, Alternate1<Input<Floating>>>;
     type Gpio2 = Pin<P5, Pin1, Alternate1<Input<Floating>>>;
     type Gpio3 = ();
     type Gpio4 = ();
     type Gpio5 = ();
     type Gpio6 = ();
-
-    fn to_capture(self, timer_config: TimerConfig<Self::Capture>) -> Self::Config {
-        Self::Config::new(timer_config)
-    }
 }
 
-impl CaptureExt for pac::TB3 {
-    type Capture = Tb3;
-    type Config = SevenCCRnConfig<Self>;
+impl CapturePeriph for pac::TB3 {
     type Gpio1 = Pin<P6, Pin0, Alternate1<Input<Floating>>>;
     type Gpio2 = Pin<P6, Pin1, Alternate1<Input<Floating>>>;
     type Gpio3 = Pin<P6, Pin2, Alternate1<Input<Floating>>>;
     type Gpio4 = Pin<P6, Pin3, Alternate1<Input<Floating>>>;
     type Gpio5 = Pin<P6, Pin4, Alternate1<Input<Floating>>>;
     type Gpio6 = Pin<P6, Pin5, Alternate1<Input<Floating>>>;
-
-    fn to_capture(self, timer_config: TimerConfig<Self::Capture>) -> Self::Config {
-        Self::Config::new(timer_config)
-    }
 }
 
 macro_rules! config_fn {
@@ -202,24 +153,25 @@ macro_rules! config_fn {
 
 /// Configures the capture settings for the 3 available capture pins. By default, all pins use GND
 /// as their input source and trigger a capture on a rising edge.
-pub struct ThreeCCRnConfig<T: CaptureExt>
+pub struct ThreeCCRnConfig<T: CapturePeriph>
 where
-    T::Capture: ThreeCCRnTimer,
+    T: ThreeCCRnTimer,
 {
-    _timer: PhantomData<T>,
-    config: TimerConfig<T::Capture>,
+    timer: T,
+    config: TimerConfig<T>,
     cap0: PinConfig,
     cap1: PinConfig,
     cap2: PinConfig,
 }
 
-impl<T: CaptureExt> ThreeCCRnConfig<T>
+impl<T: CapturePeriph> ThreeCCRnConfig<T>
 where
-    T::Capture: ThreeCCRnTimer,
+    T: ThreeCCRnTimer,
 {
-    fn new(config: TimerConfig<T::Capture>) -> Self {
+    /// Create capture configuration
+    pub fn new(timer: T, config: TimerConfig<T>) -> Self {
         Self {
-            _timer: PhantomData,
+            timer,
             config,
             cap0: PinConfig::default(),
             cap1: PinConfig::default(),
@@ -249,12 +201,12 @@ where
     );
 
     /// Writes all previously configured timer and capture settings into peripheral registers
-    pub fn commit(self) -> ThreeCCRnPins<T::Capture> {
-        let timer = unsafe { T::Capture::steal() };
-        self.config.write_regs(timer);
-        CCRn::<CCR0>::config_cap_mode(timer, self.cap0.trigger.into(), self.cap0.select.into());
-        CCRn::<CCR1>::config_cap_mode(timer, self.cap1.trigger.into(), self.cap1.select.into());
-        CCRn::<CCR2>::config_cap_mode(timer, self.cap2.trigger.into(), self.cap2.select.into());
+    pub fn commit(self) -> ThreeCCRnPins<T> {
+        let timer = self.timer;
+        self.config.write_regs(&timer);
+        CCRn::<CCR0>::config_cap_mode(&timer, self.cap0.trigger.into(), self.cap0.select.into());
+        CCRn::<CCR1>::config_cap_mode(&timer, self.cap1.trigger.into(), self.cap1.select.into());
+        CCRn::<CCR2>::config_cap_mode(&timer, self.cap2.trigger.into(), self.cap2.select.into());
         timer.continuous();
         ThreeCCRnPins::default()
     }
@@ -262,12 +214,12 @@ where
 
 /// Configures the capture settings for the 7 available capture pins. By default, all pins use GND
 /// as their input source and trigger a capture on a rising edge.
-pub struct SevenCCRnConfig<T: CaptureExt>
+pub struct SevenCCRnConfig<T: CapturePeriph>
 where
-    T::Capture: SevenCCRnTimer,
+    T: SevenCCRnTimer,
 {
-    _timer: PhantomData<T>,
-    config: TimerConfig<T::Capture>,
+    timer: T,
+    config: TimerConfig<T>,
     cap0: PinConfig,
     cap1: PinConfig,
     cap2: PinConfig,
@@ -277,13 +229,14 @@ where
     cap6: PinConfig,
 }
 
-impl<T: CaptureExt> SevenCCRnConfig<T>
+impl<T: CapturePeriph> SevenCCRnConfig<T>
 where
-    T::Capture: SevenCCRnTimer,
+    T: SevenCCRnTimer,
 {
-    fn new(config: TimerConfig<T::Capture>) -> Self {
+    /// Create capture configuration
+    pub fn new(timer: T, config: TimerConfig<T>) -> Self {
         Self {
-            _timer: PhantomData,
+            timer,
             config,
             cap0: PinConfig::default(),
             cap1: PinConfig::default(),
@@ -345,16 +298,16 @@ where
     );
 
     /// Writes all previously configured timer and capture settings into peripheral registers
-    pub fn commit(self) -> SevenCCRnPins<T::Capture> {
-        let timer = unsafe { T::Capture::steal() };
-        self.config.write_regs(timer);
-        CCRn::<CCR0>::config_cap_mode(timer, self.cap0.trigger.into(), self.cap0.select.into());
-        CCRn::<CCR1>::config_cap_mode(timer, self.cap1.trigger.into(), self.cap1.select.into());
-        CCRn::<CCR2>::config_cap_mode(timer, self.cap2.trigger.into(), self.cap2.select.into());
-        CCRn::<CCR3>::config_cap_mode(timer, self.cap3.trigger.into(), self.cap3.select.into());
-        CCRn::<CCR4>::config_cap_mode(timer, self.cap4.trigger.into(), self.cap4.select.into());
-        CCRn::<CCR5>::config_cap_mode(timer, self.cap5.trigger.into(), self.cap5.select.into());
-        CCRn::<CCR6>::config_cap_mode(timer, self.cap6.trigger.into(), self.cap6.select.into());
+    pub fn commit(self) -> SevenCCRnPins<T> {
+        let timer = self.timer;
+        self.config.write_regs(&timer);
+        CCRn::<CCR0>::config_cap_mode(&timer, self.cap0.trigger.into(), self.cap0.select.into());
+        CCRn::<CCR1>::config_cap_mode(&timer, self.cap1.trigger.into(), self.cap1.select.into());
+        CCRn::<CCR2>::config_cap_mode(&timer, self.cap2.trigger.into(), self.cap2.select.into());
+        CCRn::<CCR3>::config_cap_mode(&timer, self.cap3.trigger.into(), self.cap3.select.into());
+        CCRn::<CCR4>::config_cap_mode(&timer, self.cap4.trigger.into(), self.cap4.select.into());
+        CCRn::<CCR5>::config_cap_mode(&timer, self.cap5.trigger.into(), self.cap5.select.into());
+        CCRn::<CCR6>::config_cap_mode(&timer, self.cap6.trigger.into(), self.cap6.select.into());
         timer.continuous();
         SevenCCRnPins::default()
     }
@@ -545,7 +498,7 @@ impl<T: TimerPeriph> TBxIV<T> {
     /// returned as well.
     pub fn interrupt_vector(&mut self) -> CaptureVector<T> {
         let timer = unsafe { T::steal() };
-        match read_tbxiv(timer) {
+        match read_tbxiv(&timer) {
             TimerVector::NoInterrupt => CaptureVector::NoInterrupt,
             TimerVector::SubTimer1 => {
                 CaptureVector::Capture1(InterruptCapture(PhantomData, PhantomData))

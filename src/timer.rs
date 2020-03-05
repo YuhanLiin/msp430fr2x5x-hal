@@ -140,7 +140,7 @@ impl<T: ThreeCCRnTimer> ThreeCCRnParts<T> {
     /// Create new set of timers out of a TBx peripheral
     #[inline(always)]
     pub fn new(_timer: T, config: TimerConfig<T>) -> Self {
-        config.write_regs(unsafe { T::steal() });
+        config.write_regs(unsafe { &T::steal() });
         Self {
             timer: SealedDefault::default(),
             tbxiv: TBxIV(PhantomData),
@@ -174,7 +174,7 @@ impl<T: SevenCCRnTimer> SevenCCRnParts<T> {
     /// Create new set of timers out of a TBx peripheral
     #[inline(always)]
     pub fn new(_timer: T, config: TimerConfig<T>) -> Self {
-        config.write_regs(unsafe { T::steal() });
+        config.write_regs(unsafe { &T::steal() });
         Self {
             timer: SealedDefault::default(),
             tbxiv: TBxIV(PhantomData),
@@ -204,17 +204,6 @@ impl<T: CapCmp<C>, C> SealedDefault for SubTimer<T, C> {
     fn default() -> Self {
         Self(PhantomData, PhantomData)
     }
-}
-
-mod sealed {
-    use super::*;
-
-    pub trait SealedTimerExt {}
-
-    impl SealedTimerExt for pac::TB0 {}
-    impl SealedTimerExt for pac::TB1 {}
-    impl SealedTimerExt for pac::TB2 {}
-    impl SealedTimerExt for pac::TB3 {}
 }
 
 /// Timer TBIV interrupt vector
@@ -260,11 +249,11 @@ impl<T: TimerB> TBxIV<T> {
     /// Read the timer interrupt vector. Automatically resets corresponding interrupt flag.
     pub fn interrupt_vector(&mut self) -> TimerVector {
         let timer = unsafe { T::steal() };
-        read_tbxiv(timer)
+        read_tbxiv(&timer)
     }
 }
 
-impl<T: TimerPeriph> CountDown for Timer<T> {
+impl<T: TimerPeriph + CapCmp<CCR0>> CountDown for Timer<T> {
     type Time = u16;
 
     #[inline]
@@ -287,7 +276,7 @@ impl<T: TimerPeriph> CountDown for Timer<T> {
     }
 }
 
-impl<T: TimerPeriph> Cancel for Timer<T> {
+impl<T: TimerPeriph + CapCmp<CCR0>> Cancel for Timer<T> {
     type Error = void::Void;
 
     #[inline(always)]
