@@ -9,7 +9,7 @@ use crate::gpio::{
     Pin6, Pin7, P1, P2, P5, P6,
 };
 use crate::hw_traits::timerb::{CCRn, Outmod};
-use crate::timer::{SevenCCRnTimer, ThreeCCRnTimer};
+use crate::timer::{CapCmpTimer3, CapCmpTimer7};
 use crate::util::SealedDefault;
 use core::marker::PhantomData;
 use embedded_hal::PwmPin;
@@ -111,14 +111,14 @@ fn setup_pwm<T: TimerPeriph + CapCmp<CCR0>>(config: TimerConfig<T>, period: u16)
 }
 
 /// Collection of uninitialized PWM pins derived from timer peripheral with 3 capture-compare registers
-pub struct ThreeCCRnPins<T: ThreeCCRnTimer> {
+pub struct PwmParts3<T: CapCmpTimer3> {
     /// PWM pin 1 (derived from capture-compare register 1)
     pub pwm1: PwmUninit<T, CCR1>,
     /// PWM pin 2 (derived from capture-compare register 2)
     pub pwm2: PwmUninit<T, CCR2>,
 }
 
-impl<T: ThreeCCRnTimer> ThreeCCRnPins<T> {
+impl<T: CapCmpTimer3> PwmParts3<T> {
     /// Create PWM pins
     pub fn new(config: TimerConfig<T>, period: u16) -> Self {
         setup_pwm(config, period);
@@ -136,7 +136,7 @@ impl<T: ThreeCCRnTimer> ThreeCCRnPins<T> {
 }
 
 /// Collection of uninitialized PWM pins derived from timer peripheral with 7 capture-compare registers
-pub struct SevenCCRnPins<T: SevenCCRnTimer> {
+pub struct PwmParts7<T: CapCmpTimer7> {
     /// PWM pin 1 (derived from capture-compare register 1)
     pub pwm1: PwmUninit<T, CCR1>,
     /// PWM pin 2 (derived from capture-compare register 2)
@@ -151,7 +151,7 @@ pub struct SevenCCRnPins<T: SevenCCRnTimer> {
     pub pwm6: PwmUninit<T, CCR6>,
 }
 
-impl<T: SevenCCRnTimer> SevenCCRnPins<T> {
+impl<T: CapCmpTimer7> PwmParts7<T> {
     /// Create PWM pins
     pub fn new(config: TimerConfig<T>, period: u16) -> Self {
         setup_pwm(config, period);

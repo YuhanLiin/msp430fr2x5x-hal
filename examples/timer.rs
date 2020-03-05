@@ -7,7 +7,7 @@ use msp430_rt::entry;
 use msp430fr2x5x_hal::{
     clock::{DcoclkFreqSel, MclkDiv, SmclkDiv},
     prelude::*,
-    timer::{CapCmpPeriph, SubTimer, Timer, TimerConfig, TimerDiv, TimerExDiv, TimerPeriph},
+    timer::{CapCmp, SubTimer, Timer, TimerConfig, TimerDiv, TimerExDiv, TimerPeriph},
 };
 use nb::block;
 use panic_msp430 as _;
@@ -50,7 +50,7 @@ fn main() -> ! {
     }
 }
 
-fn set_time<T: TimerPeriph + CapCmpPeriph<C>, C>(
+fn set_time<T: TimerPeriph + CapCmp<C>, C>(
     timer: &mut Timer<T>,
     subtimer: &mut SubTimer<T, C>,
     delay: u16,

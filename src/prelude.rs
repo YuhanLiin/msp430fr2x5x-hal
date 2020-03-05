@@ -13,8 +13,8 @@ pub use crate::pwm::PwmPeriph as _msp430fr2x5x_hal_PwmPeriph;
 pub use crate::rtc::RtcClockSrc as _msp430fr2x5x_hal_RtcClockSrc;
 pub use crate::serial::SerialUsci as _msp430fr2x5x_hal_SerialUsci;
 pub use crate::timer::CapCmp as _msp430fr2x5x_hal_CapCmp;
-pub use crate::timer::SevenCCRnTimer as _msp430fr2x5x_hal_SevenCCRnTimer;
-pub use crate::timer::ThreeCCRnTimer as _msp430fr2x5x_hal_ThreeCCRnTimer;
+pub use crate::timer::CapCmpTimer3 as _msp430fr2x5x_hal_CapCmpTimer3;
+pub use crate::timer::CapCmpTimer7 as _msp430fr2x5x_hal_CapCmpTimer7;
 pub use crate::timer::TimerPeriph as _msp430fr2x5x_hal_TimerPeriph;
 pub use crate::watchdog::WatchdogSelect as _msp430fr2x5x_hal_WatchdogSelect;
 

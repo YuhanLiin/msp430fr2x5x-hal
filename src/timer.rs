@@ -30,9 +30,9 @@ pub trait TimerPeriph: TimerB {
 
 // Traits effectively sealed by CCRn
 /// Trait indicating that the peripheral has 3 capture compare registers
-pub trait ThreeCCRnTimer: TimerPeriph + CapCmp<CCR1> + CapCmp<CCR2> {}
+pub trait CapCmpTimer3: TimerPeriph + CapCmp<CCR1> + CapCmp<CCR2> {}
 /// Trait indicating that the peripheral has 7 capture compare registers
-pub trait SevenCCRnTimer:
+pub trait CapCmpTimer7:
     TimerPeriph
     + CapCmp<CCR1>
     + CapCmp<CCR2>
@@ -46,22 +46,22 @@ pub trait SevenCCRnTimer:
 impl TimerPeriph for pac::TB0 {
     type Tbxclk = Pin<P2, Pin7, Alternate1<Input<Floating>>>;
 }
-impl ThreeCCRnTimer for pac::TB0 {}
+impl CapCmpTimer3 for pac::TB0 {}
 
 impl TimerPeriph for pac::TB1 {
     type Tbxclk = Pin<P2, Pin2, Alternate1<Input<Floating>>>;
 }
-impl ThreeCCRnTimer for pac::TB1 {}
+impl CapCmpTimer3 for pac::TB1 {}
 
 impl TimerPeriph for pac::TB2 {
     type Tbxclk = Pin<P5, Pin2, Alternate1<Input<Floating>>>;
 }
-impl ThreeCCRnTimer for pac::TB2 {}
+impl CapCmpTimer3 for pac::TB2 {}
 
 impl TimerPeriph for pac::TB3 {
     type Tbxclk = Pin<P6, Pin6, Alternate1<Input<Floating>>>;
 }
-impl SevenCCRnTimer for pac::TB3 {}
+impl CapCmpTimer7 for pac::TB3 {}
 
 /// Configures all HAL objects that use the TimerB timers
 pub struct TimerConfig<T: TimerPeriph> {
@@ -125,7 +125,7 @@ impl<T: TimerPeriph> TimerConfig<T> {
 }
 
 /// Main timer and sub-timers for timer peripherals with 3 capture-compare registers
-pub struct ThreeCCRnParts<T: ThreeCCRnTimer> {
+pub struct TimerParts3<T: CapCmpTimer3> {
     /// Main timer
     pub timer: Timer<T>,
     /// Timer interrupt vector
@@ -136,7 +136,7 @@ pub struct ThreeCCRnParts<T: ThreeCCRnTimer> {
     pub subtimer2: SubTimer<T, CCR2>,
 }
 
-impl<T: ThreeCCRnTimer> ThreeCCRnParts<T> {
+impl<T: CapCmpTimer3> TimerParts3<T> {
     /// Create new set of timers out of a TBx peripheral
     #[inline(always)]
     pub fn new(_timer: T, config: TimerConfig<T>) -> Self {
@@ -151,7 +151,7 @@ impl<T: ThreeCCRnTimer> ThreeCCRnParts<T> {
 }
 
 /// Main timer and sub-timers for timer peripherals with 7 capture-compare registers
-pub struct SevenCCRnParts<T: SevenCCRnTimer> {
+pub struct TimerParts7<T: CapCmpTimer7> {
     /// Main timer
     pub timer: Timer<T>,
     /// Timer interrupt vector
@@ -170,7 +170,7 @@ pub struct SevenCCRnParts<T: SevenCCRnTimer> {
     pub subtimer6: SubTimer<T, CCR6>,
 }
 
-impl<T: SevenCCRnTimer> SevenCCRnParts<T> {
+impl<T: CapCmpTimer7> TimerParts7<T> {
     /// Create new set of timers out of a TBx peripheral
     #[inline(always)]
     pub fn new(_timer: T, config: TimerConfig<T>) -> Self {

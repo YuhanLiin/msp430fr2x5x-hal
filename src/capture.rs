@@ -13,7 +13,7 @@ use crate::gpio::{
     P1, P2, P5, P6,
 };
 use crate::hw_traits::timerb::{CCRn, Ccis, Cm};
-use crate::timer::{read_tbxiv, SevenCCRnTimer, ThreeCCRnTimer, TimerVector};
+use crate::timer::{read_tbxiv, CapCmpTimer3, CapCmpTimer7, TimerVector};
 use crate::util::SealedDefault;
 use core::marker::PhantomData;
 use msp430fr2355 as pac;
@@ -153,9 +153,9 @@ macro_rules! config_fn {
 
 /// Configures the capture settings for the 3 available capture pins. By default, all pins use GND
 /// as their input source and trigger a capture on a rising edge.
-pub struct ThreeCCRnConfig<T: CapturePeriph>
+pub struct CaptureConfig3<T: CapturePeriph>
 where
-    T: ThreeCCRnTimer,
+    T: CapCmpTimer3,
 {
     timer: T,
     config: TimerConfig<T>,
@@ -164,9 +164,9 @@ where
     cap2: PinConfig,
 }
 
-impl<T: CapturePeriph> ThreeCCRnConfig<T>
+impl<T: CapturePeriph> CaptureConfig3<T>
 where
-    T: ThreeCCRnTimer,
+    T: CapCmpTimer3,
 {
     /// Create capture configuration
     pub fn new(timer: T, config: TimerConfig<T>) -> Self {
@@ -201,22 +201,22 @@ where
     );
 
     /// Writes all previously configured timer and capture settings into peripheral registers
-    pub fn commit(self) -> ThreeCCRnPins<T> {
+    pub fn commit(self) -> CaptureParts3<T> {
         let timer = self.timer;
         self.config.write_regs(&timer);
         CCRn::<CCR0>::config_cap_mode(&timer, self.cap0.trigger.into(), self.cap0.select.into());
         CCRn::<CCR1>::config_cap_mode(&timer, self.cap1.trigger.into(), self.cap1.select.into());
         CCRn::<CCR2>::config_cap_mode(&timer, self.cap2.trigger.into(), self.cap2.select.into());
         timer.continuous();
-        ThreeCCRnPins::default()
+        CaptureParts3::default()
     }
 }
 
 /// Configures the capture settings for the 7 available capture pins. By default, all pins use GND
 /// as their input source and trigger a capture on a rising edge.
-pub struct SevenCCRnConfig<T: CapturePeriph>
+pub struct CaptureConfig7<T: CapturePeriph>
 where
-    T: SevenCCRnTimer,
+    T: CapCmpTimer7,
 {
     timer: T,
     config: TimerConfig<T>,
@@ -229,9 +229,9 @@ where
     cap6: PinConfig,
 }
 
-impl<T: CapturePeriph> SevenCCRnConfig<T>
+impl<T: CapturePeriph> CaptureConfig7<T>
 where
-    T: SevenCCRnTimer,
+    T: CapCmpTimer7,
 {
     /// Create capture configuration
     pub fn new(timer: T, config: TimerConfig<T>) -> Self {
@@ -298,7 +298,7 @@ where
     );
 
     /// Writes all previously configured timer and capture settings into peripheral registers
-    pub fn commit(self) -> SevenCCRnPins<T> {
+    pub fn commit(self) -> CaptureParts7<T> {
         let timer = self.timer;
         self.config.write_regs(&timer);
         CCRn::<CCR0>::config_cap_mode(&timer, self.cap0.trigger.into(), self.cap0.select.into());
@@ -309,12 +309,12 @@ where
         CCRn::<CCR5>::config_cap_mode(&timer, self.cap5.trigger.into(), self.cap5.select.into());
         CCRn::<CCR6>::config_cap_mode(&timer, self.cap6.trigger.into(), self.cap6.select.into());
         timer.continuous();
-        SevenCCRnPins::default()
+        CaptureParts7::default()
     }
 }
 
 /// Collection of uninitialized capture pins derived from timer peripheral with 3 capture-compare registers
-pub struct ThreeCCRnPins<T: ThreeCCRnTimer> {
+pub struct CaptureParts3<T: CapCmpTimer3> {
     /// Capture pin 0 (derived from capture-compare register 0)
     pub cap0: Capture<T, CCR0>,
     /// Capture pin 1 (derived from capture-compare register 1)
@@ -325,7 +325,7 @@ pub struct ThreeCCRnPins<T: ThreeCCRnTimer> {
     pub tbxiv: TBxIV<T>,
 }
 
-impl<T: ThreeCCRnTimer> SealedDefault for ThreeCCRnPins<T> {
+impl<T: CapCmpTimer3> SealedDefault for CaptureParts3<T> {
     #[inline(always)]
     fn default() -> Self {
         Self {
@@ -338,7 +338,7 @@ impl<T: ThreeCCRnTimer> SealedDefault for ThreeCCRnPins<T> {
 }
 
 /// Collection of uninitialized capture pins derived from timer peripheral with 7 capture-compare registers
-pub struct SevenCCRnPins<T: SevenCCRnTimer> {
+pub struct CaptureParts7<T: CapCmpTimer7> {
     /// Capture pin 0 (derived from capture-compare register 0)
     pub cap0: Capture<T, CCR0>,
     /// Capture pin 1 (derived from capture-compare register 1)
@@ -357,7 +357,7 @@ pub struct SevenCCRnPins<T: SevenCCRnTimer> {
     pub tbxiv: TBxIV<T>,
 }
 
-impl<T: SevenCCRnTimer> SealedDefault for SevenCCRnPins<T> {
+impl<T: CapCmpTimer7> SealedDefault for CaptureParts7<T> {
     #[inline(always)]
     fn default() -> Self {
         Self {
