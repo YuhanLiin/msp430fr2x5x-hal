@@ -9,7 +9,7 @@ pub use crate::gpio::Alternate2 as _msp430fr2x5x_hal_Alternate2;
 pub use crate::gpio::Alternate3 as _msp430fr2x5x_hal_Alternate3;
 pub use crate::gpio::GpioFunction as _msp430fr2x5x_hal_GpioFunction;
 pub use crate::gpio::PinNum as _msp430fr2x5x_hal_PinNum;
-pub use crate::pwm::PwmGpio as _msp430fr2x5x_hal_PwmGpio;
+pub use crate::pwm::PwmPeriph as _msp430fr2x5x_hal_PwmPeriph;
 pub use crate::rtc::RtcClockSrc as _msp430fr2x5x_hal_RtcClockSrc;
 pub use crate::serial::SerialUsci as _msp430fr2x5x_hal_SerialUsci;
 pub use crate::timer::CapCmp as _msp430fr2x5x_hal_CapCmp;
