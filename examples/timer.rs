@@ -5,9 +5,12 @@ use embedded_hal::digital::v2::*;
 use embedded_hal::prelude::*;
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
-    clock::{DcoclkFreqSel, MclkDiv, SmclkDiv},
-    prelude::*,
-    timer::{CapCmp, SubTimer, Timer, TimerConfig, TimerDiv, TimerExDiv, TimerPeriph},
+    clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv},
+    fram::Fram,
+    gpio::Batch,
+    pmm::Pmm,
+    timer::{CapCmp, SubTimer, Timer, TimerConfig, TimerDiv, TimerExDiv, TimerParts3, TimerPeriph},
+    watchdog::Wdt,
 };
 use nb::block;
 use panic_msp430 as _;
@@ -18,24 +21,25 @@ use void::ResultVoidExt;
 fn main() -> ! {
     let periph = msp430fr2355::Peripherals::take().unwrap();
 
-    let mut fram = periph.FRCTL.constrain();
-    periph.WDT_A.constrain();
+    let mut fram = Fram::new(periph.FRCTL);
+    Wdt::constrain(periph.WDT_A);
 
-    let pmm = periph.PMM.freeze();
-    let p1 = periph.P1.batch().config_pin0(|p| p.to_output()).split(&pmm);
+    let pmm = Pmm::new(periph.PMM);
+    let p1 = Batch::new(periph.P1)
+        .config_pin0(|p| p.to_output())
+        .split(&pmm);
     let mut p1_0 = p1.pin0;
 
-    let (_smclk, aclk) = periph
-        .CS
-        .constrain()
+    let (_smclk, aclk) = ClockConfig::new(periph.CS)
         .mclk_dcoclk(DcoclkFreqSel::_1MHz, MclkDiv::_1)
         .smclk_on(SmclkDiv::_1)
         .aclk_vloclk()
         .freeze(&mut fram);
 
-    let parts = periph
-        .TB0
-        .to_timer(TimerConfig::aclk(&aclk).clk_div(TimerDiv::_2, TimerExDiv::_5));
+    let parts = TimerParts3::new(
+        periph.TB0,
+        TimerConfig::aclk(&aclk).clk_div(TimerDiv::_2, TimerExDiv::_5),
+    );
     let mut timer = parts.timer;
     let mut subtimer = parts.subtimer2;
 

@@ -6,9 +6,11 @@ use embedded_hal::timer::CountDown;
 use embedded_hal::watchdog::WatchdogEnable;
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
-    clock::{DcoclkFreqSel, MclkDiv, SmclkDiv},
-    prelude::*,
-    watchdog::WdtClkPeriods,
+    clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv},
+    fram::Fram,
+    gpio::Batch,
+    pmm::Pmm,
+    watchdog::{Wdt, WdtClkPeriods},
 };
 use nb::block;
 use panic_msp430 as _;
@@ -18,16 +20,16 @@ use panic_msp430 as _;
 fn main() -> ! {
     let periph = msp430fr2355::Peripherals::take().unwrap();
 
-    let mut fram = periph.FRCTL.constrain();
-    let wdt = periph.WDT_A.constrain();
+    let mut fram = Fram::new(periph.FRCTL);
+    let wdt = Wdt::constrain(periph.WDT_A);
 
-    let pmm = periph.PMM.freeze();
-    let p1 = periph.P1.batch().config_pin0(|p| p.to_output()).split(&pmm);
+    let pmm = Pmm::new(periph.PMM);
+    let p1 = Batch::new(periph.P1)
+        .config_pin0(|p| p.to_output())
+        .split(&pmm);
     let mut p1_0 = p1.pin0;
 
-    let (smclk, _aclk) = periph
-        .CS
-        .constrain()
+    let (smclk, _aclk) = ClockConfig::new(periph.CS)
         .mclk_dcoclk(DcoclkFreqSel::_8MHz, MclkDiv::_1)
         .smclk_on(SmclkDiv::_1)
         .aclk_vloclk()

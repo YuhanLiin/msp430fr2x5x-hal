@@ -8,10 +8,15 @@ use msp430::interrupt::{enable, free, Mutex};
 use msp430_rt::entry;
 use msp430fr2355::interrupt;
 use msp430fr2x5x_hal::{
-    capture::{CapCmpPeriph, CapTrigger, Capture, CaptureVector, TBxIV, TimerConfig, CCR1},
-    clock::{DcoclkFreqSel, MclkDiv, SmclkDiv},
+    capture::{
+        CapCmp, CapTrigger, Capture, CaptureConfig3, CaptureVector, TBxIV, TimerConfig, CCR1,
+    },
+    clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv},
+    fram::Fram,
+    gpio::Batch,
     gpio::*,
-    prelude::*,
+    pmm::Pmm,
+    watchdog::Wdt,
 };
 use void::ResultVoidExt;
 
@@ -21,11 +26,11 @@ use panic_msp430 as _;
 #[cfg(not(debug_assertions))]
 use panic_never as _;
 
-static CAPTURE: Mutex<UnsafeCell<Option<Capture<msp430fr2355::tb0::RegisterBlock, CCR1>>>> =
+static CAPTURE: Mutex<UnsafeCell<Option<Capture<msp430fr2355::TB0, CCR1>>>> =
     Mutex::new(UnsafeCell::new(None));
-static VECTOR: Mutex<UnsafeCell<Option<TBxIV<msp430fr2355::tb0::RegisterBlock>>>> =
+static VECTOR: Mutex<UnsafeCell<Option<TBxIV<msp430fr2355::TB0>>>> =
     Mutex::new(UnsafeCell::new(None));
-static RED_LED: Mutex<UnsafeCell<Option<Pin<Port1, Pin0, Output>>>> =
+static RED_LED: Mutex<UnsafeCell<Option<Pin<P1, Pin0, Output>>>> =
     Mutex::new(UnsafeCell::new(None));
 
 // Connect push button input to P1.6. When button is pressed, red LED should toggle. No debouncing,
@@ -33,26 +38,24 @@ static RED_LED: Mutex<UnsafeCell<Option<Pin<Port1, Pin0, Output>>>> =
 #[entry]
 fn main() -> ! {
     if let Some(periph) = msp430fr2355::Peripherals::take() {
-        let mut fram = periph.FRCTL.constrain();
-        periph.WDT_A.constrain();
+        let mut fram = Fram::new(periph.FRCTL);
+        Wdt::constrain(periph.WDT_A);
 
-        let pmm = periph.PMM.freeze();
-        let p1 = periph.P1.batch().config_pin0(|p| p.to_output()).split(&pmm);
+        let pmm = Pmm::new(periph.PMM);
+        let p1 = Batch::new(periph.P1)
+            .config_pin0(|p| p.to_output())
+            .split(&pmm);
         let red_led = p1.pin0;
 
         free(|cs| unsafe { *RED_LED.borrow(&cs).get() = Some(red_led) });
 
-        let (_smclk, aclk) = periph
-            .CS
-            .constrain()
+        let (_smclk, aclk) = ClockConfig::new(periph.CS)
             .mclk_dcoclk(DcoclkFreqSel::_1MHz, MclkDiv::_1)
             .smclk_on(SmclkDiv::_1)
             .aclk_vloclk()
             .freeze(&mut fram);
 
-        let captures = periph
-            .TB0
-            .to_capture(TimerConfig::aclk(&aclk))
+        let captures = CaptureConfig3::new(periph.TB0, TimerConfig::aclk(&aclk))
             .config_cap1_input_A(p1.pin6.to_alternate2())
             .config_cap1_trigger(CapTrigger::FallingEdge)
             .commit();
@@ -70,7 +73,7 @@ fn main() -> ! {
     loop {}
 }
 
-fn setup_capture<T: CapCmpPeriph<C>, C>(capture: &mut Capture<T, C>) {
+fn setup_capture<T: CapCmp<C>, C>(capture: &mut Capture<T, C>) {
     capture.enable_interrupts();
 }
 

@@ -102,11 +102,10 @@ impl PwmPeriph<CCR6> for pac::TB3 {
     const ALT: Alt = Alt::Alt1;
 }
 
-fn setup_pwm<T: TimerPeriph + CapCmp<CCR0>>(config: TimerConfig<T>, period: u16) {
-    let timer = unsafe { T::steal() };
-    config.write_regs(&timer);
-    CCRn::<CCR0>::set_ccrn(&timer, period);
-    CCRn::<CCR0>::config_outmod(&timer, Outmod::Toggle);
+fn setup_pwm<T: TimerPeriph>(timer: &T, config: TimerConfig<T>, period: u16) {
+    config.write_regs(timer);
+    CCRn::<CCR0>::set_ccrn(timer, period);
+    CCRn::<CCR0>::config_outmod(timer, Outmod::Toggle);
 }
 
 /// Collection of uninitialized PWM pins derived from timer peripheral with 3 capture-compare registers
@@ -119,9 +118,8 @@ pub struct PwmParts3<T: CapCmpTimer3> {
 
 impl<T: CapCmpTimer3> PwmParts3<T> {
     /// Create PWM pins
-    pub fn new(config: TimerConfig<T>, period: u16) -> Self {
-        setup_pwm(config, period);
-        let timer = unsafe { T::steal() };
+    pub fn new(timer: T, config: TimerConfig<T>, period: u16) -> Self {
+        setup_pwm(&timer, config, period);
         // Configure PWM ports
         CCRn::<CCR1>::config_outmod(&timer, Outmod::ResetSet);
         CCRn::<CCR2>::config_outmod(&timer, Outmod::ResetSet);
@@ -152,9 +150,8 @@ pub struct PwmParts7<T: CapCmpTimer7> {
 
 impl<T: CapCmpTimer7> PwmParts7<T> {
     /// Create PWM pins
-    pub fn new(config: TimerConfig<T>, period: u16) -> Self {
-        setup_pwm(config, period);
-        let timer = unsafe { T::steal() };
+    pub fn new(timer: T, config: TimerConfig<T>, period: u16) -> Self {
+        setup_pwm(&timer, config, period);
         // Configure PWM ports
         CCRn::<CCR1>::config_outmod(&timer, Outmod::ResetSet);
         CCRn::<CCR2>::config_outmod(&timer, Outmod::ResetSet);
