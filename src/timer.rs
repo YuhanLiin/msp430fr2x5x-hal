@@ -6,7 +6,7 @@
 
 use crate::clock::{Aclk, Smclk};
 use crate::gpio::{Alternate1, Floating, Input, Pin, Pin2, Pin6, Pin7, P2, P5, P6};
-use crate::hw_traits::timerb::{CCRn, Tbssel, TimerB, TimerSteal};
+use crate::hw_traits::timerb::{CCRn, Tbssel, TimerB};
 use crate::util::SealedDefault;
 use core::marker::PhantomData;
 use embedded_hal::timer::{Cancel, CountDown, Periodic};
@@ -130,8 +130,11 @@ pub struct ThreeCCRnParts<T: ThreeCCRnTimer> {
     pub subtimer2: SubTimer<T, CCR2>,
 }
 
-impl<T: ThreeCCRnTimer> SealedDefault for ThreeCCRnParts<T> {
-    fn default() -> Self {
+impl<T: ThreeCCRnTimer> ThreeCCRnParts<T> {
+    /// Create new set of timers out of a TBx peripheral
+    #[inline(always)]
+    pub fn new(_timer: T, config: TimerConfig<T>) -> Self {
+        config.write_regs(unsafe { T::steal() });
         Self {
             timer: SealedDefault::default(),
             tbxiv: TBxIV(PhantomData),
@@ -161,8 +164,11 @@ pub struct SevenCCRnParts<T: SevenCCRnTimer> {
     pub subtimer6: SubTimer<T, CCR6>,
 }
 
-impl<T: SevenCCRnTimer> SealedDefault for SevenCCRnParts<T> {
-    fn default() -> Self {
+impl<T: SevenCCRnTimer> SevenCCRnParts<T> {
+    /// Create new set of timers out of a TBx peripheral
+    #[inline(always)]
+    pub fn new(_timer: T, config: TimerConfig<T>) -> Self {
+        config.write_regs(unsafe { T::steal() });
         Self {
             timer: SealedDefault::default(),
             tbxiv: TBxIV(PhantomData),
@@ -203,41 +209,6 @@ mod sealed {
     impl SealedTimerExt for pac::TB1 {}
     impl SealedTimerExt for pac::TB2 {}
     impl SealedTimerExt for pac::TB3 {}
-}
-
-/// Extension trait for creating timers
-pub trait TimerExt: Sized + sealed::SealedTimerExt {
-    /// Set of timers
-    type Parts: SealedDefault;
-    #[doc(hidden)]
-    type Timer: TimerPeriph;
-
-    /// Create new set of timers out of a TBx peripheral
-    #[inline(always)]
-    fn to_timer(self, config: TimerConfig<Self::Timer>) -> Self::Parts {
-        config.write_regs(unsafe { Self::Timer::steal() });
-        Self::Parts::default()
-    }
-}
-
-impl TimerExt for pac::TB0 {
-    type Parts = ThreeCCRnParts<Self::Timer>;
-    type Timer = pac::tb0::RegisterBlock;
-}
-
-impl TimerExt for pac::TB1 {
-    type Parts = ThreeCCRnParts<Self::Timer>;
-    type Timer = pac::tb1::RegisterBlock;
-}
-
-impl TimerExt for pac::TB2 {
-    type Parts = ThreeCCRnParts<Self::Timer>;
-    type Timer = pac::tb2::RegisterBlock;
-}
-
-impl TimerExt for pac::TB3 {
-    type Parts = SevenCCRnParts<Self::Timer>;
-    type Timer = pac::tb3::RegisterBlock;
 }
 
 /// Timer TBIV interrupt vector
