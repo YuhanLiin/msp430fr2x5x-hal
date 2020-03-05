@@ -44,6 +44,3 @@ debug = true
 
 [profile.dev.package."*"]
 opt-level = "z"
-
-[patch.crates-io]
-msp430fr2355 = { path = '../msp430fr2355' }
