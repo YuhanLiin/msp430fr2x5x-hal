@@ -2,10 +2,8 @@
 
 use crate::clock::{Aclk, Clock, Smclk};
 use crate::gpio::{Alternate1, Pin, Pin1, Pin2, Pin3, Pin5, Pin6, Pin7, P1, P4};
-use crate::hw_traits::eusci::UcxCtl0;
-use crate::hw_traits::eusci::{EUsci, EUsciUart, UcaxStatw, Ucssel};
+use crate::hw_traits::eusci::{EUsciUart, UcaxStatw, Ucssel, UcxCtl0};
 use core::marker::PhantomData;
-use core::ops::Deref;
 use embedded_hal::serial::{Read, Write};
 use msp430fr2355 as pac;
 
@@ -115,19 +113,8 @@ impl Loopback {
     }
 }
 
-mod sealed {
-    use super::*;
-
-    pub trait SealedSerialUsci {}
-
-    impl SealedSerialUsci for pac::E_USCI_A0 {}
-    impl SealedSerialUsci for pac::E_USCI_A1 {}
-}
-
 /// Marks a USCI type that can be used as a serial UART
-pub trait SerialUsci: sealed::SealedSerialUsci + Deref {
-    #[doc(hidden)]
-    type Periph: EUsciUart;
+pub trait SerialUsci: EUsciUart {
     /// Pin used for serial UCLK
     type ClockPin;
     /// Pin used for Tx
@@ -137,7 +124,6 @@ pub trait SerialUsci: sealed::SealedSerialUsci + Deref {
 }
 
 impl SerialUsci for pac::E_USCI_A0 {
-    type Periph = pac::e_usci_a0::RegisterBlock;
     type ClockPin = UsciA0ClockPin;
     type TxPin = UsciA0TxPin;
     type RxPin = UsciA0RxPin;
@@ -171,7 +157,6 @@ impl<DIR> Into<UsciA0RxPin> for Pin<P1, Pin6, Alternate1<DIR>> {
 }
 
 impl SerialUsci for pac::E_USCI_A1 {
-    type Periph = pac::e_usci_a1::RegisterBlock;
     type ClockPin = UsciA1ClockPin;
     type TxPin = UsciA1TxPin;
     type RxPin = UsciA1RxPin;
@@ -406,7 +391,7 @@ impl<USCI: SerialUsci> SerialConfig<USCI, ClockSet> {
             baud_config,
             clksel,
         } = self.state;
-        let usci = unsafe { USCI::Periph::steal() };
+        let usci = self.usci;
 
         usci.ctl0_reset();
         usci.brw_settings(baud_config.br);
@@ -466,14 +451,14 @@ impl<USCI: SerialUsci> Tx<USCI> {
     /// Enable Tx interrupts, which fire when ready to send
     #[inline(always)]
     pub fn enable_tx_interrupts(&mut self) {
-        let usci = unsafe { USCI::Periph::steal() };
+        let usci = unsafe { USCI::steal() };
         usci.txie_set();
     }
 
     /// Disable Tx interrupts
     #[inline(always)]
     pub fn disable_tx_interrupts(&mut self) {
-        let usci = unsafe { USCI::Periph::steal() };
+        let usci = unsafe { USCI::steal() };
         usci.txie_clear();
     }
 }
@@ -486,7 +471,7 @@ impl<USCI: SerialUsci> Write<u8> for Tx<USCI> {
     /// `flush()` completes, the Tx buffer will be empty but the FIFO may still be sending.
     #[inline]
     fn flush(&mut self) -> nb::Result<(), Self::Error> {
-        let usci = unsafe { USCI::Periph::steal() };
+        let usci = unsafe { USCI::steal() };
         if usci.txifg_rd() {
             Ok(())
         } else {
@@ -496,7 +481,7 @@ impl<USCI: SerialUsci> Write<u8> for Tx<USCI> {
 
     #[inline]
     fn write(&mut self, data: u8) -> nb::Result<(), Self::Error> {
-        let usci = unsafe { USCI::Periph::steal() };
+        let usci = unsafe { USCI::steal() };
         if usci.txifg_rd() {
             usci.tx_wr(data);
             Ok(())
@@ -515,14 +500,14 @@ impl<USCI: SerialUsci> Rx<USCI> {
     /// Enable Rx interrupts, which fire when ready to read
     #[inline(always)]
     pub fn enable_rx_interrupts(&mut self) {
-        let usci = unsafe { USCI::Periph::steal() };
+        let usci = unsafe { USCI::steal() };
         usci.rxie_set();
     }
 
     /// Disable Rx interrupts
     #[inline(always)]
     pub fn disable_rx_interrupts(&mut self) {
-        let usci = unsafe { USCI::Periph::steal() };
+        let usci = unsafe { USCI::steal() };
         usci.rxie_clear();
     }
 }
@@ -542,7 +527,7 @@ impl<USCI: SerialUsci> Read<u8> for Rx<USCI> {
 
     #[inline]
     fn read(&mut self) -> nb::Result<u8, Self::Error> {
-        let usci = unsafe { USCI::Periph::steal() };
+        let usci = unsafe { USCI::steal() };
 
         if usci.rxifg_rd() {
             let statw = usci.statw_rd();
