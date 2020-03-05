@@ -330,7 +330,7 @@ impl<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
             .set_mask(self.pin6.pxsel1_mask())
             .set_mask(self.pin7.pxsel1_mask());
 
-        let p = unsafe { PORT::Port::steal() };
+        let p = unsafe { PORT::steal() };
         // Turn off interrupts first so nothing fires during subsequent register writes
         p.maybe_set_pxie(0);
         p.pxsel0_wr(pxsel0);

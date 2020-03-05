@@ -17,7 +17,6 @@ pub use crate::batch_gpio::*;
 use crate::hw_traits::gpio::{GpioPeriph, IntrPeriph};
 use crate::util::BitsExt;
 use core::marker::PhantomData;
-use core::ops::Deref;
 use embedded_hal::digital::v2::{InputPin, OutputPin, StatefulOutputPin, ToggleableOutputPin};
 use msp430fr2355 as pac;
 pub use pac::{P1, P2, P3, P4, P5, P6};
@@ -26,7 +25,6 @@ mod sealed {
     use super::*;
 
     pub trait SealedPinNum {}
-    pub trait SealedPortNum {}
     pub trait SealedGpioFunction {}
 
     impl SealedPinNum for Pin0 {}
@@ -37,13 +35,6 @@ mod sealed {
     impl SealedPinNum for Pin5 {}
     impl SealedPinNum for Pin6 {}
     impl SealedPinNum for Pin7 {}
-
-    impl SealedPortNum for P1 {}
-    impl SealedPortNum for P2 {}
-    impl SealedPortNum for P3 {}
-    impl SealedPortNum for P4 {}
-    impl SealedPortNum for P5 {}
-    impl SealedPortNum for P6 {}
 
     impl SealedGpioFunction for Output {}
     impl<PULL> SealedGpioFunction for Input<PULL> {}
@@ -63,32 +54,15 @@ pub trait PinNum: sealed::SealedPinNum {
     const CLR_MASK: u8 = !Self::SET_MASK;
 }
 
-/// Trait that encompasses all GPIO port types
-pub trait PortNum: sealed::SealedPortNum {
-    #[doc(hidden)]
-    type Port: GpioPeriph;
-}
+// Don't need to seal, since GpioPeriph is private
+/// Marker trait that encompasses all GPIO port types
+pub trait PortNum: GpioPeriph {}
+impl<PORT: GpioPeriph> PortNum for PORT {}
 
 // Don't need to seal, since PortNum is already sealed
 /// Marker trait for all Ports that support interrupts
-pub trait IntrPortNum: PortNum {
-    #[doc(hidden)]
-    type IPort: IntrPeriph;
-}
-
-impl<PORT: Deref + sealed::SealedPortNum> PortNum for PORT
-where
-    PORT::Target: GpioPeriph + Sized,
-{
-    type Port = PORT::Target;
-}
-
-impl<PORT: PortNum> IntrPortNum for PORT
-where
-    PORT::Port: IntrPeriph,
-{
-    type IPort = PORT::Port;
-}
+pub trait IntrPortNum: IntrPeriph {}
+impl<PORT: IntrPeriph> IntrPortNum for PORT {}
 
 /// Pin number 0
 pub struct Pin0;
@@ -190,7 +164,7 @@ impl<PORT: PortNum, PIN: PinNum, PULL> Pin<PORT, PIN, Input<PULL>> {
     /// the PxOUT register, which can race with setting an output pin on the same port.
     #[inline]
     pub fn pulldown(self) -> Pin<PORT, PIN, Input<Pulldown>> {
-        let p = unsafe { PORT::Port::steal() };
+        let p = unsafe { PORT::steal() };
         p.pxout_clear(PIN::CLR_MASK);
         p.pxren_set(PIN::SET_MASK);
         make_pin!()
@@ -201,7 +175,7 @@ impl<PORT: PortNum, PIN: PinNum, PULL> Pin<PORT, PIN, Input<PULL>> {
     /// the PxOUT register, which can race with setting an output pin on the same port.
     #[inline]
     pub fn pullup(self) -> Pin<PORT, PIN, Input<Pullup>> {
-        let p = unsafe { PORT::Port::steal() };
+        let p = unsafe { PORT::steal() };
         p.pxout_set(PIN::SET_MASK);
         p.pxren_set(PIN::SET_MASK);
         make_pin!()
@@ -210,7 +184,7 @@ impl<PORT: PortNum, PIN: PinNum, PULL> Pin<PORT, PIN, Input<PULL>> {
     /// Configures pin as floating input
     #[inline]
     pub fn floating(self) -> Pin<PORT, PIN, Input<Floating>> {
-        let p = unsafe { PORT::Port::steal() };
+        let p = unsafe { PORT::steal() };
         p.pxren_clear(PIN::CLR_MASK);
         make_pin!()
     }
@@ -220,7 +194,7 @@ impl<PORT: IntrPortNum, PIN: PinNum, PULL> Pin<PORT, PIN, Input<PULL>> {
     /// Set interrupt trigger to rising edge and clear interrupt flag.
     #[inline]
     pub fn select_rising_edge_trigger(&mut self) -> &mut Self {
-        let p = unsafe { PORT::IPort::steal() };
+        let p = unsafe { PORT::steal() };
         p.pxies_set(PIN::SET_MASK);
         p.pxifg_clear(PIN::CLR_MASK);
         self
@@ -229,7 +203,7 @@ impl<PORT: IntrPortNum, PIN: PinNum, PULL> Pin<PORT, PIN, Input<PULL>> {
     /// Set interrupt trigger to falling edge, the default, and clear interrupt flag.
     #[inline]
     pub fn select_falling_edge_trigger(&mut self) -> &mut Self {
-        let p = unsafe { PORT::IPort::steal() };
+        let p = unsafe { PORT::steal() };
         p.pxies_clear(PIN::CLR_MASK);
         p.pxifg_clear(PIN::CLR_MASK);
         self
@@ -240,7 +214,7 @@ impl<PORT: IntrPortNum, PIN: PinNum, PULL> Pin<PORT, PIN, Input<PULL>> {
     /// spurious interrupts.
     #[inline]
     pub fn enable_interrupts(&mut self) -> &mut Self {
-        let p = unsafe { PORT::IPort::steal() };
+        let p = unsafe { PORT::steal() };
         p.pxie_set(PIN::SET_MASK);
         self
     }
@@ -248,7 +222,7 @@ impl<PORT: IntrPortNum, PIN: PinNum, PULL> Pin<PORT, PIN, Input<PULL>> {
     /// Disable interrupts on input pin.
     #[inline]
     pub fn disable_interrupt(&mut self) -> &mut Self {
-        let p = unsafe { PORT::IPort::steal() };
+        let p = unsafe { PORT::steal() };
         p.pxie_clear(PIN::CLR_MASK);
         self
     }
@@ -256,7 +230,7 @@ impl<PORT: IntrPortNum, PIN: PinNum, PULL> Pin<PORT, PIN, Input<PULL>> {
     /// Set interrupt flag high, triggering an ISR if interrupts are enabled.
     #[inline]
     pub fn set_ifg(&mut self) -> &mut Self {
-        let p = unsafe { PORT::IPort::steal() };
+        let p = unsafe { PORT::steal() };
         p.pxifg_set(PIN::SET_MASK);
         self
     }
@@ -264,7 +238,7 @@ impl<PORT: IntrPortNum, PIN: PinNum, PULL> Pin<PORT, PIN, Input<PULL>> {
     /// Clear interrupt flag.
     #[inline]
     pub fn clear_ifg(&mut self) -> &mut Self {
-        let p = unsafe { PORT::IPort::steal() };
+        let p = unsafe { PORT::steal() };
         p.pxifg_clear(PIN::CLR_MASK);
         self
     }
@@ -272,7 +246,7 @@ impl<PORT: IntrPortNum, PIN: PinNum, PULL> Pin<PORT, PIN, Input<PULL>> {
     /// Wait for interrupt flag to go high nonblockingly. Clear the flag if high.
     #[inline]
     pub fn wait_for_ifg(&mut self) -> nb::Result<(), void::Void> {
-        let p = unsafe { PORT::IPort::steal() };
+        let p = unsafe { PORT::steal() };
         if p.pxifg_rd().check(PIN::NUM) != 0 {
             p.pxifg_clear(PIN::CLR_MASK);
             Ok(())
@@ -291,7 +265,7 @@ impl<PORT: IntrPortNum> PxIV<PORT> {
     /// numbered pin has the highest interrupt priority.
     #[inline]
     pub fn get_interrupt_vector(&mut self) -> GpioVector {
-        let p = unsafe { PORT::IPort::steal() };
+        let p = unsafe { PORT::steal() };
         match p.pxiv_rd() {
             0 => GpioVector::NoIsr,
             2 => GpioVector::Pin0Isr,
@@ -333,7 +307,7 @@ impl<PORT: PortNum, PIN: PinNum, PULL> Pin<PORT, PIN, Input<PULL>> {
     /// Configures pin as output
     #[inline]
     pub fn to_output(self) -> Pin<PORT, PIN, Output> {
-        let p = unsafe { PORT::Port::steal() };
+        let p = unsafe { PORT::steal() };
         p.pxdir_set(PIN::SET_MASK);
         make_pin!()
     }
@@ -343,7 +317,7 @@ impl<PORT: PortNum, PIN: PinNum> Pin<PORT, PIN, Output> {
     /// Configures pin as floating input
     #[inline]
     pub fn to_input_floating(self) -> Pin<PORT, PIN, Input<Floating>> {
-        let p = unsafe { PORT::Port::steal() };
+        let p = unsafe { PORT::steal() };
         p.pxdir_clear(PIN::CLR_MASK);
         make_pin!(Input<Floating>).floating()
     }
@@ -351,7 +325,7 @@ impl<PORT: PortNum, PIN: PinNum> Pin<PORT, PIN, Output> {
     /// Configures pin as floating input
     #[inline]
     pub fn to_input_pullup(self) -> Pin<PORT, PIN, Input<Pullup>> {
-        let p = unsafe { PORT::Port::steal() };
+        let p = unsafe { PORT::steal() };
         p.pxdir_clear(PIN::CLR_MASK);
         make_pin!(Input<Floating>).pullup()
     }
@@ -359,7 +333,7 @@ impl<PORT: PortNum, PIN: PinNum> Pin<PORT, PIN, Output> {
     /// Configures pin as floating input
     #[inline]
     pub fn to_input_pulldown(self) -> Pin<PORT, PIN, Input<Pulldown>> {
-        let p = unsafe { PORT::Port::steal() };
+        let p = unsafe { PORT::steal() };
         p.pxdir_clear(PIN::CLR_MASK);
         make_pin!(Input<Floating>).pulldown()
     }
@@ -370,7 +344,7 @@ impl<PORT: PortNum, PIN: PinNum, PULL> InputPin for Pin<PORT, PIN, Input<PULL>> 
 
     #[inline]
     fn is_high(&self) -> Result<bool, Self::Error> {
-        let p = unsafe { PORT::Port::steal() };
+        let p = unsafe { PORT::steal() };
         Ok(p.pxin_rd().check(PIN::NUM) != 0)
     }
 
@@ -385,14 +359,14 @@ impl<PORT: PortNum, PIN: PinNum> OutputPin for Pin<PORT, PIN, Output> {
 
     #[inline]
     fn set_low(&mut self) -> Result<(), Self::Error> {
-        let p = unsafe { PORT::Port::steal() };
+        let p = unsafe { PORT::steal() };
         p.pxout_clear(PIN::CLR_MASK);
         Ok(())
     }
 
     #[inline]
     fn set_high(&mut self) -> Result<(), Self::Error> {
-        let p = unsafe { PORT::Port::steal() };
+        let p = unsafe { PORT::steal() };
         p.pxout_set(PIN::SET_MASK);
         Ok(())
     }
@@ -401,7 +375,7 @@ impl<PORT: PortNum, PIN: PinNum> OutputPin for Pin<PORT, PIN, Output> {
 impl<PORT: PortNum, PIN: PinNum> StatefulOutputPin for Pin<PORT, PIN, Output> {
     #[inline]
     fn is_set_high(&self) -> Result<bool, Self::Error> {
-        let p = unsafe { PORT::Port::steal() };
+        let p = unsafe { PORT::steal() };
         Ok(p.pxout_rd().check(PIN::NUM) != 0)
     }
 
@@ -416,7 +390,7 @@ impl<PORT: PortNum, PIN: PinNum> ToggleableOutputPin for Pin<PORT, PIN, Output> 
 
     #[inline]
     fn toggle(&mut self) -> Result<(), Self::Error> {
-        let p = unsafe { PORT::Port::steal() };
+        let p = unsafe { PORT::steal() };
         p.pxout_toggle(PIN::SET_MASK);
         Ok(())
     }
@@ -484,31 +458,31 @@ pub trait ChangeSelectBits {
 impl<PORT: PortNum, PIN: PinNum, DIR> ChangeSelectBits for Pin<PORT, PIN, DIR> {
     #[inline]
     fn set_sel0(&mut self) {
-        let p = unsafe { PORT::Port::steal() };
+        let p = unsafe { PORT::steal() };
         p.pxsel0_set(PIN::SET_MASK);
     }
 
     #[inline]
     fn set_sel1(&mut self) {
-        let p = unsafe { PORT::Port::steal() };
+        let p = unsafe { PORT::steal() };
         p.pxsel1_set(PIN::SET_MASK);
     }
 
     #[inline]
     fn clear_sel0(&mut self) {
-        let p = unsafe { PORT::Port::steal() };
+        let p = unsafe { PORT::steal() };
         p.pxsel0_clear(PIN::CLR_MASK);
     }
 
     #[inline]
     fn clear_sel1(&mut self) {
-        let p = unsafe { PORT::Port::steal() };
+        let p = unsafe { PORT::steal() };
         p.pxsel1_clear(PIN::CLR_MASK);
     }
 
     #[inline]
     fn flip_selc(&mut self) {
-        let p = unsafe { PORT::Port::steal() };
+        let p = unsafe { PORT::steal() };
         // Change both sel0 and sel1 bits at once
         p.pxselc_wr(0u8.set(PIN::NUM));
     }
