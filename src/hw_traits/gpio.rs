@@ -1,8 +1,7 @@
+use super::Steal;
 use msp430fr2355 as pac;
 
-pub trait GpioPeriph {
-    unsafe fn steal() -> Self;
-
+pub trait GpioPeriph: Steal {
     fn pxin_rd(&self) -> u8;
 
     fn pxout_rd(&self) -> u8;
@@ -85,12 +84,14 @@ macro_rules! gpio_impl {
         mod $px {
             use super::*;
 
-            impl GpioPeriph for pac::$Px {
+            impl Steal for pac::$Px {
                 #[inline(always)]
                 unsafe fn steal() -> Self {
                     pac::Peripherals::conjure().$Px
                 }
+            }
 
+            impl GpioPeriph for pac::$Px {
                 #[inline(always)]
                 fn pxin_rd(&self) -> u8 {
                     self.$pxin.read().bits()

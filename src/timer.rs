@@ -18,44 +18,50 @@ pub use crate::hw_traits::timerb::{
 
 // Trait effectively sealed by CCRn
 /// Trait indicating that the peripheral can be used as a sub-timer, PWM, or capture
-pub trait CapCmpPeriph<C>: CCRn<C> + CCRn<CCR0> {}
-impl<T: CCRn<C> + CCRn<CCR0>, C> CapCmpPeriph<C> for T {}
+pub trait CapCmp<C>: CCRn<C> + CCRn<CCR0> {}
+impl<T: CCRn<C> + CCRn<CCR0>, C> CapCmp<C> for T {}
 
-// Trait effectively sealed by CCRn
+// Trait effectively sealed by TimerB
 /// Trait indicating that the peripheral can be used as a timer
-pub trait TimerPeriph: TimerB + CCRn<CCR0> {
+pub trait TimerPeriph: TimerB {
     /// Pin type used for external TBxCLK of this timer
     type Tbxclk;
 }
 
 // Traits effectively sealed by CCRn
 /// Trait indicating that the peripheral has 3 capture compare registers
-pub trait ThreeCCRnTimer: TimerPeriph + CCRn<CCR1> + CCRn<CCR2> {}
+pub trait ThreeCCRnTimer: TimerPeriph + CapCmp<CCR1> + CapCmp<CCR2> {}
 /// Trait indicating that the peripheral has 7 capture compare registers
 pub trait SevenCCRnTimer:
-    TimerPeriph + CCRn<CCR1> + CCRn<CCR2> + CCRn<CCR3> + CCRn<CCR4> + CCRn<CCR5> + CCRn<CCR6>
+    TimerPeriph
+    + CapCmp<CCR1>
+    + CapCmp<CCR2>
+    + CapCmp<CCR3>
+    + CapCmp<CCR4>
+    + CapCmp<CCR5>
+    + CapCmp<CCR6>
 {
 }
 
-impl TimerPeriph for pac::tb0::RegisterBlock {
+impl TimerPeriph for pac::TB0 {
     type Tbxclk = Pin<P2, Pin7, Alternate1<Input<Floating>>>;
 }
-impl ThreeCCRnTimer for pac::tb0::RegisterBlock {}
+impl ThreeCCRnTimer for pac::TB0 {}
 
-impl TimerPeriph for pac::tb1::RegisterBlock {
+impl TimerPeriph for pac::TB1 {
     type Tbxclk = Pin<P2, Pin2, Alternate1<Input<Floating>>>;
 }
-impl ThreeCCRnTimer for pac::tb1::RegisterBlock {}
+impl ThreeCCRnTimer for pac::TB1 {}
 
-impl TimerPeriph for pac::tb2::RegisterBlock {
+impl TimerPeriph for pac::TB2 {
     type Tbxclk = Pin<P5, Pin2, Alternate1<Input<Floating>>>;
 }
-impl ThreeCCRnTimer for pac::tb2::RegisterBlock {}
+impl ThreeCCRnTimer for pac::TB2 {}
 
-impl TimerPeriph for pac::tb3::RegisterBlock {
+impl TimerPeriph for pac::TB3 {
     type Tbxclk = Pin<P6, Pin6, Alternate1<Input<Floating>>>;
 }
-impl SevenCCRnTimer for pac::tb3::RegisterBlock {}
+impl SevenCCRnTimer for pac::TB3 {}
 
 /// Configures all HAL objects that use the TimerB timers
 pub struct TimerConfig<T: TimerPeriph> {
@@ -194,7 +200,7 @@ impl<T: TimerPeriph> SealedDefault for Timer<T> {
 /// Sub-timer with its own interrupts and threshold that shares its countdown with the main timer
 pub struct SubTimer<T: CCRn<C>, C>(PhantomData<T>, PhantomData<C>);
 
-impl<T: CapCmpPeriph<C>, C> SealedDefault for SubTimer<T, C> {
+impl<T: CapCmp<C>, C> SealedDefault for SubTimer<T, C> {
     fn default() -> Self {
         Self(PhantomData, PhantomData)
     }

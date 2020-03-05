@@ -1,3 +1,4 @@
+use super::Steal;
 use msp430fr2355 as pac;
 
 pub enum Ucssel {
@@ -16,9 +17,7 @@ pub struct UcxCtl0 {
     pub ucrxeie: bool,
 }
 
-pub trait EUsci {
-    unsafe fn steal() -> Self;
-
+pub trait EUsci: Steal {
     fn ctl0_reset(&self);
 
     // only call while in reset state
@@ -65,12 +64,14 @@ macro_rules! eusci_a_impl {
     ($EUsci:ident, $eusci:ident, $ucaxctlw0:ident, $ucaxctlw1:ident, $ucaxbrw:ident, $ucaxmctlw:ident,
      $ucaxstatw:ident, $ucaxrxbuf:ident, $ucaxtxbuf:ident, $ucaxie:ident, $ucaxifg:ident,
      $ucaxiv:ident, $Statw:ty) => {
-        impl EUsci for pac::$EUsci {
+        impl Steal for pac::$EUsci {
             #[inline(always)]
             unsafe fn steal() -> Self {
                 pac::Peripherals::conjure().$EUsci
             }
+        }
 
+        impl EUsci for pac::$EUsci {
             #[inline(always)]
             fn ctl0_reset(&self) {
                 self.$ucaxctlw0().write(|w| w.ucswrst().set_bit());
