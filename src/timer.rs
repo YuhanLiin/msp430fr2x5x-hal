@@ -7,7 +7,6 @@
 use crate::clock::{Aclk, Smclk};
 use crate::gpio::{Alternate1, Floating, Input, Pin, Pin2, Pin6, Pin7, P2, P5, P6};
 use crate::hw_traits::timerb::{CCRn, Tbssel, TimerB};
-use crate::util::SealedDefault;
 use core::marker::PhantomData;
 use embedded_hal::timer::{Cancel, CountDown, Periodic};
 use msp430fr2355 as pac;
@@ -18,8 +17,8 @@ pub use crate::hw_traits::timerb::{
 
 // Trait effectively sealed by CCRn
 /// Trait indicating that the peripheral can be used as a sub-timer, PWM, or capture
-pub trait CapCmp<C>: CCRn<C> + CCRn<CCR0> {}
-impl<T: CCRn<C> + CCRn<CCR0>, C> CapCmp<C> for T {}
+pub trait CapCmp<C>: CCRn<C> {}
+impl<T: CCRn<C>, C> CapCmp<C> for T {}
 
 // Trait effectively sealed by TimerB
 /// Trait indicating that the peripheral can be used as a timer
@@ -30,10 +29,11 @@ pub trait TimerPeriph: TimerB {
 
 // Traits effectively sealed by CCRn
 /// Trait indicating that the peripheral has 3 capture compare registers
-pub trait CapCmpTimer3: TimerPeriph + CapCmp<CCR1> + CapCmp<CCR2> {}
+pub trait CapCmpTimer3: TimerPeriph + CapCmp<CCR1> + CapCmp<CCR2> + CapCmp<CCR0> {}
 /// Trait indicating that the peripheral has 7 capture compare registers
 pub trait CapCmpTimer7:
     TimerPeriph
+    + CapCmp<CCR0>
     + CapCmp<CCR1>
     + CapCmp<CCR2>
     + CapCmp<CCR3>
@@ -142,10 +142,10 @@ impl<T: CapCmpTimer3> TimerParts3<T> {
     pub fn new(_timer: T, config: TimerConfig<T>) -> Self {
         config.write_regs(unsafe { &T::steal() });
         Self {
-            timer: SealedDefault::default(),
+            timer: Timer::new(),
             tbxiv: TBxIV(PhantomData),
-            subtimer1: SealedDefault::default(),
-            subtimer2: SealedDefault::default(),
+            subtimer1: SubTimer::new(),
+            subtimer2: SubTimer::new(),
         }
     }
 }
@@ -176,14 +176,14 @@ impl<T: CapCmpTimer7> TimerParts7<T> {
     pub fn new(_timer: T, config: TimerConfig<T>) -> Self {
         config.write_regs(unsafe { &T::steal() });
         Self {
-            timer: SealedDefault::default(),
+            timer: Timer::new(),
             tbxiv: TBxIV(PhantomData),
-            subtimer1: SealedDefault::default(),
-            subtimer2: SealedDefault::default(),
-            subtimer3: SealedDefault::default(),
-            subtimer4: SealedDefault::default(),
-            subtimer5: SealedDefault::default(),
-            subtimer6: SealedDefault::default(),
+            subtimer1: SubTimer::new(),
+            subtimer2: SubTimer::new(),
+            subtimer3: SubTimer::new(),
+            subtimer4: SubTimer::new(),
+            subtimer5: SubTimer::new(),
+            subtimer6: SubTimer::new(),
         }
     }
 }
@@ -191,8 +191,8 @@ impl<T: CapCmpTimer7> TimerParts7<T> {
 /// Periodic countdown timer
 pub struct Timer<T: TimerPeriph>(PhantomData<T>);
 
-impl<T: TimerPeriph> SealedDefault for Timer<T> {
-    fn default() -> Self {
+impl<T: TimerPeriph> Timer<T> {
+    fn new() -> Self {
         Self(PhantomData)
     }
 }
@@ -200,8 +200,8 @@ impl<T: TimerPeriph> SealedDefault for Timer<T> {
 /// Sub-timer with its own interrupts and threshold that shares its countdown with the main timer
 pub struct SubTimer<T: CCRn<C>, C>(PhantomData<T>, PhantomData<C>);
 
-impl<T: CapCmp<C>, C> SealedDefault for SubTimer<T, C> {
-    fn default() -> Self {
+impl<T: CapCmp<C>, C> SubTimer<T, C> {
+    fn new() -> Self {
         Self(PhantomData, PhantomData)
     }
 }

@@ -10,7 +10,6 @@ use crate::gpio::{
 };
 use crate::hw_traits::timerb::{CCRn, Outmod};
 use crate::timer::{CapCmpTimer3, CapCmpTimer7};
-use crate::util::SealedDefault;
 use core::marker::PhantomData;
 use embedded_hal::PwmPin;
 use msp430fr2355 as pac;
@@ -28,7 +27,7 @@ pub enum Alt {
 
 // Sealed by CapCmp
 /// Associates PWM pins with specific GPIO pins
-pub trait PwmPeriph<C>: CapCmp<C> {
+pub trait PwmPeriph<C>: CapCmp<C> + CapCmp<CCR0> {
     /// GPIO type
     type Gpio: ChangeSelectBits;
     #[doc(hidden)]
@@ -129,8 +128,8 @@ impl<T: CapCmpTimer3> PwmParts3<T> {
         // Start the timer to run PWM
         timer.upmode();
         Self {
-            pwm1: SealedDefault::default(),
-            pwm2: SealedDefault::default(),
+            pwm1: PwmUninit::new(),
+            pwm2: PwmUninit::new(),
         }
     }
 }
@@ -166,12 +165,12 @@ impl<T: CapCmpTimer7> PwmParts7<T> {
         // Start the timer to run PWM
         timer.upmode();
         Self {
-            pwm1: SealedDefault::default(),
-            pwm2: SealedDefault::default(),
-            pwm3: SealedDefault::default(),
-            pwm4: SealedDefault::default(),
-            pwm5: SealedDefault::default(),
-            pwm6: SealedDefault::default(),
+            pwm1: PwmUninit::new(),
+            pwm2: PwmUninit::new(),
+            pwm3: PwmUninit::new(),
+            pwm4: PwmUninit::new(),
+            pwm5: PwmUninit::new(),
+            pwm6: PwmUninit::new(),
         }
     }
 }
@@ -190,8 +189,8 @@ impl<T: PwmPeriph<C>, C> PwmUninit<T, C> {
     }
 }
 
-impl<T, C> SealedDefault for PwmUninit<T, C> {
-    fn default() -> Self {
+impl<T, C> PwmUninit<T, C> {
+    fn new() -> Self {
         Self(PhantomData, PhantomData)
     }
 }

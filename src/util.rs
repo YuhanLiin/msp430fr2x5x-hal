@@ -32,9 +32,3 @@ impl BitsExt for u8 {
         self & !mask
     }
 }
-
-// Like Default, except it's private so HAL user's can't call it, preventing users from creating
-// HAL objects out of thin air
-pub trait SealedDefault {
-    fn default() -> Self;
-}

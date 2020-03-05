@@ -14,7 +14,6 @@ use crate::gpio::{
 };
 use crate::hw_traits::timerb::{CCRn, Ccis, Cm};
 use crate::timer::{read_tbxiv, CapCmpTimer3, CapCmpTimer7, TimerVector};
-use crate::util::SealedDefault;
 use core::marker::PhantomData;
 use msp430fr2355 as pac;
 
@@ -208,7 +207,13 @@ where
         CCRn::<CCR1>::config_cap_mode(&timer, self.cap1.trigger.into(), self.cap1.select.into());
         CCRn::<CCR2>::config_cap_mode(&timer, self.cap2.trigger.into(), self.cap2.select.into());
         timer.continuous();
-        CaptureParts3::default()
+
+        CaptureParts3 {
+            cap0: Capture::new(),
+            cap1: Capture::new(),
+            cap2: Capture::new(),
+            tbxiv: TBxIV(PhantomData),
+        }
     }
 }
 
@@ -309,7 +314,17 @@ where
         CCRn::<CCR5>::config_cap_mode(&timer, self.cap5.trigger.into(), self.cap5.select.into());
         CCRn::<CCR6>::config_cap_mode(&timer, self.cap6.trigger.into(), self.cap6.select.into());
         timer.continuous();
-        CaptureParts7::default()
+
+        CaptureParts7 {
+            cap0: Capture::new(),
+            cap1: Capture::new(),
+            cap2: Capture::new(),
+            cap3: Capture::new(),
+            cap4: Capture::new(),
+            cap5: Capture::new(),
+            cap6: Capture::new(),
+            tbxiv: TBxIV(PhantomData),
+        }
     }
 }
 
@@ -323,18 +338,6 @@ pub struct CaptureParts3<T: CapCmpTimer3> {
     pub cap2: Capture<T, CCR2>,
     /// Interrupt vector register
     pub tbxiv: TBxIV<T>,
-}
-
-impl<T: CapCmpTimer3> SealedDefault for CaptureParts3<T> {
-    #[inline(always)]
-    fn default() -> Self {
-        Self {
-            cap0: SealedDefault::default(),
-            cap1: SealedDefault::default(),
-            cap2: SealedDefault::default(),
-            tbxiv: TBxIV(PhantomData),
-        }
-    }
 }
 
 /// Collection of uninitialized capture pins derived from timer peripheral with 7 capture-compare registers
@@ -357,27 +360,11 @@ pub struct CaptureParts7<T: CapCmpTimer7> {
     pub tbxiv: TBxIV<T>,
 }
 
-impl<T: CapCmpTimer7> SealedDefault for CaptureParts7<T> {
-    #[inline(always)]
-    fn default() -> Self {
-        Self {
-            cap0: SealedDefault::default(),
-            cap1: SealedDefault::default(),
-            cap2: SealedDefault::default(),
-            cap3: SealedDefault::default(),
-            cap4: SealedDefault::default(),
-            cap5: SealedDefault::default(),
-            cap6: SealedDefault::default(),
-            tbxiv: TBxIV(PhantomData),
-        }
-    }
-}
-
 /// Single capture pin with its own capture register
 pub struct Capture<T: CCRn<C>, C>(PhantomData<T>, PhantomData<C>);
 
-impl<T: CCRn<C>, C> SealedDefault for Capture<T, C> {
-    fn default() -> Self {
+impl<T: CCRn<C>, C> Capture<T, C> {
+    fn new() -> Self {
         Self(PhantomData, PhantomData)
     }
 }
