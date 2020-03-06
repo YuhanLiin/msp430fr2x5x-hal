@@ -9,7 +9,7 @@ use msp430_rt::entry;
 use msp430fr2355::interrupt;
 use msp430fr2x5x_hal::{
     capture::{
-        CapCmp, CapTrigger, Capture, CaptureConfig3, CaptureVector, TBxIV, TimerConfig, CCR1,
+        CapCmp, CapTrigger, Capture, CaptureParts3, CaptureVector, TBxIV, TimerConfig, CCR1,
     },
     clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv},
     fram::Fram,
@@ -55,7 +55,7 @@ fn main() -> ! {
             .aclk_vloclk()
             .freeze(&mut fram);
 
-        let captures = CaptureConfig3::new(periph.TB0, TimerConfig::aclk(&aclk))
+        let captures = CaptureParts3::config(periph.TB0, TimerConfig::aclk(&aclk))
             .config_cap1_input_A(p1.pin6.to_alternate2())
             .config_cap1_trigger(CapTrigger::FallingEdge)
             .commit();

@@ -163,13 +163,10 @@ where
     cap2: PinConfig,
 }
 
-impl<T: CapturePeriph> CaptureConfig3<T>
-where
-    T: CapCmpTimer3,
-{
+impl<T: CapturePeriph + CapCmpTimer3> CaptureParts3<T> {
     /// Create capture configuration
-    pub fn new(timer: T, config: TimerConfig<T>) -> Self {
-        Self {
+    pub fn config(timer: T, config: TimerConfig<T>) -> CaptureConfig3<T> {
+        CaptureConfig3 {
             timer,
             config,
             cap0: PinConfig::default(),
@@ -177,7 +174,9 @@ where
             cap2: PinConfig::default(),
         }
     }
+}
 
+impl<T: CapturePeriph + CapCmpTimer3> CaptureConfig3<T> {
     config_fn!(
         config_cap0_input_A,
         config_cap0_input_B,
@@ -234,13 +233,10 @@ where
     cap6: PinConfig,
 }
 
-impl<T: CapturePeriph> CaptureConfig7<T>
-where
-    T: CapCmpTimer7,
-{
+impl<T: CapturePeriph + CapCmpTimer7> CaptureParts7<T> {
     /// Create capture configuration
-    pub fn new(timer: T, config: TimerConfig<T>) -> Self {
-        Self {
+    pub fn config(timer: T, config: TimerConfig<T>) -> CaptureConfig7<T> {
+        CaptureConfig7 {
             timer,
             config,
             cap0: PinConfig::default(),
@@ -252,7 +248,9 @@ where
             cap6: PinConfig::default(),
         }
     }
+}
 
+impl<T: CapturePeriph + CapCmpTimer7> CaptureConfig7<T> {
     config_fn!(
         config_cap0_input_A,
         config_cap0_input_B,

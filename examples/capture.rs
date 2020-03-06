@@ -5,7 +5,7 @@ use embedded_hal::digital::v2::*;
 use embedded_hal::prelude::*;
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
-    capture::{CapTrigger, CaptureConfig3, OverCapture, TimerConfig},
+    capture::{CapTrigger, CaptureParts3, OverCapture, TimerConfig},
     clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv},
     fram::Fram,
     gpio::Batch,
@@ -51,7 +51,7 @@ fn main() -> ! {
     .use_smclk(&smclk)
     .tx_only(p4.pin3.to_alternate1());
 
-    let captures = CaptureConfig3::new(periph.TB0, TimerConfig::aclk(&aclk))
+    let captures = CaptureParts3::config(periph.TB0, TimerConfig::aclk(&aclk))
         .config_cap1_input_A(p1.pin6.to_alternate2())
         .config_cap1_trigger(CapTrigger::FallingEdge)
         .commit();
