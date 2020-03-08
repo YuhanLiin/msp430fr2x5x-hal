@@ -1,3 +1,4 @@
+use super::Steal;
 use msp430fr2355 as pac;
 
 pub enum Tbssel {
@@ -64,11 +65,7 @@ pub enum Ccis {
     Vcc,
 }
 
-pub trait TimerSteal {
-    unsafe fn steal<'a>() -> &'a Self;
-}
-
-pub trait TimerB: TimerSteal {
+pub trait TimerB: Steal {
     /// Reset timer countdown
     fn reset(&self);
 
@@ -98,7 +95,7 @@ pub trait TimerB: TimerSteal {
     fn tbxiv_rd(&self) -> u16;
 }
 
-pub trait CCRn<C>: TimerSteal {
+pub trait CCRn<C>: Steal {
     fn set_ccrn(&self, count: u16);
     fn get_ccrn(&self) -> u16;
 
@@ -131,8 +128,8 @@ pub struct CCR5;
 pub struct CCR6;
 
 macro_rules! ccrn_impl {
-    ($tbx:ident, $CCRn:ident, $tbxcctln:ident, $tbxccrn:ident) => {
-        impl CCRn<$CCRn> for pac::$tbx::RegisterBlock {
+    ($TBx:ident, $CCRn:ident, $tbxcctln:ident, $tbxccrn:ident) => {
+        impl CCRn<$CCRn> for pac::$TBx {
             #[inline(always)]
             fn set_ccrn(&self, count: u16) {
                 self.$tbxccrn.write(|w| unsafe { w.bits(count) });
@@ -201,14 +198,14 @@ macro_rules! ccrn_impl {
 
 macro_rules! timerb_impl {
     ($TBx:ident, $tbx:ident, $tbxctl:ident, $tbxex:ident, $tbxiv:ident, $([$CCRn:ident, $tbxcctln:ident, $tbxccrn:ident]),*) => {
-        impl TimerSteal for pac::$tbx::RegisterBlock {
+        impl Steal for pac::$TBx {
             #[inline(always)]
-            unsafe fn steal<'a>() -> &'a Self {
-                &*pac::$TBx::ptr()
+            unsafe fn steal() -> Self {
+                pac::Peripherals::conjure().$TBx
             }
         }
 
-        impl TimerB for pac::$tbx::RegisterBlock {
+        impl TimerB for pac::$TBx {
             #[inline(always)]
             fn reset(&self) {
                 unsafe { self.$tbxctl.set_bits(|w| w.tbclr().set_bit()) };
@@ -287,7 +284,7 @@ macro_rules! timerb_impl {
             }
         }
 
-        $(ccrn_impl!($tbx, $CCRn, $tbxcctln, $tbxccrn);)*
+        $(ccrn_impl!($TBx, $CCRn, $tbxcctln, $tbxccrn);)*
     };
 }
 

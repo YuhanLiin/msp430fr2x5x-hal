@@ -6,93 +6,18 @@
 
 use crate::gpio::{
     Alternate1, Alternate2, ChangeSelectBits, Output, Pin, Pin0, Pin1, Pin2, Pin3, Pin4, Pin5,
-    Pin6, Pin7, Port1, Port2, Port5, Port6,
+    Pin6, Pin7, P1, P2, P5, P6,
 };
-use crate::hw_traits::timerb::{CCRn, Outmod, TimerB, TimerSteal};
-use crate::timer::{SevenCCRnTimer, ThreeCCRnTimer};
-use crate::util::SealedDefault;
+use crate::hw_traits::timerb::{CCRn, Outmod};
+use crate::timer::{CapCmpTimer3, CapCmpTimer7};
 use core::marker::PhantomData;
 use embedded_hal::PwmPin;
 use msp430fr2355 as pac;
 
 pub use crate::timer::{
-    CapCmpPeriph, TimerConfig, TimerDiv, TimerExDiv, TimerPeriph, CCR0, CCR1, CCR2, CCR3, CCR4,
-    CCR5, CCR6,
+    CapCmp, TimerConfig, TimerDiv, TimerExDiv, TimerPeriph, CCR0, CCR1, CCR2, CCR3, CCR4, CCR5,
+    CCR6,
 };
-
-mod sealed {
-    use super::*;
-
-    pub trait SealedPwmGpio {}
-    pub trait SealedPwmExt {}
-
-    impl SealedPwmGpio for (Tb0, CCR1) {}
-    impl SealedPwmGpio for (Tb0, CCR2) {}
-    impl SealedPwmGpio for (Tb1, CCR1) {}
-    impl SealedPwmGpio for (Tb1, CCR2) {}
-    impl SealedPwmGpio for (Tb2, CCR1) {}
-    impl SealedPwmGpio for (Tb2, CCR2) {}
-    impl SealedPwmGpio for (Tb3, CCR1) {}
-    impl SealedPwmGpio for (Tb3, CCR2) {}
-    impl SealedPwmGpio for (Tb3, CCR3) {}
-    impl SealedPwmGpio for (Tb3, CCR4) {}
-    impl SealedPwmGpio for (Tb3, CCR5) {}
-    impl SealedPwmGpio for (Tb3, CCR6) {}
-
-    impl SealedPwmExt for pac::TB0 {}
-    impl SealedPwmExt for pac::TB1 {}
-    impl SealedPwmExt for pac::TB2 {}
-    impl SealedPwmExt for pac::TB3 {}
-}
-
-// This trait applies to RegisterBlock types rather than peripheral types, so users likely won't
-// use the trait in their own code, so it can stay hidden
-#[doc(hidden)]
-pub trait PwmConfigChannels {
-    // Configures each PWM channel of a peripheral during init
-    fn config_channels(&self);
-}
-
-type Tb0 = pac::tb0::RegisterBlock;
-type Tb1 = pac::tb1::RegisterBlock;
-type Tb2 = pac::tb2::RegisterBlock;
-type Tb3 = pac::tb3::RegisterBlock;
-
-impl PwmConfigChannels for Tb0 {
-    #[inline]
-    fn config_channels(&self) {
-        CCRn::<CCR1>::config_outmod(self, Outmod::ResetSet);
-        CCRn::<CCR2>::config_outmod(self, Outmod::ResetSet);
-    }
-}
-
-impl PwmConfigChannels for Tb1 {
-    #[inline]
-    fn config_channels(&self) {
-        CCRn::<CCR1>::config_outmod(self, Outmod::ResetSet);
-        CCRn::<CCR2>::config_outmod(self, Outmod::ResetSet);
-    }
-}
-
-impl PwmConfigChannels for Tb2 {
-    #[inline]
-    fn config_channels(&self) {
-        CCRn::<CCR1>::config_outmod(self, Outmod::ResetSet);
-        CCRn::<CCR2>::config_outmod(self, Outmod::ResetSet);
-    }
-}
-
-impl PwmConfigChannels for Tb3 {
-    #[inline]
-    fn config_channels(&self) {
-        CCRn::<CCR1>::config_outmod(self, Outmod::ResetSet);
-        CCRn::<CCR2>::config_outmod(self, Outmod::ResetSet);
-        CCRn::<CCR3>::config_outmod(self, Outmod::ResetSet);
-        CCRn::<CCR4>::config_outmod(self, Outmod::ResetSet);
-        CCRn::<CCR5>::config_outmod(self, Outmod::ResetSet);
-        CCRn::<CCR6>::config_outmod(self, Outmod::ResetSet);
-    }
-}
 
 #[doc(hidden)]
 pub enum Alt {
@@ -100,8 +25,9 @@ pub enum Alt {
     Alt2,
 }
 
+// Sealed by CapCmp
 /// Associates PWM pins with specific GPIO pins
-pub trait PwmGpio: sealed::SealedPwmGpio {
+pub trait PwmPeriph<C>: CapCmp<C> + CapCmp<CCR0> {
     /// GPIO type
     type Gpio: ChangeSelectBits;
     #[doc(hidden)]
@@ -124,77 +50,90 @@ pub trait PwmGpio: sealed::SealedPwmGpio {
     }
 }
 
-impl PwmGpio for (Tb0, CCR1) {
-    type Gpio = Pin<Port1, Pin6, Alternate2<Output>>;
+impl PwmPeriph<CCR1> for pac::TB0 {
+    type Gpio = Pin<P1, Pin6, Alternate2<Output>>;
     const ALT: Alt = Alt::Alt2;
 }
-impl PwmGpio for (Tb0, CCR2) {
-    type Gpio = Pin<Port1, Pin7, Alternate2<Output>>;
+impl PwmPeriph<CCR2> for pac::TB0 {
+    type Gpio = Pin<P1, Pin7, Alternate2<Output>>;
     const ALT: Alt = Alt::Alt2;
 }
 
-impl PwmGpio for (Tb1, CCR1) {
-    type Gpio = Pin<Port2, Pin0, Alternate1<Output>>;
+impl PwmPeriph<CCR1> for pac::TB1 {
+    type Gpio = Pin<P2, Pin0, Alternate1<Output>>;
     const ALT: Alt = Alt::Alt1;
 }
-impl PwmGpio for (Tb1, CCR2) {
-    type Gpio = Pin<Port2, Pin1, Alternate1<Output>>;
-    const ALT: Alt = Alt::Alt1;
-}
-
-impl PwmGpio for (Tb2, CCR1) {
-    type Gpio = Pin<Port5, Pin0, Alternate1<Output>>;
-    const ALT: Alt = Alt::Alt1;
-}
-impl PwmGpio for (Tb2, CCR2) {
-    type Gpio = Pin<Port5, Pin1, Alternate1<Output>>;
+impl PwmPeriph<CCR2> for pac::TB1 {
+    type Gpio = Pin<P2, Pin1, Alternate1<Output>>;
     const ALT: Alt = Alt::Alt1;
 }
 
-impl PwmGpio for (Tb3, CCR1) {
-    type Gpio = Pin<Port6, Pin0, Alternate1<Output>>;
+impl PwmPeriph<CCR1> for pac::TB2 {
+    type Gpio = Pin<P5, Pin0, Alternate1<Output>>;
     const ALT: Alt = Alt::Alt1;
 }
-impl PwmGpio for (Tb3, CCR2) {
-    type Gpio = Pin<Port6, Pin1, Alternate1<Output>>;
+impl PwmPeriph<CCR2> for pac::TB2 {
+    type Gpio = Pin<P5, Pin1, Alternate1<Output>>;
     const ALT: Alt = Alt::Alt1;
 }
-impl PwmGpio for (Tb3, CCR3) {
-    type Gpio = Pin<Port6, Pin2, Alternate1<Output>>;
+
+impl PwmPeriph<CCR1> for pac::TB3 {
+    type Gpio = Pin<P6, Pin0, Alternate1<Output>>;
     const ALT: Alt = Alt::Alt1;
 }
-impl PwmGpio for (Tb3, CCR4) {
-    type Gpio = Pin<Port6, Pin3, Alternate1<Output>>;
+impl PwmPeriph<CCR2> for pac::TB3 {
+    type Gpio = Pin<P6, Pin1, Alternate1<Output>>;
     const ALT: Alt = Alt::Alt1;
 }
-impl PwmGpio for (Tb3, CCR5) {
-    type Gpio = Pin<Port6, Pin4, Alternate1<Output>>;
+impl PwmPeriph<CCR3> for pac::TB3 {
+    type Gpio = Pin<P6, Pin2, Alternate1<Output>>;
     const ALT: Alt = Alt::Alt1;
 }
-impl PwmGpio for (Tb3, CCR6) {
-    type Gpio = Pin<Port6, Pin5, Alternate1<Output>>;
+impl PwmPeriph<CCR4> for pac::TB3 {
+    type Gpio = Pin<P6, Pin3, Alternate1<Output>>;
     const ALT: Alt = Alt::Alt1;
+}
+impl PwmPeriph<CCR5> for pac::TB3 {
+    type Gpio = Pin<P6, Pin4, Alternate1<Output>>;
+    const ALT: Alt = Alt::Alt1;
+}
+impl PwmPeriph<CCR6> for pac::TB3 {
+    type Gpio = Pin<P6, Pin5, Alternate1<Output>>;
+    const ALT: Alt = Alt::Alt1;
+}
+
+fn setup_pwm<T: TimerPeriph>(timer: &T, config: TimerConfig<T>, period: u16) {
+    config.write_regs(timer);
+    CCRn::<CCR0>::set_ccrn(timer, period);
+    CCRn::<CCR0>::config_outmod(timer, Outmod::Toggle);
 }
 
 /// Collection of uninitialized PWM pins derived from timer peripheral with 3 capture-compare registers
-pub struct ThreeCCRnPins<T: ThreeCCRnTimer> {
+pub struct PwmParts3<T: CapCmpTimer3> {
     /// PWM pin 1 (derived from capture-compare register 1)
     pub pwm1: PwmUninit<T, CCR1>,
     /// PWM pin 2 (derived from capture-compare register 2)
     pub pwm2: PwmUninit<T, CCR2>,
 }
 
-impl<T: ThreeCCRnTimer> SealedDefault for ThreeCCRnPins<T> {
-    fn default() -> Self {
+impl<T: CapCmpTimer3> PwmParts3<T> {
+    /// Create PWM pins
+    pub fn new(timer: T, config: TimerConfig<T>, period: u16) -> Self {
+        setup_pwm(&timer, config, period);
+        // Configure PWM ports
+        CCRn::<CCR1>::config_outmod(&timer, Outmod::ResetSet);
+        CCRn::<CCR2>::config_outmod(&timer, Outmod::ResetSet);
+        // Start the timer to run PWM
+        timer.upmode();
         Self {
-            pwm1: SealedDefault::default(),
-            pwm2: SealedDefault::default(),
+            pwm1: PwmUninit::new(),
+            pwm2: PwmUninit::new(),
         }
     }
 }
 
 /// Collection of uninitialized PWM pins derived from timer peripheral with 7 capture-compare registers
-pub struct SevenCCRnPins<T: SevenCCRnTimer> {
+pub struct PwmParts7<T: CapCmpTimer7> {
     /// PWM pin 1 (derived from capture-compare register 1)
     pub pwm1: PwmUninit<T, CCR1>,
     /// PWM pin 2 (derived from capture-compare register 2)
@@ -209,15 +148,26 @@ pub struct SevenCCRnPins<T: SevenCCRnTimer> {
     pub pwm6: PwmUninit<T, CCR6>,
 }
 
-impl<T: SevenCCRnTimer> SealedDefault for SevenCCRnPins<T> {
-    fn default() -> Self {
+impl<T: CapCmpTimer7> PwmParts7<T> {
+    /// Create PWM pins
+    pub fn new(timer: T, config: TimerConfig<T>, period: u16) -> Self {
+        setup_pwm(&timer, config, period);
+        // Configure PWM ports
+        CCRn::<CCR1>::config_outmod(&timer, Outmod::ResetSet);
+        CCRn::<CCR2>::config_outmod(&timer, Outmod::ResetSet);
+        CCRn::<CCR3>::config_outmod(&timer, Outmod::ResetSet);
+        CCRn::<CCR4>::config_outmod(&timer, Outmod::ResetSet);
+        CCRn::<CCR5>::config_outmod(&timer, Outmod::ResetSet);
+        CCRn::<CCR6>::config_outmod(&timer, Outmod::ResetSet);
+        // Start the timer to run PWM
+        timer.upmode();
         Self {
-            pwm1: SealedDefault::default(),
-            pwm2: SealedDefault::default(),
-            pwm3: SealedDefault::default(),
-            pwm4: SealedDefault::default(),
-            pwm5: SealedDefault::default(),
-            pwm6: SealedDefault::default(),
+            pwm1: PwmUninit::new(),
+            pwm2: PwmUninit::new(),
+            pwm3: PwmUninit::new(),
+            pwm4: PwmUninit::new(),
+            pwm5: PwmUninit::new(),
+            pwm6: PwmUninit::new(),
         }
     }
 }
@@ -225,12 +175,9 @@ impl<T: SevenCCRnTimer> SealedDefault for SevenCCRnPins<T> {
 /// Uninitialzied PWM pin
 pub struct PwmUninit<T, C>(PhantomData<T>, PhantomData<C>);
 
-impl<T: CapCmpPeriph<C>, C> PwmUninit<T, C>
-where
-    (T, C): PwmGpio,
-{
+impl<T: PwmPeriph<C>, C> PwmUninit<T, C> {
     /// Initialized the PWM pin by passing in the appropriately configured GPIO pin
-    pub fn init(self, pin: <(T, C) as PwmGpio>::Gpio) -> Pwm<T, C> {
+    pub fn init(self, pin: T::Gpio) -> Pwm<T, C> {
         Pwm {
             _timer: PhantomData,
             _ccrn: PhantomData,
@@ -239,77 +186,33 @@ where
     }
 }
 
-impl<T, C> SealedDefault for PwmUninit<T, C> {
-    fn default() -> Self {
+impl<T, C> PwmUninit<T, C> {
+    fn new() -> Self {
         Self(PhantomData, PhantomData)
     }
 }
 
 /// A single PWM pin
-pub struct Pwm<T: CapCmpPeriph<C>, C>
-where
-    (T, C): PwmGpio,
-{
+pub struct Pwm<T: PwmPeriph<C>, C> {
     _timer: PhantomData<T>,
     _ccrn: PhantomData<C>,
-    pin: <(T, C) as PwmGpio>::Gpio,
+    pin: T::Gpio,
 }
 
-/// Extension trait for creating PWM pins from timer peripherals
-pub trait PwmExt: Sized + sealed::SealedPwmExt {
-    #[doc(hidden)]
-    type Timer: TimerPeriph + PwmConfigChannels;
-    /// Collection of PWM pins
-    type Pins: SealedDefault;
-
-    /// Create new PWM pins out of timer
-    #[inline]
-    fn to_pwm(self, config: TimerConfig<Self::Timer>, period: u16) -> Self::Pins {
-        let timer = unsafe { Self::Timer::steal() };
-        config.write_regs(&timer);
-        CCRn::<CCR0>::set_ccrn(timer, period);
-        CCRn::<CCR0>::config_outmod(timer, Outmod::Toggle);
-        timer.config_channels();
-        // Start the timer to run PWM
-        timer.upmode();
-        Self::Pins::default()
-    }
-}
-
-impl PwmExt for pac::TB0 {
-    type Timer = Tb0;
-    type Pins = ThreeCCRnPins<Self::Timer>;
-}
-impl PwmExt for pac::TB1 {
-    type Timer = Tb1;
-    type Pins = ThreeCCRnPins<Self::Timer>;
-}
-impl PwmExt for pac::TB2 {
-    type Timer = Tb2;
-    type Pins = ThreeCCRnPins<Self::Timer>;
-}
-impl PwmExt for pac::TB3 {
-    type Timer = Tb3;
-    type Pins = SevenCCRnPins<Self::Timer>;
-}
-
-impl<T: CapCmpPeriph<C>, C> PwmPin for Pwm<T, C>
-where
-    (T, C): PwmGpio,
-{
+impl<T: PwmPeriph<C>, C> PwmPin for Pwm<T, C> {
     /// Number of cycles
     type Duty = u16;
 
     #[inline]
     fn set_duty(&mut self, duty: Self::Duty) {
         let timer = unsafe { T::steal() };
-        CCRn::<C>::set_ccrn(timer, duty);
+        CCRn::<C>::set_ccrn(&timer, duty);
     }
 
     #[inline]
     fn get_duty(&self) -> Self::Duty {
         let timer = unsafe { T::steal() };
-        CCRn::<C>::get_ccrn(timer)
+        CCRn::<C>::get_ccrn(&timer)
     }
 
     /// Maximum valid duty is equal to the period. If number of duty cycles exceeds number of
@@ -317,16 +220,16 @@ where
     #[inline]
     fn get_max_duty(&self) -> Self::Duty {
         let timer = unsafe { T::steal() };
-        CCRn::<CCR0>::get_ccrn(timer)
+        CCRn::<CCR0>::get_ccrn(&timer)
     }
 
     #[inline]
     fn disable(&mut self) {
-        <(T, C) as PwmGpio>::to_gpio(&mut self.pin);
+        T::to_gpio(&mut self.pin);
     }
 
     #[inline]
     fn enable(&mut self) {
-        <(T, C) as PwmGpio>::to_alt(&mut self.pin);
+        T::to_alt(&mut self.pin);
     }
 }

@@ -5,9 +5,12 @@ use embedded_hal::digital::v2::OutputPin;
 use embedded_hal::prelude::*;
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
-    clock::{DcoclkFreqSel, MclkDiv, SmclkDiv},
-    prelude::*,
+    clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv},
+    fram::Fram,
+    gpio::Batch,
+    pmm::Pmm,
     serial::*,
+    watchdog::Wdt,
 };
 use nb::block;
 
@@ -22,35 +25,32 @@ use panic_never as _;
 #[entry]
 fn main() -> ! {
     if let Some(periph) = msp430fr2355::Peripherals::take() {
-        let mut fram = periph.FRCTL.constrain();
-        let _wdt = periph.WDT_A.constrain();
+        let mut fram = Fram::new(periph.FRCTL);
+        let _wdt = Wdt::constrain(periph.WDT_A);
 
-        let (_smclk, aclk) = periph
-            .CS
-            .constrain()
+        let (_smclk, aclk) = ClockConfig::new(periph.CS)
             .mclk_dcoclk(DcoclkFreqSel::_1MHz, MclkDiv::_1)
             .smclk_on(SmclkDiv::_2)
             .aclk_refoclk()
             .freeze(&mut fram);
 
-        let pmm = periph.PMM.freeze();
-        let mut led = periph.P1.batch().split(&pmm).pin0.to_output();
-        let p4 = periph.P4.batch().split(&pmm);
+        let pmm = Pmm::new(periph.PMM);
+        let mut led = Batch::new(periph.P1).split(&pmm).pin0.to_output();
+        let p4 = Batch::new(periph.P4).split(&pmm);
         led.set_low().ok();
 
-        let (mut tx, mut rx) = periph
-            .E_USCI_A1
-            .to_serial(
-                BitOrder::LsbFirst,
-                BitCount::EightBits,
-                StopBits::OneStopBit,
-                // Launchpad UART-to-USB converter doesn't handle parity, so we don't use it
-                Parity::NoParity,
-                Loopback::NoLoop,
-                9600,
-            )
-            .use_aclk(&aclk)
-            .split(p4.pin3.to_alternate1(), p4.pin2.to_alternate1());
+        let (mut tx, mut rx) = SerialConfig::new(
+            periph.E_USCI_A1,
+            BitOrder::LsbFirst,
+            BitCount::EightBits,
+            StopBits::OneStopBit,
+            // Launchpad UART-to-USB converter doesn't handle parity, so we don't use it
+            Parity::NoParity,
+            Loopback::NoLoop,
+            9600,
+        )
+        .use_aclk(&aclk)
+        .split(p4.pin3.to_alternate1(), p4.pin2.to_alternate1());
 
         led.set_high().ok();
         tx.bwrite_all(b"HELLO\n").ok();

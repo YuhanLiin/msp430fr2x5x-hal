@@ -5,9 +5,8 @@
 //! and will set its own IFG when the main timer counts to its threshold.
 
 use crate::clock::{Aclk, Smclk};
-use crate::gpio::{Alternate1, Floating, Input, Pin, Pin2, Pin6, Pin7, Port2, Port5, Port6};
-use crate::hw_traits::timerb::{CCRn, Tbssel, TimerB, TimerSteal};
-use crate::util::SealedDefault;
+use crate::gpio::{Alternate1, Floating, Input, Pin, Pin2, Pin6, Pin7, P2, P5, P6};
+use crate::hw_traits::timerb::{CCRn, Tbssel, TimerB};
 use core::marker::PhantomData;
 use embedded_hal::timer::{Cancel, CountDown, Periodic};
 use msp430fr2355 as pac;
@@ -18,44 +17,50 @@ pub use crate::hw_traits::timerb::{
 
 // Trait effectively sealed by CCRn
 /// Trait indicating that the peripheral can be used as a sub-timer, PWM, or capture
-pub trait CapCmpPeriph<C>: CCRn<C> + CCRn<CCR0> {}
-impl<T: CCRn<C> + CCRn<CCR0>, C> CapCmpPeriph<C> for T {}
+pub trait CapCmp<C>: CCRn<C> {}
+impl<T: CCRn<C>, C> CapCmp<C> for T {}
 
-// Trait effectively sealed by CCRn
+// Trait effectively sealed by TimerB
 /// Trait indicating that the peripheral can be used as a timer
-pub trait TimerPeriph: TimerB + CCRn<CCR0> {
+pub trait TimerPeriph: TimerB + CapCmp<CCR0> {
     /// Pin type used for external TBxCLK of this timer
     type Tbxclk;
 }
 
 // Traits effectively sealed by CCRn
 /// Trait indicating that the peripheral has 3 capture compare registers
-pub trait ThreeCCRnTimer: TimerPeriph + CCRn<CCR1> + CCRn<CCR2> {}
+pub trait CapCmpTimer3: TimerPeriph + CapCmp<CCR1> + CapCmp<CCR2> {}
 /// Trait indicating that the peripheral has 7 capture compare registers
-pub trait SevenCCRnTimer:
-    TimerPeriph + CCRn<CCR1> + CCRn<CCR2> + CCRn<CCR3> + CCRn<CCR4> + CCRn<CCR5> + CCRn<CCR6>
+pub trait CapCmpTimer7:
+    TimerPeriph
+    + CapCmp<CCR1>
+    + CapCmp<CCR2>
+    + CapCmp<CCR3>
+    + CapCmp<CCR4>
+    + CapCmp<CCR5>
+    + CapCmp<CCR6>
 {
 }
 
-impl TimerPeriph for pac::tb0::RegisterBlock {
-    type Tbxclk = Pin<Port2, Pin7, Alternate1<Input<Floating>>>;
+impl TimerPeriph for pac::TB0 {
+    type Tbxclk = Pin<P2, Pin7, Alternate1<Input<Floating>>>;
 }
-impl ThreeCCRnTimer for pac::tb0::RegisterBlock {}
+impl CapCmpTimer3 for pac::TB0 {}
 
-impl TimerPeriph for pac::tb1::RegisterBlock {
-    type Tbxclk = Pin<Port2, Pin2, Alternate1<Input<Floating>>>;
+impl TimerPeriph for pac::TB1 {
+    type Tbxclk = Pin<P2, Pin2, Alternate1<Input<Floating>>>;
 }
-impl ThreeCCRnTimer for pac::tb1::RegisterBlock {}
+impl CapCmpTimer3 for pac::TB1 {}
 
-impl TimerPeriph for pac::tb2::RegisterBlock {
-    type Tbxclk = Pin<Port5, Pin2, Alternate1<Input<Floating>>>;
+impl TimerPeriph for pac::TB2 {
+    type Tbxclk = Pin<P5, Pin2, Alternate1<Input<Floating>>>;
 }
-impl ThreeCCRnTimer for pac::tb2::RegisterBlock {}
+impl CapCmpTimer3 for pac::TB2 {}
 
-impl TimerPeriph for pac::tb3::RegisterBlock {
-    type Tbxclk = Pin<Port6, Pin6, Alternate1<Input<Floating>>>;
+impl TimerPeriph for pac::TB3 {
+    type Tbxclk = Pin<P6, Pin6, Alternate1<Input<Floating>>>;
 }
-impl SevenCCRnTimer for pac::tb3::RegisterBlock {}
+impl CapCmpTimer7 for pac::TB3 {}
 
 /// Configures all HAL objects that use the TimerB timers
 pub struct TimerConfig<T: TimerPeriph> {
@@ -119,7 +124,7 @@ impl<T: TimerPeriph> TimerConfig<T> {
 }
 
 /// Main timer and sub-timers for timer peripherals with 3 capture-compare registers
-pub struct ThreeCCRnParts<T: ThreeCCRnTimer> {
+pub struct TimerParts3<T: CapCmpTimer3> {
     /// Main timer
     pub timer: Timer<T>,
     /// Timer interrupt vector
@@ -130,19 +135,22 @@ pub struct ThreeCCRnParts<T: ThreeCCRnTimer> {
     pub subtimer2: SubTimer<T, CCR2>,
 }
 
-impl<T: ThreeCCRnTimer> SealedDefault for ThreeCCRnParts<T> {
-    fn default() -> Self {
+impl<T: CapCmpTimer3> TimerParts3<T> {
+    /// Create new set of timers out of a TBx peripheral
+    #[inline(always)]
+    pub fn new(_timer: T, config: TimerConfig<T>) -> Self {
+        config.write_regs(unsafe { &T::steal() });
         Self {
-            timer: SealedDefault::default(),
+            timer: Timer::new(),
             tbxiv: TBxIV(PhantomData),
-            subtimer1: SealedDefault::default(),
-            subtimer2: SealedDefault::default(),
+            subtimer1: SubTimer::new(),
+            subtimer2: SubTimer::new(),
         }
     }
 }
 
 /// Main timer and sub-timers for timer peripherals with 7 capture-compare registers
-pub struct SevenCCRnParts<T: SevenCCRnTimer> {
+pub struct TimerParts7<T: CapCmpTimer7> {
     /// Main timer
     pub timer: Timer<T>,
     /// Timer interrupt vector
@@ -161,17 +169,20 @@ pub struct SevenCCRnParts<T: SevenCCRnTimer> {
     pub subtimer6: SubTimer<T, CCR6>,
 }
 
-impl<T: SevenCCRnTimer> SealedDefault for SevenCCRnParts<T> {
-    fn default() -> Self {
+impl<T: CapCmpTimer7> TimerParts7<T> {
+    /// Create new set of timers out of a TBx peripheral
+    #[inline(always)]
+    pub fn new(_timer: T, config: TimerConfig<T>) -> Self {
+        config.write_regs(unsafe { &T::steal() });
         Self {
-            timer: SealedDefault::default(),
+            timer: Timer::new(),
             tbxiv: TBxIV(PhantomData),
-            subtimer1: SealedDefault::default(),
-            subtimer2: SealedDefault::default(),
-            subtimer3: SealedDefault::default(),
-            subtimer4: SealedDefault::default(),
-            subtimer5: SealedDefault::default(),
-            subtimer6: SealedDefault::default(),
+            subtimer1: SubTimer::new(),
+            subtimer2: SubTimer::new(),
+            subtimer3: SubTimer::new(),
+            subtimer4: SubTimer::new(),
+            subtimer5: SubTimer::new(),
+            subtimer6: SubTimer::new(),
         }
     }
 }
@@ -179,65 +190,19 @@ impl<T: SevenCCRnTimer> SealedDefault for SevenCCRnParts<T> {
 /// Periodic countdown timer
 pub struct Timer<T: TimerPeriph>(PhantomData<T>);
 
-impl<T: TimerPeriph> SealedDefault for Timer<T> {
-    fn default() -> Self {
+impl<T: TimerPeriph> Timer<T> {
+    fn new() -> Self {
         Self(PhantomData)
     }
 }
 
 /// Sub-timer with its own interrupts and threshold that shares its countdown with the main timer
-pub struct SubTimer<T: CCRn<C>, C>(PhantomData<T>, PhantomData<C>);
+pub struct SubTimer<T: CapCmp<C>, C>(PhantomData<T>, PhantomData<C>);
 
-impl<T: CapCmpPeriph<C>, C> SealedDefault for SubTimer<T, C> {
-    fn default() -> Self {
+impl<T: CapCmp<C>, C> SubTimer<T, C> {
+    fn new() -> Self {
         Self(PhantomData, PhantomData)
     }
-}
-
-mod sealed {
-    use super::*;
-
-    pub trait SealedTimerExt {}
-
-    impl SealedTimerExt for pac::TB0 {}
-    impl SealedTimerExt for pac::TB1 {}
-    impl SealedTimerExt for pac::TB2 {}
-    impl SealedTimerExt for pac::TB3 {}
-}
-
-/// Extension trait for creating timers
-pub trait TimerExt: Sized + sealed::SealedTimerExt {
-    /// Set of timers
-    type Parts: SealedDefault;
-    #[doc(hidden)]
-    type Timer: TimerPeriph;
-
-    /// Create new set of timers out of a TBx peripheral
-    #[inline(always)]
-    fn to_timer(self, config: TimerConfig<Self::Timer>) -> Self::Parts {
-        config.write_regs(unsafe { Self::Timer::steal() });
-        Self::Parts::default()
-    }
-}
-
-impl TimerExt for pac::TB0 {
-    type Parts = ThreeCCRnParts<Self::Timer>;
-    type Timer = pac::tb0::RegisterBlock;
-}
-
-impl TimerExt for pac::TB1 {
-    type Parts = ThreeCCRnParts<Self::Timer>;
-    type Timer = pac::tb1::RegisterBlock;
-}
-
-impl TimerExt for pac::TB2 {
-    type Parts = ThreeCCRnParts<Self::Timer>;
-    type Timer = pac::tb2::RegisterBlock;
-}
-
-impl TimerExt for pac::TB3 {
-    type Parts = SevenCCRnParts<Self::Timer>;
-    type Timer = pac::tb3::RegisterBlock;
 }
 
 /// Timer TBIV interrupt vector
@@ -283,11 +248,11 @@ impl<T: TimerB> TBxIV<T> {
     /// Read the timer interrupt vector. Automatically resets corresponding interrupt flag.
     pub fn interrupt_vector(&mut self) -> TimerVector {
         let timer = unsafe { T::steal() };
-        read_tbxiv(timer)
+        read_tbxiv(&timer)
     }
 }
 
-impl<T: TimerPeriph> CountDown for Timer<T> {
+impl<T: TimerPeriph + CapCmp<CCR0>> CountDown for Timer<T> {
     type Time = u16;
 
     #[inline]
@@ -310,7 +275,7 @@ impl<T: TimerPeriph> CountDown for Timer<T> {
     }
 }
 
-impl<T: TimerPeriph> Cancel for Timer<T> {
+impl<T: TimerPeriph + CapCmp<CCR0>> Cancel for Timer<T> {
     type Error = void::Void;
 
     #[inline(always)]
@@ -339,7 +304,7 @@ impl<T: TimerPeriph> Timer<T> {
     }
 }
 
-impl<T: CCRn<C>, C> SubTimer<T, C> {
+impl<T: CapCmp<C>, C> SubTimer<T, C> {
     #[inline]
     /// Set the threshold for one of the subtimers. Once the main timer counts to this threshold
     /// the subtimer will fire. Note that the main timer resets once it counts to its own

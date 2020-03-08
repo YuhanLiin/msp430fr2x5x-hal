@@ -6,9 +6,12 @@ use embedded_hal::prelude::*;
 use embedded_hal::timer::Cancel;
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
-    clock::{MclkDiv, SmclkDiv},
-    prelude::*,
-    rtc::RtcDiv,
+    clock::{ClockConfig, MclkDiv, SmclkDiv},
+    fram::Fram,
+    gpio::Batch,
+    pmm::Pmm,
+    rtc::{Rtc, RtcDiv},
+    watchdog::Wdt,
 };
 use panic_msp430 as _;
 
@@ -18,23 +21,25 @@ use panic_msp430 as _;
 fn main() -> ! {
     let periph = msp430fr2355::Peripherals::take().unwrap();
 
-    periph.WDT_A.constrain();
+    Wdt::constrain(periph.WDT_A);
 
-    let pmm = periph.PMM.freeze();
-    let p1 = periph.P1.batch().config_pin0(|p| p.to_output()).split(&pmm);
-    let p2 = periph.P2.batch().config_pin3(|p| p.pullup()).split(&pmm);
+    let pmm = Pmm::new(periph.PMM);
+    let p1 = Batch::new(periph.P1)
+        .config_pin0(|p| p.to_output())
+        .split(&pmm);
+    let p2 = Batch::new(periph.P2)
+        .config_pin3(|p| p.pullup())
+        .split(&pmm);
     let mut led = p1.pin0;
     let mut button = p2.pin3;
 
-    let (_smclk, _aclk) = periph
-        .CS
-        .constrain()
+    let (_smclk, _aclk) = ClockConfig::new(periph.CS)
         .mclk_refoclk(MclkDiv::_1)
         .smclk_on(SmclkDiv::_1)
         .aclk_vloclk()
-        .freeze(&mut periph.FRCTL.constrain());
+        .freeze(&mut Fram::new(periph.FRCTL));
 
-    let mut rtc = periph.RTC.constrain().use_vloclk();
+    let mut rtc = Rtc::new(periph.RTC).use_vloclk();
     rtc.set_clk_div(RtcDiv::_10);
 
     button.select_falling_edge_trigger();

@@ -10,10 +10,8 @@ use void::Void;
 mod sealed {
     use super::*;
 
-    pub trait SealedRtcExt {}
     pub trait SealedRtcClockSrc {}
 
-    impl SealedRtcExt for RTC {}
     impl SealedRtcClockSrc for RtcSmclk {}
     impl SealedRtcClockSrc for RtcVloclk {}
 }
@@ -38,22 +36,17 @@ impl RtcClockSrc for RtcVloclk {
     const CLK_SRC: RTCSS_A = RTCSS_A::VLOCLK;
 }
 
-/// Extension trait to convert the RTC peripheral to a HAL object
-pub trait RtcExt: sealed::SealedRtcExt {
-    /// Convert into RTC object with VLOCLK as clock source
-    fn constrain(self) -> Rtc<RtcVloclk>;
-}
-
 /// 16-bit real-timer counter
 pub struct Rtc<SRC: RtcClockSrc> {
     periph: RTC,
     _src: PhantomData<SRC>,
 }
 
-impl RtcExt for RTC {
-    fn constrain(self) -> Rtc<RtcVloclk> {
+impl Rtc<RtcVloclk> {
+    /// Convert into RTC object with VLOCLK as clock source
+    pub fn new(rtc: RTC) -> Self {
         Rtc {
-            periph: self,
+            periph: rtc,
             _src: PhantomData,
         }
     }

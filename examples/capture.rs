@@ -5,11 +5,14 @@ use embedded_hal::digital::v2::*;
 use embedded_hal::prelude::*;
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
-    capture::{CapTrigger, OverCapture, TimerConfig},
-    clock::{DcoclkFreqSel, MclkDiv, SmclkDiv},
-    pac,
+    capture::{CapTrigger, CaptureParts3, OverCapture, TimerConfig},
+    clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv},
+    fram::Fram,
+    gpio::Batch,
+    pmm::Pmm,
     prelude::*,
     serial::*,
+    watchdog::Wdt,
 };
 use nb::block;
 use panic_msp430 as _;
@@ -19,39 +22,36 @@ use void::ResultVoidExt;
 // since the last press. Sometimes we get 2 consecutive readings due to lack of debouncing.
 #[entry]
 fn main() -> ! {
-    let periph = pac::Peripherals::take().unwrap();
+    let periph = msp430fr2355::Peripherals::take().unwrap();
 
-    let mut fram = periph.FRCTL.constrain();
-    periph.WDT_A.constrain();
+    let mut fram = Fram::new(periph.FRCTL);
+    Wdt::constrain(periph.WDT_A);
 
-    let pmm = periph.PMM.freeze();
-    let p4 = periph.P4.batch().split(&pmm);
-    let mut p1 = periph.P1.batch().config_pin0(|p| p.to_output()).split(&pmm);
+    let pmm = Pmm::new(periph.PMM);
+    let p4 = Batch::new(periph.P4).split(&pmm);
+    let mut p1 = Batch::new(periph.P1)
+        .config_pin0(|p| p.to_output())
+        .split(&pmm);
 
-    let (smclk, aclk) = periph
-        .CS
-        .constrain()
+    let (smclk, aclk) = ClockConfig::new(periph.CS)
         .mclk_dcoclk(DcoclkFreqSel::_1MHz, MclkDiv::_1)
         .smclk_on(SmclkDiv::_1)
         .aclk_vloclk()
         .freeze(&mut fram);
 
-    let mut tx = periph
-        .E_USCI_A1
-        .to_serial(
-            BitOrder::LsbFirst,
-            BitCount::EightBits,
-            StopBits::OneStopBit,
-            Parity::NoParity,
-            Loopback::NoLoop,
-            9600,
-        )
-        .use_smclk(&smclk)
-        .tx_only(p4.pin3.to_alternate1());
+    let mut tx = SerialConfig::new(
+        periph.E_USCI_A1,
+        BitOrder::LsbFirst,
+        BitCount::EightBits,
+        StopBits::OneStopBit,
+        Parity::NoParity,
+        Loopback::NoLoop,
+        9600,
+    )
+    .use_smclk(&smclk)
+    .tx_only(p4.pin3.to_alternate1());
 
-    let captures = periph
-        .TB0
-        .to_capture(TimerConfig::aclk(&aclk))
+    let captures = CaptureParts3::config(periph.TB0, TimerConfig::aclk(&aclk))
         .config_cap1_input_A(p1.pin6.to_alternate2())
         .config_cap1_trigger(CapTrigger::FallingEdge)
         .commit();
