@@ -1,4 +1,10 @@
 //! Serial UART
+//!
+//! The peripherals E_USCI_0 and E_USCI_1 can be used as serial UARTs.
+//! After configuring the E_USCI peripherals, serial Rx and/or Tx pins can be obtained by
+//! converting the appropriate GPIO pins to the alternate function corresponding to UART.
+//!
+//! The Tx and Rx pins are used to send and receive bytes via serial connection.
 
 use crate::clock::{Aclk, Clock, Smclk};
 use crate::gpio::{Alternate1, Pin, Pin1, Pin2, Pin3, Pin5, Pin6, Pin7, P1, P4};
@@ -94,7 +100,7 @@ impl Parity {
     }
 }
 
-/// Loopback enabled
+/// Loopback settings
 #[derive(Clone, Copy)]
 pub enum Loopback {
     /// No loopback
@@ -189,18 +195,21 @@ impl<DIR> Into<UsciA1RxPin> for Pin<P4, Pin2, Alternate1<DIR>> {
     }
 }
 
-#[doc(hidden)]
+/// Typestate for a serial interface with an unspecified clock source
 pub struct NoClockSet {
     baudrate: u32,
 }
 
-#[doc(hidden)]
+/// Typestate for a serial interface with a specified clock source
 pub struct ClockSet {
     baud_config: BaudConfig,
     clksel: Ucssel,
 }
 
-/// Configuration object for serial UART
+/// Builder object for configuring a serial UART
+///
+/// Once the clock source has been selected, the builder can be converted into pins that can
+/// transmit or received bytes via a serial connection.
 pub struct SerialConfig<USCI: SerialUsci, S> {
     usci: USCI,
     order: BitOrder,
@@ -431,7 +440,7 @@ impl<USCI: SerialUsci> SerialConfig<USCI, ClockSet> {
     }
 }
 
-/// Serial transmitter
+/// Serial transmitter pin
 pub struct Tx<USCI: SerialUsci>(PhantomData<USCI>);
 
 impl<USCI: SerialUsci> Tx<USCI> {
@@ -480,7 +489,7 @@ impl<USCI: SerialUsci> Write<u8> for Tx<USCI> {
 
 impl<USCI: SerialUsci> embedded_hal::blocking::serial::write::Default<u8> for Tx<USCI> {}
 
-/// Serial receiver
+/// Serial receiver pin
 pub struct Rx<USCI: SerialUsci>(PhantomData<USCI>);
 
 impl<USCI: SerialUsci> Rx<USCI> {

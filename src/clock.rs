@@ -1,12 +1,12 @@
 //! Clock system for configuration of MCLK, SMCLK, and ACLK.
 //!
-//! Once configuration is complete, `Aclk` and `Smclk` clock objects are returned for configuring
-//! other peripherals.
+//! Once configuration is complete, `Aclk` and `Smclk` clock objects are returned. The clock
+//! objects are used to set the clock sources on other peripherals.
 //! Configuration of MCLK and SMCLK *must* occur, though SMCLK can be disabled. In that case, only
 //! `Aclk` is returned.
 //!
-//! DCO with FLL is supported on MCLK for select frequencies, as supporting other frequency values
-//! would require complex calibrations not handled by the HAL.
+//! DCO with FLL is supported on MCLK for select frequencies. Supporting arbitrary frequencies on
+//! the DCO requires complex calibration routines not supported by the HAL.
 
 use crate::fram::{Fram, WaitStates};
 use msp430fr2355 as pac;
@@ -127,13 +127,13 @@ impl DcoclkFreqSel {
     }
 }
 
-/// Typestate for clock configuration, for when no configuration has been done
+/// Typestate for `ClockConfig` that represents unconfigured clocks
 pub struct NoClockDefined;
-/// Typestate for clock configuration, for when MCLK has been configured
+/// Typestate for `ClockConfig` that represents a configured MCLK
 pub struct MclkDefined(MclkSel);
-/// Typestate for clock configuration, for when SMCLK has been configured
+/// Typestate for `ClockConfig` that represents a configured SMCLK
 pub struct SmclkDefined(SmclkDiv);
-/// Typestate for clock configuration, for when SMCLK has been disabled
+/// Typestate for `ClockConfig` that represents disabled SMCLK
 pub struct SmclkDisabled;
 
 // Using SmclkState as a trait bound outside the HAL will never be useful, since we only configure
@@ -157,7 +157,10 @@ impl SmclkState for SmclkDisabled {
     }
 }
 
-/// Builder object containing system clock configuration
+/// Builder object that configures system clocks
+///
+/// Can only commit configurations to hardware if both MCLK and SMCLK settings have been
+/// configured. ACLK configurations are optional, with its default source being REFOCLK.
 pub struct ClockConfig<MCLK, SMCLK> {
     periph: pac::CS,
     mclk: MCLK,
@@ -179,7 +182,7 @@ macro_rules! make_clkconf {
 }
 
 impl ClockConfig<NoClockDefined, NoClockDefined> {
-    /// Converts CS into clock configuration builder object
+    /// Converts CS into a fresh, unconfigured clock builder object
     pub fn new(cs: pac::CS) -> Self {
         ClockConfig {
             periph: cs,
@@ -322,7 +325,7 @@ impl<SMCLK: SmclkState> ClockConfig<MclkDefined, SMCLK> {
 }
 
 impl ClockConfig<MclkDefined, SmclkDefined> {
-    /// Apply clock configuration and return MCLK, SMCLK, and ACLK clock objects
+    /// Apply clock configuration to hardware and return SMCLK and ACLK clock objects
     #[inline]
     pub fn freeze(self, fram: &mut Fram) -> (Smclk, Aclk) {
         let mclk_freq = self.mclk.0.freq() >> (self.mclk_div as u32);
@@ -337,7 +340,7 @@ impl ClockConfig<MclkDefined, SmclkDefined> {
 }
 
 impl ClockConfig<MclkDefined, SmclkDisabled> {
-    /// Apply clock configuration and return MCLK and ACLK clock objects, as SMCLK is disabled
+    /// Apply clock configuration to hardware and return ACLK clock object, as SMCLK is disabled
     #[inline]
     pub fn freeze(self, fram: &mut Fram) -> Aclk {
         let mclk_freq = self.mclk.0.freq() >> (self.mclk_div as u32);

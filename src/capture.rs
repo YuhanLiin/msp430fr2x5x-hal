@@ -1,12 +1,11 @@
 //! Capture ports
 //!
-//! Signal capture pins are created from timers. TB0, TB1, and TB2 create 3 pins each and TB3
-//! create 7 pins. Each capture pin has its own configurable input signal, edge
-//! trigger, and capture storage. Each timer has a configurable timer counting from 0 to `2^16-1`,
-//! whose value will be stored in a capture register whenever its capture event is triggered.
-//! Capture pins can choose between two inputs sources for triggering events. These inputs can come
-//! from input GPIOs or internal chip signals. When using a GPIO input, the user must configure the
-//! GPIO pin correctly according to the datasheet for the capture event to work properly.
+//! Configures the board's TimerB peripherals into capture pins. Each capture pin has a 16-bit
+//! capture register where its timer value is written whenever its capture event is triggered.
+//!
+//! Due to hardware constraints, the configurations for all capture pins derived from a timer must
+//! be decided before any of them can be used. This differs from `Pwm`, where pins are initialized
+//! on an individual basis.
 
 use crate::gpio::{
     Alternate1, Alternate2, Floating, Input, Pin, Pin0, Pin1, Pin2, Pin3, Pin4, Pin5, Pin6, Pin7,
@@ -150,8 +149,13 @@ macro_rules! config_fn {
     };
 }
 
-/// Configures the capture settings for the 3 available capture pins. By default, all pins use GND
-/// as their input source and trigger a capture on a rising edge.
+/// Builder object for configuring capture ports derived from timer peripherals with 3
+/// capture-compare registers
+///
+/// Each pin has a input source, which determines the signal that controls the capture, and a
+/// capture trigger event, which determines the input transitions that actually trigger the
+/// capture. By default, all pins use GND as their input source and trigger a capture on a rising
+/// edge.
 pub struct CaptureConfig3<T: CapturePeriph>
 where
     T: CapCmpTimer3,
@@ -216,8 +220,13 @@ impl<T: CapturePeriph + CapCmpTimer3> CaptureConfig3<T> {
     }
 }
 
-/// Configures the capture settings for the 7 available capture pins. By default, all pins use GND
-/// as their input source and trigger a capture on a rising edge.
+/// Builder object for configuring capture ports derived from timer peripherals with 7
+/// capture-compare registers
+///
+/// Each pin has a input source, which determines the signal that controls the capture, and a
+/// capture trigger event, which determines the input transitions that actually trigger the
+/// capture. By default, all pins use GND as their input source and trigger a capture on a rising
+/// edge.
 pub struct CaptureConfig7<T: CapturePeriph>
 where
     T: CapCmpTimer7,
@@ -326,7 +335,7 @@ impl<T: CapturePeriph + CapCmpTimer7> CaptureConfig7<T> {
     }
 }
 
-/// Collection of uninitialized capture pins derived from timer peripheral with 3 capture-compare registers
+/// Collection of capture pins derived from timer peripheral with 3 capture-compare registers
 pub struct CaptureParts3<T: CapCmpTimer3> {
     /// Capture pin 0 (derived from capture-compare register 0)
     pub cap0: Capture<T, CCR0>,
@@ -338,7 +347,7 @@ pub struct CaptureParts3<T: CapCmpTimer3> {
     pub tbxiv: TBxIV<T>,
 }
 
-/// Collection of uninitialized capture pins derived from timer peripheral with 7 capture-compare registers
+/// Collection of capture pins derived from timer peripheral with 7 capture-compare registers
 pub struct CaptureParts7<T: CapCmpTimer7> {
     /// Capture pin 0 (derived from capture-compare register 0)
     pub cap0: Capture<T, CCR0>,
@@ -373,11 +382,6 @@ pub trait CapturePin {
     /// Type  of value returned by capture
     type Capture;
     /// Enumeration of `Capture` errors
-    ///
-    /// Possible errors:
-    ///
-    /// - *overcapture*, the previous capture value was overwritten because it
-    ///   was not read in a timely manner// Enumeration of `Capture` errors
     ///
     /// Possible errors:
     ///
@@ -478,7 +482,7 @@ pub struct TBxIV<T: TimerPeriph>(PhantomData<T>);
 
 impl<T: TimerPeriph> TBxIV<T> {
     #[inline]
-    /// Read the capture interrupt vector. Automatically resets corresponding interrupt flag. If
+    /// Read the capture interrupt vector and resets corresponding interrupt flag. If
     /// the vector corresponds to an available capture, a one-time capture read token will be
     /// returned as well.
     pub fn interrupt_vector(&mut self) -> CaptureVector<T> {

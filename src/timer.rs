@@ -1,8 +1,11 @@
-//! Timers
+//! Countdown timers
 //!
-//! Each timer has a configurable clock source and clock dividers. In addition, each timer
-//! peripheral provides their own "sub-timers". Each sub-timer has its own configurable threshold
-//! and will set its own IFG when the main timer counts to its threshold.
+//! Configures the board's TimerB peripherals into periodic countdown timers. Each peripheral
+//! consists of a main timer and multiple "sub-timers". Sub-timers have their own thresholds and
+//! interrupts but share their countdowns with their main timer.
+//!
+//! This module also contains traits used by other HAL modules that depend on TimerB, such as
+//! `Capture` and `Pwm`.
 
 use crate::clock::{Aclk, Smclk};
 use crate::gpio::{Alternate1, Floating, Input, Pin, Pin2, Pin6, Pin7, P2, P5, P6};
@@ -62,7 +65,9 @@ impl TimerPeriph for pac::TB3 {
 }
 impl CapCmpTimer7 for pac::TB3 {}
 
-/// Configures all HAL objects that use the TimerB timers
+/// Configuration object for the TimerB peripheral
+///
+/// Used to configure `Timer`, `Capture`, and `Pwm`, which all use the TimerB peripheral.
 pub struct TimerConfig<T: TimerPeriph> {
     _timer: PhantomData<T>,
     sel: Tbssel,
@@ -187,7 +192,7 @@ impl<T: CapCmpTimer7> TimerParts7<T> {
     }
 }
 
-/// Periodic countdown timer
+/// Main periodic countdown timer
 pub struct Timer<T: TimerPeriph>(PhantomData<T>);
 
 impl<T: TimerPeriph> Timer<T> {
@@ -196,7 +201,10 @@ impl<T: TimerPeriph> Timer<T> {
     }
 }
 
-/// Sub-timer with its own interrupts and threshold that shares its countdown with the main timer
+/// Sub-timer associated with a main timer
+///
+/// Each sub-timer has its own interrupt mechanism and threshold, but shares its countdown value
+/// with its main timer.
 pub struct SubTimer<T: CapCmp<C>, C>(PhantomData<T>, PhantomData<C>);
 
 impl<T: CapCmp<C>, C> SubTimer<T, C> {
@@ -205,7 +213,7 @@ impl<T: CapCmp<C>, C> SubTimer<T, C> {
     }
 }
 
-/// Timer TBIV interrupt vector
+/// Indicates which sub/main timer caused the interrupt to fire
 pub enum TimerVector {
     /// No pending interrupt
     NoInterrupt,
@@ -306,8 +314,8 @@ impl<T: TimerPeriph> Timer<T> {
 
 impl<T: CapCmp<C>, C> SubTimer<T, C> {
     #[inline]
-    /// Set the threshold for one of the subtimers. Once the main timer counts to this threshold
-    /// the subtimer will fire. Note that the main timer resets once it counts to its own
+    /// Set the threshold for one of the sub-timers. Once the main timer counts to this threshold
+    /// the sub-timer will fire. Note that the main timer resets once it counts to its own
     /// threshold, not the sub-timer thresholds. It follows that the sub-timer threshold must be
     /// less than the main threshold for it to fire.
     pub fn set_count(&mut self, count: u16) {
@@ -317,7 +325,7 @@ impl<T: CapCmp<C>, C> SubTimer<T, C> {
     }
 
     #[inline]
-    /// Wait for the subtimer to fire
+    /// Wait for the sub-timer to fire
     pub fn wait(&mut self) -> nb::Result<(), void::Void> {
         let timer = unsafe { T::steal() };
         if timer.ccifg_rd() {
@@ -329,14 +337,14 @@ impl<T: CapCmp<C>, C> SubTimer<T, C> {
     }
 
     #[inline(always)]
-    /// Enable the subtimer interrupts, which fire once the subtimer fires.
+    /// Enable the sub-timer interrupts
     pub fn enable_interrupts(&mut self) {
         let timer = unsafe { T::steal() };
         timer.ccie_set();
     }
 
     #[inline(always)]
-    /// Disable the subtimer interrupts, which fire once the subtimer fires.
+    /// Disable the sub-timer interrupts
     pub fn disable_interrupts(&mut self) {
         let timer = unsafe { T::steal() };
         timer.ccie_clr();

@@ -1,8 +1,8 @@
-//! Watchdog timer, configurable as either a traditional watchdog or a plain timer.
+//! Watchdog timer, configurable as either a traditional watchdog or a 16-bit timer.
 //!
-//! **Note**: MSP430 devices will reset after bootup if not stopped after an initial 32 ms interval
-//! (roughly). If this is undesirable, call `WDT.constrain()` as soon in the application as
-//! possible to stop the watchdog.
+//! **Note**: MSP430 devices will reset after bootup if watchdog is not stopped after an initial 32
+//! ms interval (roughly). If this is undesirable, call `Wdt::constrain()` as soon in the
+//! application as possible to stop the watchdog.
 
 use crate::clock::{Aclk, Smclk};
 use core::marker::PhantomData;
@@ -26,13 +26,15 @@ mod sealed {
 }
 
 /// Watchdog timer which can be configured to watchdog or interval (timer) mode
+///
+/// Default clock source is SMCLK.
 pub struct Wdt<MODE> {
     _mode: PhantomData<MODE>,
     periph: pac::WDT_A,
 }
 
 impl Wdt<WatchdogMode> {
-    /// Constrain watchdog PAC peripheral into HAL watchdog and disable watchdog.
+    /// Convert WDT peripheral into a watchdog timer (watchdog mode) and disable the watchdog
     pub fn constrain(wdt: pac::WDT_A) -> Self {
         // Disable first
         wdt.wdtctl
@@ -44,9 +46,9 @@ impl Wdt<WatchdogMode> {
     }
 }
 
-/// Watchdog mode
+/// Watchdog mode typestate
 pub struct WatchdogMode;
-/// Interval mode
+/// Interval mode typestate
 pub struct IntervalMode;
 
 /// Marker trait for watchdog modes
@@ -112,7 +114,7 @@ impl<MODE: WatchdogSelect> Wdt<MODE> {
         self.set_clk(WDTSSEL_A::VLOCLK)
     }
 
-    /// Set watchdog clock source to SMCLK, the default, and halt timer.
+    /// Set watchdog clock source to SMCLK and halt timer.
     #[inline]
     pub fn set_smclk(&mut self, _clks: &Smclk) -> &mut Self {
         self.set_clk(WDTSSEL_A::SMCLK)

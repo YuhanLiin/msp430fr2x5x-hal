@@ -2,7 +2,7 @@
 //!
 //! To specify any pin, use the bounds `Pin<PORT: PortNum, PIN: PinNum>`.
 //! To specify any pin on a port that supports interrupts, use the bounds `Pin<PORT: IntrPortNum, PIN: PinNum>`.
-//! To specify any pin on PortX, use the bounds `Pin<PortX, PIN: PinNum>`.
+//! To specify any pin on port Px, use the bounds `Pin<Px, PIN: PinNum>`.
 //!
 //! Note that interrupts are only supported by the hardware on ports **1 to 4**, so interrupt-related
 //! methods are only available on those pins.
@@ -159,7 +159,7 @@ macro_rules! make_pin {
 }
 
 impl<PORT: PortNum, PIN: PinNum, PULL> Pin<PORT, PIN, Input<PULL>> {
-    /// Configures pin as pulldown input
+    /// Configures pin as pulldown input.
     /// This method requires a `Pxout` token because configuring pull direction requires setting
     /// the PxOUT register, which can race with setting an output pin on the same port.
     #[inline]
@@ -170,7 +170,7 @@ impl<PORT: PortNum, PIN: PinNum, PULL> Pin<PORT, PIN, Input<PULL>> {
         make_pin!()
     }
 
-    /// Configures pin as pullup input
+    /// Configures pin as pullup input.
     /// This method requires a `Pxout` token because configuring pull direction requires setting
     /// the PxOUT register, which can race with setting an output pin on the same port.
     #[inline]
