@@ -1,8 +1,10 @@
 //! PWM ports
 //!
-//! PWM pins are created from timer peripherals. TB0, TB1, and TB2 each create 2 PWMs and TB3
-//! creates 6 PWMs. Each PWM has its own duty cycle and and GPIO pin, and all PWMs from the same timer
-//! share the same period.
+//! Configures the board's TimerB peripherals into PWM ports. Each PWM port consists of multiple PWM
+//! pins which all share the same period but have their own duty cycles.
+//!
+//! Each PWM pin starts off in an "uninitialized" state and must be initialized by passing in the
+//! appropriate alternate-function GPIO pin. Only initialized pins can be used for PWM.
 
 use crate::gpio::{
     Alternate1, Alternate2, ChangeSelectBits, Output, Pin, Pin0, Pin1, Pin2, Pin3, Pin4, Pin5,
@@ -117,7 +119,7 @@ pub struct PwmParts3<T: CapCmpTimer3> {
 }
 
 impl<T: CapCmpTimer3> PwmParts3<T> {
-    /// Create PWM pins
+    /// Create uninitialized PWM pins with the same period
     pub fn new(timer: T, config: TimerConfig<T>, period: u16) -> Self {
         setup_pwm(&timer, config, period);
         // Configure PWM ports
@@ -149,7 +151,7 @@ pub struct PwmParts7<T: CapCmpTimer7> {
 }
 
 impl<T: CapCmpTimer7> PwmParts7<T> {
-    /// Create PWM pins
+    /// Create uninitialized PWM pins with the same period
     pub fn new(timer: T, config: TimerConfig<T>, period: u16) -> Self {
         setup_pwm(&timer, config, period);
         // Configure PWM ports
@@ -172,7 +174,7 @@ impl<T: CapCmpTimer7> PwmParts7<T> {
     }
 }
 
-/// Uninitialzied PWM pin
+/// Uninitialized PWM pin
 pub struct PwmUninit<T, C>(PhantomData<T>, PhantomData<C>);
 
 impl<T: PwmPeriph<C>, C> PwmUninit<T, C> {
@@ -192,7 +194,7 @@ impl<T, C> PwmUninit<T, C> {
     }
 }
 
-/// A single PWM pin
+/// An initialized Pwm pin
 pub struct Pwm<T: PwmPeriph<C>, C> {
     _timer: PhantomData<T>,
     _ccrn: PhantomData<C>,

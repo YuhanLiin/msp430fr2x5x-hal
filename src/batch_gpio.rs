@@ -1,7 +1,9 @@
 //! GPIO batch configuration.
 //!
-//! The `Batch` abstraction allows changing GPIO pin configuration **statically** using the builder
-//! pattern before writing all configurations to the hardware in one series of register writes.
+//! The `Batch` abstraction allows "collecting" changes to the configurations of different pins on
+//! a GPIO port and writing the changes to the hardware all at once.
+//! Changes to individual pins are performed **statically** using typestates, so the number of
+//! register writes are minimized.
 //!
 //! For example, `P2.batch().config_pin3(|p| p.to_input_pullup()).config_pin1(|p| p.to_output()).split(&pmm)`
 //! configures P2.3 as a pullup input pin and P2.1 as an output pin and then writes the
@@ -14,8 +16,9 @@ use crate::util::BitsExt;
 use core::marker::PhantomData;
 
 /// Proxy for a GPIO pin used for batch writes.
+///
 /// Configuring the proxy only changes the typestate of the proxy. Registers are only written once
-/// the proxies for the GPIO port are "committed".
+/// all the proxies for the GPIO port are "committed".
 pub struct PinProxy<PORT: PortNum, PIN: PinNum, DIR> {
     _port: PhantomData<PORT>,
     _pin: PhantomData<PIN>,
@@ -263,7 +266,7 @@ impl<P: PortNum>
 }
 
 /// Collection of proxies for pins 0 to 7 of a specific port, used to commit configurations for
-/// all pins in a single step, reducing the total number of register accesses.
+/// all pins in a single step.
 pub struct Batch<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7> {
     pin0: PinProxy<PORT, Pin0, DIR0>,
     pin1: PinProxy<PORT, Pin1, DIR1>,
@@ -354,11 +357,14 @@ impl<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
         }
     }
 
-    /// Commits all pin configurations to GPIO registers and returns GPIO parts. Turns off all
-    /// interrupt enable bits. Note that the pin's interrupt flags may become set as a result of
+    /// Commits all pin configurations to GPIO registers and returns GPIO parts and turns off all
+    /// interrupt enable bits.
+    ///
+    /// Note that the pin's interrupt flags may become set as a result of
     /// this operation.
+    ///
     /// GPIO input/output operations only work after the LOCKLPM5 bit has been set, which is
-    /// ensured when passing `&Pmm` into the method, since a `Pmm` is created only be setting
+    /// ensured when passing `&Pmm` into the method, since a `Pmm` is created only by setting
     /// LOCKLPM5.
     #[inline]
     pub fn split(self, _pmm: &Pmm) -> Parts<PORT, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7> {

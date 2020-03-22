@@ -1,4 +1,6 @@
 //! Real time counter
+//!
+//! Can be used as a periodic 16-bit timer
 
 use crate::clock::Smclk;
 use core::marker::PhantomData;
@@ -22,21 +24,21 @@ pub trait RtcClockSrc: sealed::SealedRtcClockSrc {
     const CLK_SRC: RTCSS_A;
 }
 
-/// Smclk clock source for RTC
+/// Typestate representing the SMCLK clock source for RTC
 pub struct RtcSmclk;
 
 impl RtcClockSrc for RtcSmclk {
     const CLK_SRC: RTCSS_A = RTCSS_A::SMCLK;
 }
 
-/// Vloclk clock source for RTC
+/// Typestate representing the VLOCLK clock source for RTC
 pub struct RtcVloclk;
 
 impl RtcClockSrc for RtcVloclk {
     const CLK_SRC: RTCSS_A = RTCSS_A::VLOCLK;
 }
 
-/// 16-bit real-timer counter
+/// 16-bit real-time counter
 pub struct Rtc<SRC: RtcClockSrc> {
     periph: RTC,
     _src: PhantomData<SRC>,
