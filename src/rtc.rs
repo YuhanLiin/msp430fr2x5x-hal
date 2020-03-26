@@ -102,6 +102,12 @@ impl<SRC: RtcClockSrc> Rtc<SRC> {
     pub fn clear_interrupt(&mut self) {
         self.periph.rtciv.read();
     }
+
+    /// Read current timer count, which goes up from 0 to 2^16-1
+    #[inline]
+    pub fn get_count(&self) -> u16 {
+        self.periph.rtccnt.read().bits()
+    }
 }
 
 impl<SRC: RtcClockSrc> CountDown for Rtc<SRC> {

@@ -444,7 +444,7 @@ impl<USCI: SerialUsci> SerialConfig<USCI, ClockSet> {
 pub struct Tx<USCI: SerialUsci>(PhantomData<USCI>);
 
 impl<USCI: SerialUsci> Tx<USCI> {
-    /// Enable Tx interrupts, which fire when ready to send
+    /// Enable Tx interrupts, which fire when ready to send.
     #[inline(always)]
     pub fn enable_tx_interrupts(&mut self) {
         let usci = unsafe { USCI::steal() };
@@ -476,6 +476,8 @@ impl<USCI: SerialUsci> Write<u8> for Tx<USCI> {
     }
 
     #[inline]
+    /// Check if Tx interrupt flag is set. If so, write a byte into the Tx buffer. Otherwise block
+    /// on the Tx flag.
     fn write(&mut self, data: u8) -> nb::Result<(), Self::Error> {
         let usci = unsafe { USCI::steal() };
         if usci.txifg_rd() {
@@ -522,6 +524,9 @@ impl<USCI: SerialUsci> Read<u8> for Rx<USCI> {
     type Error = RecvError;
 
     #[inline]
+    /// Check if Rx interrupt flag is set. If so, try reading the received byte and clear the flag.
+    /// Otherwise block on the Rx interrupt flag. May return errors caused by data corruption or
+    /// buffer overruns.
     fn read(&mut self) -> nb::Result<u8, Self::Error> {
         let usci = unsafe { USCI::steal() };
 
