@@ -26,19 +26,23 @@ mod sealed {
 }
 
 /// Watchdog timer which can be configured to watchdog or interval (timer) mode
-///
-/// Default clock source is SMCLK.
 pub struct Wdt<MODE> {
     _mode: PhantomData<MODE>,
     periph: pac::WDT_A,
 }
 
 impl Wdt<WatchdogMode> {
-    /// Convert WDT peripheral into a watchdog timer (watchdog mode) and disable the watchdog
+    /// Convert WDT peripheral into a watchdog timer (watchdog mode) and disable the watchdog. Set
+    /// clock source to VLOCLK.
     pub fn constrain(wdt: pac::WDT_A) -> Self {
         // Disable first
-        wdt.wdtctl
-            .write(|w| unsafe { w.wdtpw().bits(PASSWORD) }.wdthold().hold());
+        wdt.wdtctl.write(|w| {
+            unsafe { w.wdtpw().bits(PASSWORD) }
+                .wdthold()
+                .hold()
+                .wdtssel()
+                .variant(WDTSSEL_A::VLOCLK)
+        });
         Wdt {
             _mode: PhantomData,
             periph: wdt,
