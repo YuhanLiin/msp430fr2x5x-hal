@@ -329,8 +329,8 @@ impl ClockConfig<MclkDefined, SmclkDefined> {
     #[inline]
     pub fn freeze(self, fram: &mut Fram) -> (Smclk, Aclk) {
         let mclk_freq = self.mclk.0.freq() >> (self.mclk_div as u32);
-        self.configure_dco_fll();
         unsafe { Self::configure_fram(fram, mclk_freq) };
+        self.configure_dco_fll();
         self.configure_cs();
         (
             Smclk(mclk_freq >> (self.smclk.0 as u32)),
