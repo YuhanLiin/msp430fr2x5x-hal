@@ -195,7 +195,7 @@ impl<PORT: IntrPortNum, PIN: PinNum, PULL> Pin<PORT, PIN, Input<PULL>> {
     #[inline]
     pub fn select_rising_edge_trigger(&mut self) -> &mut Self {
         let p = unsafe { PORT::steal() };
-        p.pxies_set(PIN::SET_MASK);
+        p.pxies_clear(PIN::CLR_MASK);
         p.pxifg_clear(PIN::CLR_MASK);
         self
     }
@@ -204,7 +204,7 @@ impl<PORT: IntrPortNum, PIN: PinNum, PULL> Pin<PORT, PIN, Input<PULL>> {
     #[inline]
     pub fn select_falling_edge_trigger(&mut self) -> &mut Self {
         let p = unsafe { PORT::steal() };
-        p.pxies_clear(PIN::CLR_MASK);
+        p.pxies_set(PIN::SET_MASK);
         p.pxifg_clear(PIN::CLR_MASK);
         self
     }
