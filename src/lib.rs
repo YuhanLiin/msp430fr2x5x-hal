@@ -22,8 +22,9 @@
 //! the trick, assuming your host is Linux and you are connected via Launchpad.
 
 #![no_std]
+#![allow(incomplete_features)] // Enable specialization without warnings
 #![feature(specialization)]
-#![feature(asm)]
+#![feature(llvm_asm)]
 #![deny(missing_docs)]
 
 pub mod batch_gpio;

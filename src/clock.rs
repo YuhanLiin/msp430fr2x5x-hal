@@ -258,13 +258,13 @@ impl<MCLK, SMCLK> ClockConfig<MCLK, SMCLK> {
 #[inline(always)]
 fn fll_off() {
     const FLAG: u8 = 1 << 6;
-    unsafe { asm!("bis.b $0, SR" :: "i"(FLAG) : "memory" : "volatile") };
+    unsafe { llvm_asm!("bis.b $0, SR" :: "i"(FLAG) : "memory" : "volatile") };
 }
 
 #[inline(always)]
 fn fll_on() {
     const FLAG: u8 = 1 << 6;
-    unsafe { asm!("bic.b $0, SR" :: "i"(FLAG) : "memory" : "volatile") };
+    unsafe { llvm_asm!("bic.b $0, SR" :: "i"(FLAG) : "memory" : "volatile") };
 }
 
 impl<SMCLK: SmclkState> ClockConfig<MclkDefined, SMCLK> {
