@@ -24,8 +24,10 @@
 #![no_std]
 #![allow(incomplete_features)] // Enable specialization without warnings
 #![feature(specialization)]
-#![feature(llvm_asm)]
 #![deny(missing_docs)]
+#![feature(asm_experimental_arch)]
+
+use core::arch::asm;
 
 pub mod batch_gpio;
 pub mod capture;

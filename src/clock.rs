@@ -14,6 +14,8 @@ use pac::cs::csctl1::DCORSEL_A;
 use pac::cs::csctl4::{SELA_A, SELMS_A};
 pub use pac::cs::csctl5::{DIVM_A as MclkDiv, DIVS_A as SmclkDiv};
 
+use crate::asm;
+
 /// REFOCLK frequency
 pub const REFOCLK: u16 = 32768;
 /// VLOCLK frequency
@@ -258,13 +260,16 @@ impl<MCLK, SMCLK> ClockConfig<MCLK, SMCLK> {
 #[inline(always)]
 fn fll_off() {
     const FLAG: u8 = 1 << 6;
-    unsafe { llvm_asm!("bis.b $0, SR" :: "i"(FLAG) : "memory" : "volatile") };
+    // unsafe { asm!("bis.b $0, SR" :: "i"(FLAG) : "memory" : "volatile") };
+    // TODO what does "i"(FLAG) do?
+    unsafe { asm!("bis.b $0, SR", options(nomem, preserves_flags)) };
 }
 
 #[inline(always)]
 fn fll_on() {
     const FLAG: u8 = 1 << 6;
-    unsafe { llvm_asm!("bic.b $0, SR" :: "i"(FLAG) : "memory" : "volatile") };
+    // unsafe { asm!("bic.b $0, SR" :: "i"(FLAG) : "memory" : "volatile") };
+    unsafe { asm!("bic.b $0, SR", options(nomem, preserves_flags)) };
 }
 
 impl<SMCLK: SmclkState> ClockConfig<MclkDefined, SMCLK> {
