@@ -262,14 +262,15 @@ fn fll_off() {
     const FLAG: u8 = 1 << 6;
     // unsafe { asm!("bis.b $0, SR" :: "i"(FLAG) : "memory" : "volatile") };
     // TODO what does "i"(FLAG) do?
-    unsafe { asm!("bis.b $0, SR", options(nomem, preserves_flags)) };
+    // "i"(FLAG) is llvm syntax for FLAG being an immediate value in this instruction
+    unsafe { asm!("bis.b {num}, SR", num= const FLAG, options(nomem, preserves_flags)) };
 }
 
 #[inline(always)]
 fn fll_on() {
     const FLAG: u8 = 1 << 6;
     // unsafe { asm!("bic.b $0, SR" :: "i"(FLAG) : "memory" : "volatile") };
-    unsafe { asm!("bic.b $0, SR", options(nomem, preserves_flags)) };
+    unsafe { asm!("bic.b {num}, SR",  num= const FLAG, options(nomem, preserves_flags)) };
 }
 
 impl<SMCLK: SmclkState> ClockConfig<MclkDefined, SMCLK> {

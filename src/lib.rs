@@ -26,6 +26,7 @@
 #![feature(specialization)]
 #![deny(missing_docs)]
 #![feature(asm_experimental_arch)]
+#![feature(asm_const)]
 
 use core::arch::asm;
 
