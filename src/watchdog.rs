@@ -73,7 +73,7 @@ impl WatchdogSelect for IntervalMode {
     }
 }
 
-type WdtWriter = pac::generic::W<u16, WDTCTL>;
+type WdtWriter = pac::wdt_a::wdtctl::W;
 
 impl<MODE: WatchdogSelect> Wdt<MODE> {
     #[inline(always)]

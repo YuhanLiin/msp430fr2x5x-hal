@@ -8,6 +8,8 @@
 //! DCO with FLL is supported on MCLK for select frequencies. Supporting arbitrary frequencies on
 //! the DCO requires complex calibration routines not supported by the HAL.
 
+use core::arch::asm;
+
 use crate::fram::{Fram, WaitStates};
 use msp430fr2355 as pac;
 use pac::cs::csctl1::DCORSEL_A;
@@ -257,14 +259,14 @@ impl<MCLK, SMCLK> ClockConfig<MCLK, SMCLK> {
 
 #[inline(always)]
 fn fll_off() {
-    const FLAG: u8 = 1 << 6;
-    unsafe { llvm_asm!("bis.b $0, SR" :: "i"(FLAG) : "memory" : "volatile") };
+    // 64 = 1 << 6, which is the 6th bit of SR
+    unsafe { asm!("bis.b 64, SR", options(nomem, nostack)) };
 }
 
 #[inline(always)]
 fn fll_on() {
-    const FLAG: u8 = 1 << 6;
-    unsafe { llvm_asm!("bic.b $0, SR" :: "i"(FLAG) : "memory" : "volatile") };
+    // 64 = 1 << 6, which is the 6th bit of SR
+    unsafe { asm!("bic.b 64, SR", options(nomem, nostack)) };
 }
 
 impl<SMCLK: SmclkState> ClockConfig<MclkDefined, SMCLK> {

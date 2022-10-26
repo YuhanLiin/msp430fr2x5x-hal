@@ -12,25 +12,16 @@ documentation = "https://docs.rs/msp430fr2x5x-hal"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-msp430 = "0.2.2"
+msp430 = "0.4.0"
 nb = "0.1.2"
-
-[dependencies.void]
-version = "1.0.2"
-default-features = false
-
-[dependencies.embedded-hal]
-version = "0.2.3"
-features = ["unproven"]
-
-[dependencies.msp430fr2355]
-version = "0.4.2"
-features = ["rt"]
+void = { version = "1.0.2", default-features = false }
+embedded-hal = { version = "0.2.3", features = ["unproven"] }
+msp430fr2355 = { version = "0.5", path = "../msp430fr2355", features = ["rt"] }
 
 [dev-dependencies]
-panic-msp430 = "0.2.0"
+panic-msp430 = "0.4.0"
 panic-never = "0.1.0"
-msp430-rt = "0.2.0"
+msp430-rt = "0.4.0"
 
 [profile.release]
 lto = "fat"
