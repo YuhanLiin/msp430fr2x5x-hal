@@ -9,7 +9,8 @@ rustflags = [
     "-C", "link-arg=-Tlink.x",
     "-C", "link-arg=-lgcc",
     "-C", "link-arg=-mcpu=msp430",
-    "-C", "link-arg=-lmul_32",
+    "-C", "link-arg=-lmul_f5",
+    "-C", "link-arg=-Wl,--allow-multiple-definition", # Prevent __muldi3 dupe errors
 ]
 
 [build]

@@ -52,3 +52,11 @@ fn main() -> ! {
         msp430::asm::nop();
     }
 }
+
+// The compiler will emit calls to the abort() compiler intrinsic if debug assertions are
+// enabled (default for dev profile). MSP430 does not actually have meaningful abort() support
+// so for now, we create our own in each application where debug assertions are present.
+#[no_mangle]
+extern "C" fn abort() -> ! {
+    panic!();
+}
