@@ -27,7 +27,6 @@ jobs:
       - name: Install nightly toolchain
         uses: actions-rs/toolchain@v1
         with:
-          profile: minimal
           toolchain: nightly-2022-02-15
           override: true
 
