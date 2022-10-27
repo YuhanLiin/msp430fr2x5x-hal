@@ -10,7 +10,6 @@ use embedded_hal::timer::{Cancel, CountDown, Periodic};
 use embedded_hal::watchdog::{Watchdog, WatchdogDisable, WatchdogEnable};
 use msp430fr2355 as pac;
 use pac::wdt_a::wdtctl::WDTSSEL_A;
-use pac::wdt_a::WDTCTL;
 
 const PASSWORD: u8 = 0x5A;
 
@@ -73,7 +72,7 @@ impl WatchdogSelect for IntervalMode {
     }
 }
 
-type WdtWriter = pac::generic::W<u16, WDTCTL>;
+type WdtWriter = pac::wdt_a::wdtctl::W;
 
 impl<MODE: WatchdogSelect> Wdt<MODE> {
     #[inline(always)]

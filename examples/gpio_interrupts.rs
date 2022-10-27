@@ -2,12 +2,13 @@
 #![no_std]
 #![feature(abi_msp430_interrupt)]
 
+use critical_section::with;
 use msp430fr2355::interrupt;
 
 use core::cell::RefCell;
 use embedded_hal::digital::v2::*;
 use embedded_hal::timer::*;
-use msp430::interrupt::{enable as enable_int, free, Mutex};
+use msp430::interrupt::{enable as enable_int, Mutex};
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
     clock::{ClockConfig, MclkDiv, SmclkDiv},
@@ -52,8 +53,8 @@ fn main() -> ! {
     let mut green_led = p6.pin6;
     let p2iv = p2.pxiv;
 
-    free(|cs| *RED_LED.borrow(&cs).borrow_mut() = Some(red_led));
-    free(|cs| *P2IV.borrow(&cs).borrow_mut() = Some(p2iv));
+    with(|cs| *RED_LED.borrow(cs).borrow_mut() = Some(red_led));
+    with(|cs| *P2IV.borrow(cs).borrow_mut() = Some(p2iv));
 
     wdt.set_aclk(&aclk)
         .enable_interrupts()
@@ -72,10 +73,10 @@ fn main() -> ! {
 
 #[interrupt]
 fn PORT2() {
-    free(|cs| {
-        RED_LED.borrow(&cs).borrow_mut().as_mut().map(|red_led| {
+    with(|cs| {
+        RED_LED.borrow(cs).borrow_mut().as_mut().map(|red_led| {
             match P2IV
-                .borrow(&cs)
+                .borrow(cs)
                 .borrow_mut()
                 .as_mut()
                 .unwrap()
@@ -90,9 +91,17 @@ fn PORT2() {
 
 #[interrupt]
 fn WDT() {
-    free(|cs| {
-        RED_LED.borrow(&cs).borrow_mut().as_mut().map(|red_led| {
+    with(|cs| {
+        RED_LED.borrow(cs).borrow_mut().as_mut().map(|red_led| {
             red_led.toggle().ok();
         })
     });
+}
+
+// The compiler will emit calls to the abort() compiler intrinsic if debug assertions are
+// enabled (default for dev profile). MSP430 does not actually have meaningful abort() support
+// so for now, we create our own in each application where debug assertions are present.
+#[no_mangle]
+extern "C" fn abort() -> ! {
+    panic!();
 }

@@ -7,6 +7,8 @@
 //! [`datasheet`]: http://www.ti.com/lit/ds/symlink/msp430fr2355.pdf
 //! [`User's guide`]: http://www.ti.com/lit/ug/slau445i/slau445i.pdf
 //!
+//! **Note:** This crate doesn't currently build on the latest nightly due to changes to the core intrinsics, which breaks `msp430-atomic`.
+//!
 //! # Usage
 //!
 //! Requires `msp430-elf-gcc` installed and in $PATH to build
@@ -24,7 +26,7 @@
 #![no_std]
 #![allow(incomplete_features)] // Enable specialization without warnings
 #![feature(specialization)]
-#![feature(llvm_asm)]
+#![feature(asm_experimental_arch)]
 #![deny(missing_docs)]
 
 pub mod batch_gpio;

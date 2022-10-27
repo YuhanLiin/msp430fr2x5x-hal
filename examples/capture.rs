@@ -111,3 +111,11 @@ fn print_hex<U: SerialUsci>(tx: &mut Tx<U>, h: u16) {
 fn write<U: SerialUsci>(tx: &mut Tx<U>, ch: char) {
     block!(tx.write(ch as u8)).void_unwrap();
 }
+
+// The compiler will emit calls to the abort() compiler intrinsic if debug assertions are
+// enabled (default for dev profile). MSP430 does not actually have meaningful abort() support
+// so for now, we create our own in each application where debug assertions are present.
+#[no_mangle]
+extern "C" fn abort() -> ! {
+    panic!();
+}

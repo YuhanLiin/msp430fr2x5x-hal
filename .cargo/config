@@ -8,9 +8,18 @@ rustflags = [
     "-C", "link-arg=-nostartfiles",
     "-C", "link-arg=-Tlink.x",
     "-C", "link-arg=-lgcc",
-    "-C", "link-arg=-lmul_none",
     "-C", "link-arg=-mcpu=msp430",
+
+    # Even though this chip has a HW multiplier, enabling it causes link errors, so we'll link the software multiplier for now
+    "-C", "link-arg=-lmul_none",
+    #"-C", "link-arg=-lmul_32",
+    #"-C", "link-arg=-Wl,--allow-multiple-definition", # Prevent __muldi3 dupe errors
 ]
 
 [build]
 target = "msp430-none-elf"
+
+[unstable]
+# MSP430 doesn't come with libcore compiled already. But when it does, this
+# key can be removed.
+build-std = ["core"]
