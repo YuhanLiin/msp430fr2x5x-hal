@@ -2,7 +2,7 @@
 
 > HAL for microcontrollers MSP430FR2355, MSP430FR2353, MSP430FR2153 and MSP430FR2155.
 
-> Still a work in progress, so more hardware support will come in the future. Breaking changes may occur with a minor version bump, but will be avoided as much as possible.
+**Note:** This crate doesn't currently build on the latest nightly due to changes to the core intrinsics, which breaks `msp430-atomic`.
 
 # License
 
