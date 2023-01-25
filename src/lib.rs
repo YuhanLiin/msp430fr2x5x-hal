@@ -26,10 +26,7 @@
 #![feature(specialization)]
 #![feature(asm_experimental_arch)]
 #![deny(missing_docs)]
-#![feature(asm_experimental_arch)]
 #![feature(asm_const)]
-
-use core::arch::asm;
 
 pub mod batch_gpio;
 pub mod capture;
