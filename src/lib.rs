@@ -24,6 +24,7 @@
 #![no_std]
 #![allow(incomplete_features)] // Enable specialization without warnings
 #![feature(specialization)]
+#![feature(asm_experimental_arch)]
 #![deny(missing_docs)]
 #![feature(asm_experimental_arch)]
 #![feature(asm_const)]

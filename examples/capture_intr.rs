@@ -3,8 +3,9 @@
 #![feature(abi_msp430_interrupt)]
 
 use core::cell::UnsafeCell;
+use critical_section::with;
 use embedded_hal::digital::v2::ToggleableOutputPin;
-use msp430::interrupt::{enable, free, Mutex};
+use msp430::interrupt::{enable, Mutex};
 use msp430_rt::entry;
 use msp430fr2355::interrupt;
 use msp430fr2x5x_hal::{
@@ -47,7 +48,7 @@ fn main() -> ! {
             .split(&pmm);
         let red_led = p1.pin0;
 
-        free(|cs| unsafe { *RED_LED.borrow(&cs).get() = Some(red_led) });
+        with(|cs| unsafe { *RED_LED.borrow(cs).get() = Some(red_led) });
 
         let (_smclk, aclk) = ClockConfig::new(periph.CS)
             .mclk_dcoclk(DcoclkFreqSel::_1MHz, MclkDiv::_1)
@@ -63,9 +64,9 @@ fn main() -> ! {
         let vectors = captures.tbxiv;
 
         setup_capture(&mut capture);
-        free(|cs| {
-            unsafe { *CAPTURE.borrow(&cs).get() = Some(capture) }
-            unsafe { *VECTOR.borrow(&cs).get() = Some(vectors) }
+        with(|cs| {
+            unsafe { *CAPTURE.borrow(cs).get() = Some(capture) }
+            unsafe { *VECTOR.borrow(cs).get() = Some(vectors) }
         });
         unsafe { enable() };
     }
@@ -79,13 +80,13 @@ fn setup_capture<T: CapCmp<C>, C>(capture: &mut Capture<T, C>) {
 
 #[interrupt]
 fn TIMER0_B1() {
-    free(|cs| {
-        if let Some(vector) = unsafe { &mut *VECTOR.borrow(&cs).get() }.as_mut() {
-            if let Some(capture) = unsafe { &mut *CAPTURE.borrow(&cs).get() }.as_mut() {
+    with(|cs| {
+        if let Some(vector) = unsafe { &mut *VECTOR.borrow(cs).get() }.as_mut() {
+            if let Some(capture) = unsafe { &mut *CAPTURE.borrow(cs).get() }.as_mut() {
                 match vector.interrupt_vector() {
                     CaptureVector::Capture1(cap) => {
                         if cap.interrupt_capture(capture).is_ok() {
-                            if let Some(led) = unsafe { &mut *RED_LED.borrow(&cs).get() }.as_mut() {
+                            if let Some(led) = unsafe { &mut *RED_LED.borrow(cs).get() }.as_mut() {
                                 led.toggle().void_unwrap();
                             }
                         }
@@ -95,4 +96,12 @@ fn TIMER0_B1() {
             }
         }
     });
+}
+
+// The compiler will emit calls to the abort() compiler intrinsic if debug assertions are
+// enabled (default for dev profile). MSP430 does not actually have meaningful abort() support
+// so for now, we create our own in each application where debug assertions are present.
+#[no_mangle]
+extern "C" fn abort() -> ! {
+    panic!();
 }

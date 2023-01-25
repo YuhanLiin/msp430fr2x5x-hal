@@ -2,8 +2,6 @@
 
 > HAL for microcontrollers MSP430FR2355, MSP430FR2353, MSP430FR2153 and MSP430FR2155.
 
-> Still a work in progress, so more hardware support will come in the future. Breaking changes may occur with a minor version bump, but will be avoided as much as possible.
-
 # License
 
 Licensed under either of
