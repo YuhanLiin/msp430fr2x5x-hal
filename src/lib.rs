@@ -44,4 +44,7 @@ pub mod watchdog;
 mod hw_traits;
 mod util;
 
+pub mod i2c;
+
 pub use msp430fr2355 as pac;
+pub use embedded_hal as hal;
