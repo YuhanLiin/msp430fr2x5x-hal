@@ -1,17 +1,6 @@
 use super::Steal;
 use msp430fr2355 as pac;
 
-use crate::pac::e_usci_b0::ucb0ctlw1::{UCCLTO_A, UCASTP_A};
-use crate::pac::e_usci_b0::ucb0statw::{UCSCLLOW_A, UCGC_A, UCBBUSY_A};
-use crate::pac::e_usci_b0::ucb0ctlw0::{UCMODE_A};
-use crate::pac::e_usci_b0::ucb0ie::{UCBIT9IE_A, UCTXIE3_A, UCRXIE3_A, UCTXIE2_A, UCRXIE2_A,
-                                    UCTXIE1_A, UCRXIE1_A, UCCLTOIE_A, UCBCNTIE_A, UCNACKIE_A,
-                                    UCALIE_A, UCSTPIE_A, UCSTTIE_A, UCTXIE0_A, UCRXIE0_A};
-use crate::pac::e_usci_b0::ucb0ifg::{UCBIT9IFG_A, UCTXIFG3_A, UCRXIFG3_A, UCTXIFG2_A, UCRXIFG2_A,
-                                     UCTXIFG1_A, UCRXIFG1_A, UCCLTOIFG_A, UCBCNTIFG_A, UCNACKIFG_A,
-                                     UCALIFG_A, UCSTPIFG_A, UCSTTIFG_A, UCTXIFG0_A, UCRXIFG0_A};
-use crate::pac::e_usci_b0::ucb0iv::UCIV_A;
-
 
 macro_rules! from_u8 {
     ($type: ty) => {
@@ -24,67 +13,101 @@ macro_rules! from_u8 {
     };
 }
 
-/// Defines a macro to
-/// Also
+/// Defines macros for a register associated struct to make reading/writing to this struct's
+/// register a lot less tedious.
+///
+/// The $macro_rd and $macro_wr inputs are needed due to a limitation in Rust's macro parsing
 macro_rules! reg_struct {
     (
         pub struct $struct_name : ident, $macro_rd : ident, $macro_wr : ident {
-            flags{
+            $(flags{
                 $(pub $bool_name : ident : bool,)*
-            }
-            vals{
+            })?
+            $(enums{
                 $(pub $val_name : ident : $val_type : ty : $size : ty,)*
-            }
-
+            })?
+            $(ints{
+                $(pub $int_name : ident : $int_size : ty,)*
+            })?
         }
     ) => {
         pub struct $struct_name {
-            $(pub $bool_name : bool,)*
-            $(pub $val_name : $val_type ,)*
+            $($(pub $bool_name : bool,)*)?
+            $($(pub $val_name : $val_type ,)*)?
+            $($(pub $int_name : $int_size ,)*)?
         }
         macro_rules! $macro_rd {
             ($reader : expr) => {
                 $struct_name{
-                    $($bool_name : $reader.$bool_name().bit(),)*
-                    $($val_name : <$val_type>::from(<$size>::from($reader.$val_name().variant())),)*
+                    $($($bool_name : $reader.$bool_name().bit(),)*)?
+                    $($($val_name : <$val_type>::from(<$size>::from($reader.$val_name().variant())),)*)?
+                    $($($int_name : <$int_size>::from($reader.$int_name().bits()),)*)?
                 }
             };
         }
 
         macro_rules! $macro_wr {
-            ($reg : expr) => { |w| {
-                w$(.$bool_name().bit($reg.$bool_name))*
-                 $(.$val_name().bits($reg.$val_name as $size))*
+            ($reg : expr) => { |w| unsafe {
+                w$($(.$bool_name().bit($reg.$bool_name))*)?
+                 $($(.$val_name().bits($reg.$val_name as $size))*)?
+                 $($(.$int_name().bits($reg.$int_name as $int_size))*)?
             }};
         }
     };
 }
 
 pub enum Ucssel {
-    Uclk,
-    Aclk,
-    Smclk,
+    Uclk = 0,
+    Aclk = 1,
+    Smclk = 2,
 }
-
 from_u8!(Ucssel);
 
 pub enum Ucmode {
-    ThreePinSPI,
-    FourPinSPI_1,
-    FourPinSPI_0,
-    I2CMode,
+    ThreePinSPI = 0,
+    FourPinSPI_1 = 1,
+    FourPinSPI_0 = 2,
+    I2CMode = 3,
 }
-
 from_u8!(Ucmode);
 
 pub enum Ucglit {
-    Max50ns,
-    Max25ns,
-    Max12_5ns,
-    Max6_25ns,
+    Max50ns = 0,
+    Max25ns = 1,
+    Max12_5ns = 2,
+    Max6_25ns = 3,
 }
-
 from_u8!(Ucglit);
+
+/// Clock low timeout select
+pub enum Ucclto {
+    /// Disable clock low time-out counter
+    Ucclto_00b = 0,
+    /// 135000 MODCLK cycles (approximately 28 ms)
+    Ucclto_01b = 1,
+    /// 150000 MODCLK cycles (approximately 31 ms)
+    Ucclto_10b = 2,
+    /// = 165000 MODCLK cycles (approximately 34 ms)
+    Ucclto_11b = 3,
+}
+from_u8!(Ucclto);
+
+/// Automatic STOP condition generation. In slave mode, only settings 00b and 01b
+/// are available.
+pub enum Ucastp {
+    /// No automatic STOP generation. The STOP condition is generated after
+    /// the user sets the UCTXSTP bit. The value in UCBxTBCNT is a don't care.
+    Ucastp_00b = 0,
+    /// UCBCNTIFG is set with the byte counter reaches the threshold defined in
+    /// UCBxTBCNT
+    Ucastp_01b = 1,
+    /// A STOP condition is generated automatically after the byte counter value
+    /// reached UCBxTBCNT. UCBCNTIFG is set with the byte counter reaching the
+    /// threshold.
+    Ucastp_10b = 2,
+}
+from_u8!(Ucastp);
+
 
 pub struct UcaCtlw0{
     pub ucpen: bool,
@@ -111,71 +134,93 @@ pub struct UcbCtlw0, UcbCtlw0_rd, UcbCtlw0_wr {
         pub uctxstt: bool,
         pub ucswrst: bool,
     }
-    vals{
+    enums{
         pub ucmode: Ucmode : u8,
         pub ucssel: Ucssel : u8,
     }
 }
 }
 
-pub struct UcbCtlw1 {
-    pub ucetxint: bool,
-    pub ucclto: UCCLTO_A,
-    pub ucstpnack: bool,
-    pub ucswack: bool,
-    pub ucastp: UCASTP_A,
-    pub ucglit: Ucglit,
+// from_u8!(UCCLTO_A);
+// from_u8!(UCASTP_A);
+
+reg_struct! {
+pub struct UcbCtlw1, UcbCtlw1_rd, UcbCtlw1_wr {
+    flags{
+        pub ucetxint: bool,
+        pub ucstpnack: bool,
+        pub ucswack: bool,
+    }
+    enums{
+        pub ucclto: Ucclto : u8,
+        pub ucastp: Ucastp : u8,
+        pub ucglit: Ucglit : u8,
+    }
+}
 }
 
-pub struct UcbStatw {
-    pub ucbcnt: u8,
-    pub ucscllow: UCSCLLOW_A,
-    pub ucgc: UCGC_A,
-    pub ucbbusy: UCBBUSY_A,
+reg_struct! {
+pub struct UcbStatw, UcbStatw_rd, UcbStatw_wr{
+    flags{
+        pub ucscllow: bool,
+        pub ucgc: bool,
+        pub ucbbusy: bool,
+    }
+    ints {
+        pub ucbcnt: u8,
+    }
+}
 }
 
-pub struct UcbI2coa {
-    /// ucgcen is only available for i2c0a0
+// in order to avoid 4 separate structs, I manually implemented the macro for these registers
+pub struct UcbI2coa{
     pub ucgcen: bool,
     pub ucoaen: bool,
-    /// 10 bits
     pub i2coa0: u16,
 }
 
-pub struct UcbIe {
-    pub ucbit9ie: bool,
-    pub uctxie3: bool,
-    pub ucrxie3: bool,
-    pub uctxie2: bool,
-    pub ucrxie2: bool,
-    pub uctxie1: bool,
-    pub ucrxie1: bool,
-    pub uccltoie: bool,
-    pub ucbcntie: bool,
-    pub ucnackie: bool,
-    pub ucalie: bool,
-    pub ucstpie: bool,
-    pub ucsttie: bool,
-    pub uctxie0: bool,
-    pub ucrxie0: bool,
+reg_struct! {
+pub struct UcbIe, UcbIe_rd, UcbIe_wr {
+    flags{
+        pub ucbit9ie: bool,
+        pub uctxie3: bool,
+        pub ucrxie3: bool,
+        pub uctxie2: bool,
+        pub ucrxie2: bool,
+        pub uctxie1: bool,
+        pub ucrxie1: bool,
+        pub uccltoie: bool,
+        pub ucbcntie: bool,
+        pub ucnackie: bool,
+        pub ucalie: bool,
+        pub ucstpie: bool,
+        pub ucsttie: bool,
+        pub uctxie0: bool,
+        pub ucrxie0: bool,
+    }
+}
 }
 
-pub struct UcbIFG {
-    pub ucbit9ifg: bool,
-    pub uctxifg3: bool,
-    pub ucrxifg3: bool,
-    pub uctxifg2: bool,
-    pub ucrxifg2: bool,
-    pub uctxifg1: bool,
-    pub ucrxifg1: bool,
-    pub uccltoifg: bool,
-    pub ucbcntifg: bool,
-    pub ucnackifg: bool,
-    pub ucalifg: bool,
-    pub ucstpifg: bool,
-    pub ucsttifg: bool,
-    pub uctxifg0: bool,
-    pub ucrxifg0: bool,
+reg_struct! {
+pub struct UcbIFG, UcbIFG_rd, UcbIFG_wr{
+    flags{
+        pub ucbit9ifg: bool,
+        pub uctxifg3: bool,
+        pub ucrxifg3: bool,
+        pub uctxifg2: bool,
+        pub ucrxifg2: bool,
+        pub uctxifg1: bool,
+        pub ucrxifg1: bool,
+        pub uccltoifg: bool,
+        pub ucbcntifg: bool,
+        pub ucnackifg: bool,
+        pub ucalifg: bool,
+        pub ucstpifg: bool,
+        pub ucsttifg: bool,
+        pub uctxifg0: bool,
+        pub ucrxifg0: bool,
+    }
+}
 }
 
 pub trait EUsci : Steal {
@@ -249,21 +294,21 @@ pub trait EUsciI2C: EUsci {
     fn addrx_rd(&self) -> u16;
 
     // Modify only when UCSWRST = 1
-    fn addrmask_rd(&self) -> u16;
-    fn addrmask_wr(&self, val:u16);
+    fn addmask_rd(&self) -> u16;
+    fn addmask_wr(&self, val:u16);
 
     fn i2csa_rd(&self) -> u16;
     fn i2csa_wr(&self, val:u16);
 
     fn ucbie_rd(&self) -> UcbIe;
-    fn ucboe_wr(&self, reg:UcbIe);
+    fn ucbie_wr(&self, reg:UcbIe);
     //some common bitwise operations for this register
-    fn ucboe_rmw_or(&self, reg:UcbIe);
-    fn ucboe_rmw_and(&self, reg:UcbIe);
+    fn ucbie_rmw_or(&self, reg:UcbIe);
+    fn ucbie_rmw_and(&self, reg:UcbIe);
 
     fn ifg_rd(&self) -> UcbIFG;
     fn ifg_wr(&self, reg: UcbIFG);
-    fn iv_rd(&self) -> UCIV_A;
+    fn iv_rd(&self) -> u16;
 }
 
 pub trait UcxStatw {
@@ -458,7 +503,7 @@ macro_rules! eusci_a_impl {
 macro_rules! eusci_b_impl {
     ($EUsci:ident, $eusci:ident, $ucbxctlw0:ident, $ucbxctlw1:ident, $ucbxbrw:ident,
      $ucbxstatw:ident, $ucbxtbcnt:ident, $ucbxrxbuf:ident, $ucbxtxbuf:ident, $ucbxi2coa0:ident,
-     $ucbxi2coa1:ident, $ucbxi2coa2:ident, $ucbxi2coa3:ident, $ucbxaddrx:ident, $ucbxaddrmask:ident,
+     $ucbxi2coa1:ident, $ucbxi2coa2:ident, $ucbxi2coa3:ident, $ucbxaddrx:ident, $ucbxaddmask:ident,
      $ucbxi2csa:ident, $ucbxie:ident,
      $ucbxifg:ident, $ucbxiv:ident, $Statw:ty) => {
         eusci_impl!(
@@ -500,62 +545,171 @@ macro_rules! eusci_b_impl {
             }
 
             #[inline(always)]
-            fn ctw1_rd(&self) -> UcbCtlw1;
-            #[inline(always)]
-            fn ctw1_wr(&self, reg:UcbCtlw1);
+            fn ctw1_rd(&self) -> UcbCtlw1{
+                let content = self.$ucbxctlw1.read();
+                UcbCtlw1_rd! {content}
+            }
 
             #[inline(always)]
-            fn brw_rd(&self) -> u16;
-            #[inline(always)]
-            fn brw_wr(&self, val:u16);
+            fn ctw1_wr(&self, reg:UcbCtlw1){
+                self.$ucbxctlw1.write(UcbCtlw1_wr! {reg});
+            }
 
             #[inline(always)]
-            fn statw_rd(&self) -> UcbStatw;
+            fn brw_rd(&self) -> u16{
+                self.$ucbxbrw().read().bits()
+            }
+            #[inline(always)]
+            fn brw_wr(&self, val:u16){
+                self.$ucbxbrw().write(|w| unsafe { w.bits(val) });
+            }
 
             #[inline(always)]
-            fn tbcnt_rd(&self) -> u16;
-            #[inline(always)]
-            fn tbcnt_wr(&self, val:u16);
+            fn statw_rd(&self) -> UcbStatw{
+                let content = self.$ucbxstatw().read();
+                UcbStatw_rd! {content}
+            }
 
             #[inline(always)]
-            fn ucrxbuf_rd(&self) -> u8;
+            fn tbcnt_rd(&self) -> u16{
+                self.$ucbxtbcnt.read().bits()
+            }
             #[inline(always)]
-            fn uctxbuf_wr(&self, val: u8);
+            fn tbcnt_wr(&self, val:u16){
+                self.$ucbxtbcnt.write(|w| unsafe { w.bits(val) });
+            }
 
             #[inline(always)]
-            fn i2coa_rd(&self, which:u8) -> UcbI2coa;
+            fn ucrxbuf_rd(&self) -> u8{
+                self.$ucbxrxbuf().read().bits() as u8
+            }
             #[inline(always)]
-            fn i2coa_wr(&self, which:u8, reg:UcbI2coa);
+            fn uctxbuf_wr(&self, val: u8){
+                self.$ucbxrxbuf().write(|w| unsafe { w.bits(val as u16) });
+            }
+
+            fn i2coa_rd(&self, which:u8) -> UcbI2coa{
+                match which {
+                    1 => {
+                        let content = self.$ucbxi2coa1.read();
+                        UcbI2coa{
+                            ucgcen : false,
+                            ucoaen : content.ucoaen().bit(),
+                            i2coa0 : <u16>::from(content.i2coa1().bits()),
+                        }
+                    }
+                    2 => {
+                        let content = self.$ucbxi2coa2.read();
+                        UcbI2coa{
+                            ucgcen : false,
+                            ucoaen : content.ucoaen().bit(),
+                            i2coa0 : <u16>::from(content.i2coa2().bits()),
+                        }
+                    }
+                    3=>{
+                        let content = self.$ucbxi2coa3.read();
+                        UcbI2coa{
+                            ucgcen : false,
+                            ucoaen : content.ucoaen().bit(),
+                            i2coa0 : <u16>::from(content.i2coa3().bits()),
+                        }
+                    }
+                    _ =>{
+                        let content = self.$ucbxi2coa0.read();
+                        UcbI2coa{
+                            ucgcen : content.ucgcen().bit(),
+                            ucoaen : content.ucoaen().bit(),
+                            i2coa0 : <u16>::from(content.i2coa0().bits()),
+                        }
+                    }
+                }
+            }
+
+            fn i2coa_wr(&self, which:u8, reg:UcbI2coa){
+                match which {
+                    1 => {
+                        self.$ucbxi2coa1.write(|w| unsafe {
+                            w.ucoaen().bit(reg.ucoaen)
+                            .i2coa1().bits(reg.i2coa0 as u16)
+                        });
+                    }
+                    2 => {
+                        self.$ucbxi2coa2.write(|w| unsafe {
+                            w.ucoaen().bit(reg.ucoaen)
+                            .i2coa2().bits(reg.i2coa0 as u16)
+                        });
+                    }
+                    3=>{
+                        self.$ucbxi2coa3.write(|w| unsafe {
+                            w.ucoaen().bit(reg.ucoaen)
+                            .i2coa3().bits(reg.i2coa0 as u16)
+                        });
+                    }
+                    _ =>{
+                        self.$ucbxi2coa0.write(|w| unsafe {
+                            w.ucgcen().bit(reg.ucgcen)
+                            .ucoaen().bit(reg.ucoaen)
+                            .i2coa0().bits(reg.i2coa0 as u16)
+                        });
+                    }
+                }
+            }
 
             #[inline(always)]
-            fn addrx_rd(&self) -> u16;
+            fn addrx_rd(&self) -> u16{
+                self.$ucbxaddrx.read().bits()
+            }
 
             #[inline(always)]
-            fn addrmask_rd(&self) -> u16;
+            fn addmask_rd(&self) -> u16{
+                self.$ucbxaddmask.read().bits()
+            }
             #[inline(always)]
-            fn addrmask_wr(&self, val:u16);
+            fn addmask_wr(&self, val:u16){
+                self.$ucbxaddmask.write(|w| unsafe { w.bits(val) });
+            }
 
             #[inline(always)]
-            fn i2csa_rd(&self) -> u16;
+            fn i2csa_rd(&self) -> u16{
+                self.$ucbxi2csa.read().bits()
+            }
             #[inline(always)]
-            fn i2csa_wr(&self, val:u16);
+            fn i2csa_wr(&self, val:u16){
+                self.$ucbxi2csa.write(|w| unsafe { w.bits(val) });
+            }
 
             #[inline(always)]
-            fn ucbie_rd(&self) -> UcbIe;
+            fn ucbie_rd(&self) -> UcbIe{
+                let content = self.$ucbxie().read();
+                UcbIe_rd! {content}
+            }
             #[inline(always)]
-            fn ucboe_wr(&self, reg:UcbIe);
+            fn ucbie_wr(&self, reg:UcbIe){
+                self.$ucbxie().write(UcbIe_wr! {reg});
+            }
+            #[inline(always)]
+            fn ucbie_rmw_or(&self, reg:UcbIe){
+                //TODO
+            }
+            #[inline(always)]
+            fn ucbie_rmw_and(&self, reg:UcbIe){
+                //TODO
+            }
 
             #[inline(always)]
-            fn ucboe_rmw_or(&self, reg:UcbIe);
+            fn ifg_rd(&self) -> UcbIFG{
+                let content = self.$ucbxifg().read();
+                UcbIFG_rd! {content}
+            }
             #[inline(always)]
-            fn ucboe_rmw_and(&self, reg:UcbIe);
+            fn ifg_wr(&self, reg: UcbIFG){
+                self.$ucbxifg().write(UcbIFG_wr! {reg});
+            }
 
             #[inline(always)]
-            fn ifg_rd(&self) -> UcbIFG;
-            #[inline(always)]
-            fn ifg_wr(&self, reg: UcbIFG);
-            #[inline(always)]
-            fn iv_rd(&self) -> UCIV_A;
+            fn iv_rd(&self) -> u16{
+                self.$ucbxiv().read().bits()
+            }
         }
      };
 }
@@ -607,7 +761,7 @@ eusci_b_impl!(
     ucb0i2coa2,
     ucb0i2coa3,
     ucb0addrx,
-    ucb0addrmask,
+    ucb0addmask,
     ucb0i2csa,
     ucb0ie,
     ucb0ifg,
@@ -630,7 +784,7 @@ eusci_b_impl!(
     ucb1i2coa2,
     ucb1i2coa3,
     ucb1addrx,
-    ucb1addrmask,
+    ucb1addmask,
     ucb1i2csa,
     ucb1ie,
     ucb1ifg,
