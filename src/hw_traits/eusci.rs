@@ -34,6 +34,7 @@ macro_rules! reg_struct {
         }
     ) => {
         $(#[$attr:meta])*
+        #[derive(Copy, Clone)]
         pub struct $struct_name {
             $($(pub $bool_name : bool, $(#[$f_attr])*)*)?
             $($(pub $val_name : $val_type , $(#[$e_attr])*)*)?
@@ -582,27 +583,27 @@ macro_rules! eusci_b_impl {
 
             #[inline(always)]
             fn ctw0_wr_rst(&self, bit:bool){
-                self.$ucbxctlw0().write(|w| unsafe{w.ucswrst().bit(bit)})
+                self.$ucbxctlw0().modify(|_, w| unsafe{w.ucswrst().bit(bit)})
             }
 
             #[inline(always)]
             fn transmit_ack(&self){
-                self.$ucbxctlw0().write(|w| unsafe{w.uctxack().bit(true)})
+                self.$ucbxctlw0().modify(|_, w| unsafe{w.uctxack().bit(true)})
             }
 
             #[inline(always)]
             fn transmit_nack(&self){
-                self.$ucbxctlw0().write(|w| unsafe{w.uctxnack().bit(true)})
+                self.$ucbxctlw0().modify(|_, w| unsafe{w.uctxnack().bit(true)})
             }
 
             #[inline(always)]
             fn transmit_start(&self){
-                self.$ucbxctlw0().write(|w| unsafe{w.uctxstt().bit(true)})
+                self.$ucbxctlw0().modify(|_, w| unsafe{w.uctxstt().bit(true)})
             }
 
             #[inline(always)]
             fn transmit_stop(&self){
-                self.$ucbxctlw0().write(|w| unsafe{w.uctxstp().bit(true)})
+                self.$ucbxctlw0().modify(|_, w| unsafe{w.uctxstp().bit(true)})
             }
 
             #[inline(always)]
@@ -612,12 +613,12 @@ macro_rules! eusci_b_impl {
 
             #[inline(always)]
             fn set_ucsla10(&self, bit:bool){
-                self.$ucbxctlw0().write(|w| unsafe{w.ucsla10().bit(bit)})
+                self.$ucbxctlw0().modify(|_, w| unsafe{w.ucsla10().bit(bit)})
             }
 
             #[inline(always)]
             fn set_uctr(&self, bit:bool){
-                self.$ucbxctlw0().write(|w| unsafe{w.uctr().bit(bit)})
+                self.$ucbxctlw0().modify(|_, w| unsafe{w.uctr().bit(bit)})
             }
 
             #[inline(always)]
