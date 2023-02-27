@@ -82,7 +82,7 @@ impl From<GlitchFilter> for Ucglit {
 ///Struct used to configure a I2C bus
 pub struct I2CBusConfig<USCI: EUsciI2CBus> {
     usci: USCI,
-    baud_rate: u16,
+    divisor: u16,
 
     // Register configs
     ctlw0: UcbCtlw0,
@@ -153,7 +153,6 @@ impl<USCI: EUsciI2CBus> I2CBusConfig<USCI>{
     /// Create a new configuration for setting up a EUSCI peripheral in I2C master mode
     pub fn new(
         usci: USCI,
-        baud_rate: u16,
         )->Self{
 
         let ctlw0 = UcbCtlw0{
@@ -243,7 +242,7 @@ impl<USCI: EUsciI2CBus> I2CBusConfig<USCI>{
 
         I2CBusConfig{
             usci,
-            baud_rate: baud_rate,
+            divisor: 1,
             ctlw0: ctlw0,
             ctlw1: ctlw1,
             i2coa0: i2coa0,
@@ -257,14 +256,16 @@ impl<USCI: EUsciI2CBus> I2CBusConfig<USCI>{
 
     /// Configures this peripheral to use smclk
     #[inline]
-    pub fn use_smclk(&mut self, smclk:&Smclk){
+    pub fn use_smclk(&mut self, smclk:&Smclk, clk_divisor:u16){
         self.ctlw0.ucssel = Ucssel::Smclk;
+        self.divisor = clk_divisor;
     }
 
     /// Configures this peripheral to use aclk
     #[inline]
-    pub fn use_aclk(&mut self, aclk:&Aclk){
+    pub fn use_aclk(&mut self, aclk:&Aclk, clk_divisor:u16){
         self.ctlw0.ucssel = Ucssel::Aclk;
+        self.divisor = clk_divisor;
     }
 
     /// Configures the glitch filter length for the SDA and SCL lines
@@ -293,7 +294,7 @@ impl<USCI: EUsciI2CBus> I2CBusConfig<USCI>{
         self.usci.ie_wr(&self.ie);
         self.usci.ifg_wr(&self.ifg);
 
-        self.usci.brw_wr(self.baud_rate);
+        self.usci.brw_wr(self.divisor);
         self.usci.tbcnt_wr(0);
 
         self.usci.ctw0_wr_rst(false);
@@ -313,7 +314,6 @@ pub enum I2CErr{
     GotNACK,
     /// Device lost arbitration
     ArbitrationLost,
-
 }
 
 impl<USCI:EUsciI2CBus> SDL<USCI>{
@@ -335,31 +335,28 @@ impl<USCI:EUsciI2CBus> SDL<USCI>{
         let usci = unsafe { USCI::steal() };
 
         usci.i2csa_wr(address);
-        self.set_transmission_mode(TransmissionMode::Receive);
-        self.set_addressing_mode(AddressingMode::SevenBit);
         usci.transmit_start();
 
+        while usci.uctxstt_rd() {asm::nop();}
+
         let mut ifg = usci.ifg_rd();
-        while ifg.ucsttifg() {ifg =  usci.ifg_rd();}
         if ifg.ucnackifg() {
+            usci.transmit_stop();
+            while usci.uctxstp_rd() {asm::nop();}
             return Err::<(), I2CErr>(I2CErr::GotNACK);
         }
+
         for i in 0 .. buffer.len()-1 {
             while !ifg.ucrxifg0() {
                 ifg =  usci.ifg_rd();
-            }
-            if ifg.ucnackifg() {
-                return Err::<(), I2CErr>(I2CErr::GotNACK);
             }
             buffer[i] = usci.ucrxbuf_rd();
         }
         usci.transmit_stop();
         while !ifg.ucrxifg0() {ifg =  usci.ifg_rd();}
-        if ifg.ucnackifg() {
-            return Err::<(), I2CErr>(I2CErr::GotNACK);
-        }
         buffer[buffer.len()-1] = usci.ucrxbuf_rd();
-        while !ifg.ucstpifg() {ifg =  usci.ifg_rd();}
+
+        while usci.uctxstp_rd() {asm::nop();}
 
         Ok(())
     }
@@ -374,13 +371,10 @@ impl<USCI:EUsciI2CBus> SDL<USCI>{
         let usci = unsafe { USCI::steal() };
 
         usci.i2csa_wr(address);
-        self.set_addressing_mode(AddressingMode::SevenBit);
-        self.set_transmission_mode(TransmissionMode::Transmit);
         usci.transmit_start();
 
         let mut ifg = usci.ifg_rd();
         while !ifg.uctxifg0() {ifg = usci.ifg_rd();}
-        // usci.uctxbuf_wr(bytes[0]);
 
         while usci.uctxstt_rd() {asm::nop();}
 
@@ -449,38 +443,38 @@ impl<USCI:EUsciI2CBus> SDL<USCI>{
 impl<USCI:EUsciI2CBus> Read<SevenBitAddress> for SDL<USCI>{
     type Error = I2CErr;
     fn read(&mut self, address: u8, buffer: &mut [u8]) -> Result<(), Self::Error>{
-        // self.set_addressing_mode(AddressingMode::SevenBit);
-        // self.set_transmission_mode(TransmissionMode::Receive);
+        self.set_addressing_mode(AddressingMode::SevenBit);
+        self.set_transmission_mode(TransmissionMode::Receive);
         SDL::read(self, address as u16, buffer)
     }
 }
 
-// impl<USCI:EUsciI2CBus> Read<TenBitAddress> for SDL<USCI>{
-//     type Error = I2CErr;
-//     fn read(&mut self, address: u16, buffer: &mut [u8]) -> Result<(), Self::Error>{
-//         self.set_addressing_mode(AddressingMode::TenBit);
-//         self.set_transmission_mode(TransmissionMode::Receive);
-//         SDL::read(self, address, buffer)
-//     }
-// }
+impl<USCI:EUsciI2CBus> Read<TenBitAddress> for SDL<USCI>{
+    type Error = I2CErr;
+    fn read(&mut self, address: u16, buffer: &mut [u8]) -> Result<(), Self::Error>{
+        self.set_addressing_mode(AddressingMode::TenBit);
+        self.set_transmission_mode(TransmissionMode::Receive);
+        SDL::read(self, address, buffer)
+    }
+}
 
 impl<USCI:EUsciI2CBus> Write<SevenBitAddress> for SDL<USCI>{
     type Error = I2CErr;
     fn write(&mut self, address: u8, bytes: &[u8]) -> Result<(), Self::Error>{
-        // self.set_addressing_mode(AddressingMode::SevenBit);
-        // self.set_transmission_mode(TransmissionMode::Transmit);
+        self.set_addressing_mode(AddressingMode::SevenBit);
+        self.set_transmission_mode(TransmissionMode::Transmit);
         SDL::write(self, address as u16, bytes)
     }
 }
 
-// impl<USCI:EUsciI2CBus> Write<TenBitAddress> for SDL<USCI>{
-//     type Error = I2CErr;
-//     fn write(&mut self, address: u16, bytes: &[u8]) -> Result<(), Self::Error>{
-//         self.set_addressing_mode(AddressingMode::TenBit);
-//         self.set_transmission_mode(TransmissionMode::Transmit);
-//         SDL::write(self, address, bytes)
-//     }
-// }
+impl<USCI:EUsciI2CBus> Write<TenBitAddress> for SDL<USCI>{
+    type Error = I2CErr;
+    fn write(&mut self, address: u16, bytes: &[u8]) -> Result<(), Self::Error>{
+        self.set_addressing_mode(AddressingMode::TenBit);
+        self.set_transmission_mode(TransmissionMode::Transmit);
+        SDL::write(self, address, bytes)
+    }
+}
 
 impl<USCI:EUsciI2CBus> WriteIter<SevenBitAddress> for SDL<USCI>{
     type Error = I2CErr;
