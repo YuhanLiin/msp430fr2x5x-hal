@@ -10,6 +10,9 @@
 //!
 
 use core::marker::PhantomData;
+use msp430::asm;
+use msp430::interrupt::CriticalSection;
+use msp430fr2355::interrupt;
 use crate::{
     gpio::{Alternate1, Pin, P1, P4, Pin2, Pin3, Pin6, Pin7},
     hal::blocking::i2c::{Read, Write, WriteRead, WriteIter, Operation, TransactionalIter,
@@ -283,10 +286,10 @@ impl<USCI: EUsciI2CBus> I2CBusConfig<USCI>{
 
         self.usci.ctw0_wr(&self.ctlw0);
         self.usci.ctw1_wr(&self.ctlw1);
-        // self.usci.i2coa_wr(0, &self.i2coa0);
-        // self.usci.i2coa_wr(1, &self.i2coa1);
-        // self.usci.i2coa_wr(2, &self.i2coa2);
-        // self.usci.i2coa_wr(3, &self.i2coa3);
+        self.usci.i2coa_wr(0, &self.i2coa0);
+        self.usci.i2coa_wr(1, &self.i2coa1);
+        self.usci.i2coa_wr(2, &self.i2coa2);
+        self.usci.i2coa_wr(3, &self.i2coa3);
         self.usci.ie_wr(&self.ie);
         self.usci.ifg_wr(&self.ifg);
 
@@ -361,6 +364,11 @@ impl<USCI:EUsciI2CBus> SDL<USCI>{
         Ok(())
     }
 
+
+    // #[interrupt]
+    // unsafe fn UCRXIE0(cs: CriticalSection){
+    //
+    // }
     /// Blocking write
     fn write(&mut self, address: u16, bytes: &[u8]) -> Result<(), I2CErr>{
         let usci = unsafe { USCI::steal() };
@@ -371,32 +379,33 @@ impl<USCI:EUsciI2CBus> SDL<USCI>{
         usci.transmit_start();
 
         let mut ifg = usci.ifg_rd();
+        while !ifg.uctxifg0() {ifg = usci.ifg_rd();}
+        // usci.uctxbuf_wr(bytes[0]);
+
+        while usci.uctxstt_rd() {asm::nop();}
+
+        ifg = usci.ifg_rd();
         if ifg.ucnackifg() {
+            usci.transmit_stop();
+            while usci.uctxstp_rd() {asm::nop();}
             return Err::<(), I2CErr>(I2CErr::GotNACK);
         }
-        while !ifg.uctxifg0() {
-            ifg = usci.ifg_rd();
-            if ifg.ucnackifg() {
-                return Err::<(), I2CErr>(I2CErr::GotNACK);
-            }
-        }
 
-        for i in 0 .. bytes.len()-1 {
+        for i in 0 .. bytes.len() {
             usci.uctxbuf_wr(bytes[i]);
             ifg = usci.ifg_rd();
-            if ifg.ucnackifg() {
-                return Err::<(), I2CErr>(I2CErr::GotNACK);
-            }
             while !ifg.uctxifg0() {
                 ifg = usci.ifg_rd();
-                if ifg.ucnackifg() {
-                    return Err::<(), I2CErr>(I2CErr::GotNACK);
-                }
+            }
+            if ifg.ucnackifg() {
+                usci.transmit_stop();
+                while usci.uctxstp_rd() {asm::nop();}
+                return Err::<(), I2CErr>(I2CErr::GotNACK);
             }
         }
-        usci.uctxbuf_wr(bytes[bytes.len()-1]);
+        // usci.uctxbuf_wr(bytes[bytes.len()-1]);
         usci.transmit_stop();
-        while ifg.ucstpifg() {ifg =  usci.ifg_rd();}
+        while usci.uctxstp_rd() {asm::nop();}
 
         Ok(())
     }

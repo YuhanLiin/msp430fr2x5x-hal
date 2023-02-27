@@ -288,6 +288,7 @@ pub trait EUsciI2C: EUsci {
     fn transmit_start(&self);
     fn transmit_stop(&self);
 
+    fn uctxstt_rd(&self) -> bool;
     fn uctxstp_rd(&self) -> bool;
 
     fn set_ucsla10(&self, bit:bool);
@@ -607,6 +608,11 @@ macro_rules! eusci_b_impl {
             }
 
             #[inline(always)]
+            fn uctxstt_rd(&self) -> bool{
+                self.$ucbxctlw0().read().uctxstp().bit()
+            }
+
+            #[inline(always)]
             fn uctxstp_rd(&self) -> bool{
                 self.$ucbxctlw0().read().uctxstp().bit()
             }
@@ -683,7 +689,7 @@ macro_rules! eusci_b_impl {
             }
             #[inline(always)]
             fn uctxbuf_wr(&self, val: u8){
-                self.$ucbxrxbuf().write(|w| unsafe { w.bits(val as u16) });
+                self.$ucbxtxbuf().write(|w| unsafe { w.bits(val as u16) });
             }
 
             fn i2coa_rd(&self, which:u8) -> UcbI2coa{
