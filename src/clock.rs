@@ -275,6 +275,13 @@ impl<SMCLK: SmclkState> ClockConfig<MclkDefined, SMCLK> {
         // Run FLL configuration procedure from the user's guide if we are using DCO
         if let MclkSel::Dcoclk(target_freq) = self.mclk.0 {
             fll_off();
+            msp430::asm::nop();
+            msp430::asm::nop();
+            msp430::asm::nop();
+            msp430::asm::nop();
+            msp430::asm::nop();
+            msp430::asm::nop();
+
             self.periph.csctl3.write(|w| w.selref().refoclk());
             self.periph.csctl0.write(|w| unsafe { w.bits(0) });
             self.periph
@@ -286,6 +293,10 @@ impl<SMCLK: SmclkState> ClockConfig<MclkDefined, SMCLK> {
                     ._1()
             });
 
+            msp430::asm::nop();
+            msp430::asm::nop();
+            msp430::asm::nop();
+            msp430::asm::nop();
             msp430::asm::nop();
             msp430::asm::nop();
             msp430::asm::nop();
