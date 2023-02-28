@@ -11,18 +11,16 @@
 
 use core::marker::PhantomData;
 use msp430::asm;
-use msp430::interrupt::CriticalSection;
-use msp430fr2355::interrupt;
 use crate::{
     gpio::{Alternate1, Pin, P1, P4, Pin2, Pin3, Pin6, Pin7},
     hal::blocking::i2c::{Read, Write, WriteRead, WriteIter, Operation, TransactionalIter,
                          SevenBitAddress, TenBitAddress, Transactional},
-    hw_traits::eusci::{EUsciI2C, UcbCtlw0, UcbCtlw1, UcbI2coa, UcbIe, UcbIFG, UcbStatw, Ucssel,
+    hw_traits::eusci::{EUsciI2C, UcbCtlw0, UcbCtlw1, UcbI2coa, UcbIe, UcbIFG, Ucssel,
                        Ucmode, Ucglit, Ucclto, Ucastp},
     pac
 };
 use crate::clock::{Aclk, Smclk};
-use crate::hw_traits::eusci::I2CUcbIfg_out;
+use crate::hw_traits::eusci::I2CUcbIfgOut;
 
 /// Configure bus to use 7bit or 10bit I2C slave addressing mode
 #[derive(Clone, Copy)]
@@ -175,8 +173,8 @@ impl<USCI: EUsciI2CBus> I2CBusConfig<USCI>{
             ucetxint: false,
             ucstpnack: false,
             ucswack: false,
-            ucclto: Ucclto::Ucclto_00b,
-            ucastp: Ucastp::Ucastp_00b,
+            ucclto: Ucclto::Ucclto00b,
+            ucastp: Ucastp::Ucastp00b,
             ucglit: Ucglit::Max6_25ns,
         };
 

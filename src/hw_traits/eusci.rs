@@ -41,17 +41,7 @@ macro_rules! reg_struct {
             $($(pub $int_name : $int_size , $(#[$i_attr])*)*)?
         }
 
-        //
-        // impl $struct_name{
-        //     fn default()->Self{
-        //         $struct_name{
-        //             $($($bool_name : false,)*)?
-        //             $($($val_name : 0.into(),)*)?
-        //             $($($int_name : 0,)*)?
-        //         }
-        //     }
-        // }
-
+        #[allow(unused_macros)]
         macro_rules! $macro_rd {
             ($reader : expr) => {
                 $struct_name{
@@ -62,6 +52,7 @@ macro_rules! reg_struct {
             };
         }
 
+        #[allow(unused_macros)]
         macro_rules! $macro_wr {
             ($reg : expr) => { |w| unsafe {
                 w$($(.$bool_name().bit($reg.$bool_name))*)?
@@ -83,8 +74,8 @@ from_u8!(Ucssel);
 #[derive(Copy, Clone)]
 pub enum Ucmode {
     ThreePinSPI = 0,
-    FourPinSPI_1 = 1,
-    FourPinSPI_0 = 2,
+    FourPinSPI1 = 1,
+    FourPinSPI0 = 2,
     I2CMode = 3,
 }
 from_u8!(Ucmode);
@@ -102,13 +93,13 @@ from_u8!(Ucglit);
 #[derive(Copy, Clone)]
 pub enum Ucclto {
     /// Disable clock low time-out counter
-    Ucclto_00b = 0,
+    Ucclto00b = 0,
     /// 135000 MODCLK cycles (approximately 28 ms)
-    Ucclto_01b = 1,
+    Ucclto01b = 1,
     /// 150000 MODCLK cycles (approximately 31 ms)
-    Ucclto_10b = 2,
+    Ucclto10b = 2,
     /// = 165000 MODCLK cycles (approximately 34 ms)
-    Ucclto_11b = 3,
+    Ucclto11b = 3,
 }
 from_u8!(Ucclto);
 
@@ -118,14 +109,14 @@ from_u8!(Ucclto);
 pub enum Ucastp {
     /// No automatic STOP generation. The STOP condition is generated after
     /// the user sets the UCTXSTP bit. The value in UCBxTBCNT is a don't care.
-    Ucastp_00b = 0,
+    Ucastp00b = 0,
     /// UCBCNTIFG is set when the byte counter reaches the threshold defined in
     /// UCBxTBCNT
-    Ucastp_01b = 1,
+    Ucastp01b = 1,
     /// A STOP condition is generated automatically after the byte counter value
     /// reached UCBxTBCNT. UCBCNTIFG is set with the byte counter reaching the
     /// threshold.
-    Ucastp_10b = 2,
+    Ucastp10b = 2,
 }
 from_u8!(Ucastp);
 
@@ -244,6 +235,26 @@ pub struct UcbIFG, UcbIFG_rd, UcbIFG_wr{
 }
 }
 
+reg_struct!{
+pub struct UcxSpiCtw0, UcxSpiCtw0_rd, UcxSpiCtw0_wr{
+    flags{
+        pub ucckph: bool,
+        pub ucckpl: bool,
+        pub ucmsb: bool,
+        pub uc7bit: bool,
+        pub ucmst: bool,
+        pub ucsync: bool,
+        pub ucstem: bool,
+        pub ucswrst: bool,
+    }
+    enums{
+        pub ucmode: Ucmode : u8,
+        pub ucssel: Ucssel : u8,
+    }
+}
+}
+
+
 pub trait EUsci : Steal {
 
 }
@@ -281,7 +292,7 @@ pub trait EUsciUart: EUsci {
 }
 
 pub trait EUsciI2C: EUsci {
-    type IfgOut : I2CUcbIfg_out;
+    type IfgOut : I2CUcbIfgOut;
 
     fn transmit_ack(&self);
     fn transmit_nack(&self);
@@ -340,20 +351,39 @@ pub trait EUsciI2C: EUsci {
 
     fn ie_rd(&self) -> UcbIe;
     fn ie_wr(&self, reg:&UcbIe);
-    //some common bitwise operations for this register
-    fn ie_rmw_or(&self, reg:&UcbIe);
-    fn ie_rmw_and(&self, reg:&UcbIe);
 
     fn ifg_rd(&self) -> Self::IfgOut;
     fn ifg_wr(&self, reg:&UcbIFG);
     fn iv_rd(&self) -> u16;
 }
 
-pub trait UcxStatw {
+pub trait EusciSPI : EUsci{
+    type Statw : SpiStatw;
 
+    fn ctw0_wr_rst(&self, bit:bool);
+
+    fn ctw0_wr(&self, reg:&UcxSpiCtw0);
+
+    fn brw_wr(&self, val:u16);
+
+    fn statw_rd(&self) -> Self::Statw;
+
+    fn uclisten_set(&self, bit:bool);
+
+    fn rxbuf_rd(&self) -> u16;
+
+    fn txbuf_wr(&self, val:u16);
+
+    fn transmit_interrupt_set(&self, bit:bool);
+
+    fn receive_interrupt_set(&self, bit:bool);
+
+    fn transmit_flag(&self) -> bool;
+
+    fn receive_flag(&self) -> bool;
 }
 
-pub trait UartUcxStatw : UcxStatw {
+pub trait UartUcxStatw {
     fn ucfe(&self) -> bool;
     fn ucoe(&self) -> bool;
     fn ucpe(&self) -> bool;
@@ -361,7 +391,14 @@ pub trait UartUcxStatw : UcxStatw {
     fn ucbusy(&self) -> bool;
 }
 
-pub trait I2CUcbIfg_out {
+pub trait SpiStatw{
+    fn uclisten(&self) -> bool;
+    fn ucfe(&self) -> bool;
+    fn ucoe(&self) -> bool;
+    // fn ucbusy1(&self) -> bool;
+}
+
+pub trait I2CUcbIfgOut {
     /// Byte counter interrupt flag
     fn ucbcntifg(&self) -> bool;
     /// Not-acknowledge received interrupt flag
@@ -381,7 +418,8 @@ pub trait I2CUcbIfg_out {
 macro_rules! eusci_impl {
     ($EUsci:ident, $eusci:ident, $ucxctlw0:ident, $ucxctlw1:ident, $ucxbrw:ident,
      $ucxstatw:ident, $ucxrxbuf:ident, $ucxtxbuf:ident, $ucxie:ident, $ucxifg:ident,
-     $ucxiv:ident, $Statw:ty) => {
+     $ucxiv:ident, $StatwSpi:ty) => {
+
         impl Steal for pac::$EUsci {
             #[inline(always)]
             unsafe fn steal() -> Self {
@@ -393,30 +431,111 @@ macro_rules! eusci_impl {
 
         }
 
-        impl UcxStatw for $Statw {
 
+        impl EusciSPI for pac::$EUsci {
+            type Statw = $StatwSpi;
+
+            #[inline(always)]
+            fn ctw0_wr_rst(&self, bit:bool){
+                self.$ucxctlw0().modify(|_, w| unsafe{w.ucswrst().bit(bit)})
+            }
+
+            #[inline(always)]
+            fn ctw0_wr(&self, reg:&UcxSpiCtw0){
+                self.$ucxctlw0().write(UcxSpiCtw0_wr! {reg});
+            }
+
+            #[inline(always)]
+            fn brw_wr(&self, val:u16){
+                self.$ucxbrw().write(|w| unsafe{w.bits(val)});
+            }
+
+            #[inline(always)]
+            fn statw_rd(&self) -> Self::Statw{
+                self.$ucxstatw().read()
+            }
+
+            #[inline(always)]
+            fn uclisten_set(&self, bit:bool){
+                self.$ucxstatw().modify(|_, w| unsafe{w.uclisten().bit(bit)})
+            }
+
+            #[inline(always)]
+            fn rxbuf_rd(&self) -> u16{
+                self.$ucxrxbuf().read().bits()
+            }
+
+            #[inline(always)]
+            fn txbuf_wr(&self, val:u16){
+                self.$ucxtxbuf().write(|w| unsafe { w.bits(val as u16) });
+            }
+
+            #[inline(always)]
+            fn transmit_interrupt_set(&self, bit:bool){
+                self.$ucxie().modify(|_, w| unsafe{w.uctxie().bit(bit)});
+            }
+
+            #[inline(always)]
+            fn receive_interrupt_set(&self, bit:bool){
+                self.$ucxie().modify(|_, w| unsafe{w.ucrxie().bit(bit)});
+            }
+
+            #[inline(always)]
+            fn transmit_flag(&self) -> bool{
+                self.$ucxifg().read().uctxifg().bit()
+            }
+
+            #[inline(always)]
+            fn receive_flag(&self) -> bool{
+                self.$ucxifg().read().ucrxifg().bit()
+            }
         }
+
+        impl SpiStatw for $StatwSpi{
+            #[inline(always)]
+            fn uclisten(&self) -> bool{
+                self.uclisten().bit()
+            }
+
+            #[inline(always)]
+            fn ucfe(&self) -> bool{
+                self.ucfe().bit()
+            }
+
+            #[inline(always)]
+            fn ucoe(&self) -> bool{
+                self.ucoe().bit()
+            }
+
+            // #[inline(always)]
+            // fn ucbusy1(&self) -> bool{
+            //     self.ucbusy().bit()
+            // }
+        }
+
     }
 }
 
 macro_rules! eusci_a_impl {
     ($EUsci:ident, $eusci:ident, $ucaxctlw0:ident, $ucaxctlw1:ident, $ucaxbrw:ident, $ucaxmctlw:ident,
      $ucaxstatw:ident, $ucaxrxbuf:ident, $ucaxtxbuf:ident, $ucaxie:ident, $ucaxifg:ident,
-     $ucaxiv:ident, $Statw:ty) => {
+     $ucaxiv:ident, $Statw:ty,
+     $StatwSpi:ty,
+     $ucaxctlw0spi:ident, $ucaxstatwspi:ident, $ucaxiespi:ident, $ucaxifgspi:ident) => {
 
         eusci_impl!(
             $EUsci,
             $eusci,
-            $ucaxctlw0,
+            $ucaxctlw0spi,
             $ucaxctlw1,
             $ucaxbrw,
-            $ucaxstatw,
+            $ucaxstatwspi,
             $ucaxrxbuf,
             $ucaxtxbuf,
-            $ucaxie,
-            $ucaxifg,
+            $ucaxiespi,
+            $ucaxifgspi,
             $ucaxiv,
-            $Statw
+            $StatwSpi
         );
 
         impl EUsciUart for pac::$EUsci {
@@ -556,20 +675,22 @@ macro_rules! eusci_b_impl {
      $ucbxstatw:ident, $ucbxtbcnt:ident, $ucbxrxbuf:ident, $ucbxtxbuf:ident, $ucbxi2coa0:ident,
      $ucbxi2coa1:ident, $ucbxi2coa2:ident, $ucbxi2coa3:ident, $ucbxaddrx:ident, $ucbxaddmask:ident,
      $ucbxi2csa:ident, $ucbxie:ident,
-     $ucbxifg:ident, $ucbxiv:ident, $Statw:ty, $Ifg:ty) => {
+     $ucbxifg:ident, $ucbxiv:ident, $Statw:ty, $Ifg:ty,
+     $StatwSpi:ty,
+     $ucbxctlw0spi:ident, $ucbxstatwspi:ident, $ucbxiespi:ident, $ucbxifgspi:ident) => {
         eusci_impl!(
             $EUsci,
             $eusci,
-            $ucbxctlw0,
+            $ucbxctlw0spi,
             $ucbxctlw1,
             $ucbxbrw,
-            $ucbxstatw,
+            $ucbxstatwspi,
             $ucbxrxbuf,
             $ucbxtxbuf,
-            $ucbxie,
-            $ucbxifg,
+            $ucbxiespi,
+            $ucbxifgspi,
             $ucbxiv,
-            $Statw
+            $StatwSpi
         );
 
 
@@ -791,14 +912,6 @@ macro_rules! eusci_b_impl {
             fn ie_wr(&self, reg:&UcbIe){
                 self.$ucbxie().write(UcbIe_wr! {reg});
             }
-            #[inline(always)]
-            fn ie_rmw_or(&self, reg:&UcbIe){
-                //TODO
-            }
-            #[inline(always)]
-            fn ie_rmw_and(&self, reg:&UcbIe){
-                //TODO
-            }
 
             #[inline(always)]
             fn ifg_rd(&self) -> Self::IfgOut{
@@ -816,7 +929,7 @@ macro_rules! eusci_b_impl {
             }
         }
 
-        impl I2CUcbIfg_out for $Ifg{
+        impl I2CUcbIfgOut for $Ifg{
             #[inline(always)]
             fn ucbcntifg(&self) -> bool{
                 self.ucbcntifg().bit()
@@ -868,7 +981,12 @@ eusci_a_impl!(
     uca0ie,
     uca0ifg,
     uca0iv,
-    pac::e_usci_a0::uca0statw::R
+    pac::e_usci_a0::uca0statw::R,
+    pac::e_usci_a0::uca0statw_spi::R,
+    uca0ctlw0_spi,
+    uca0statw_spi,
+    uca0ie_spi,
+    uca0ifg_spi
 );
 
 eusci_a_impl!(
@@ -884,7 +1002,12 @@ eusci_a_impl!(
     uca1ie,
     uca1ifg,
     uca1iv,
-    pac::e_usci_a1::uca1statw::R
+    pac::e_usci_a1::uca1statw::R,
+    pac::e_usci_a1::uca1statw_spi::R,
+    uca1ctlw0_spi,
+    uca1statw_spi,
+    uca1ie_spi,
+    uca1ifg_spi
 );
 
 eusci_b_impl!(
@@ -908,7 +1031,12 @@ eusci_b_impl!(
     ucb0ifg,
     ucb0iv,
     pac::e_usci_b0::ucb0statw::R,
-    pac::e_usci_b0::ucb0ifg::R
+    pac::e_usci_b0::ucb0ifg::R,
+    pac::e_usci_b0::ucb0statw_spi::R,
+    ucb0ctlw0_spi,
+    ucb0statw_spi,
+    ucb0ie_spi,
+    ucb0ifg_spi
 );
 
 eusci_b_impl!(
@@ -932,7 +1060,12 @@ eusci_b_impl!(
     ucb1ifg,
     ucb1iv,
     pac::e_usci_b1::ucb1statw::R,
-    pac::e_usci_b1::ucb1ifg::R
+    pac::e_usci_b1::ucb1ifg::R,
+    pac::e_usci_b1::ucb1statw_spi::R,
+    ucb1ctlw0_spi,
+    ucb1statw_spi,
+    ucb1ie_spi,
+    ucb1ifg_spi
 );
 
 
