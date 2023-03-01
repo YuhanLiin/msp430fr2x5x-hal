@@ -27,6 +27,7 @@
 #![feature(asm_experimental_arch)]
 #![deny(missing_docs)]
 #![feature(asm_const)]
+#![feature(abi_msp430_interrupt)]
 
 pub mod batch_gpio;
 pub mod capture;

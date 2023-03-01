@@ -254,14 +254,14 @@ impl<USCI: EUsciI2CBus> I2CBusConfig<USCI>{
 
     /// Configures this peripheral to use smclk
     #[inline]
-    pub fn use_smclk(&mut self, smclk:&Smclk, clk_divisor:u16){
+    pub fn use_smclk(&mut self, _smclk:&Smclk, clk_divisor:u16){
         self.ctlw0.ucssel = Ucssel::Smclk;
         self.divisor = clk_divisor;
     }
 
     /// Configures this peripheral to use aclk
     #[inline]
-    pub fn use_aclk(&mut self, aclk:&Aclk, clk_divisor:u16){
+    pub fn use_aclk(&mut self, _aclk:&Aclk, clk_divisor:u16){
         self.ctlw0.ucssel = Ucssel::Aclk;
         self.divisor = clk_divisor;
     }
@@ -397,7 +397,7 @@ impl<USCI:EUsciI2CBus> SDL<USCI>{
         Ok(())
     }
 
-    fn writeIter<B>(&mut self, address: u16, bytes: B) -> Result<(), I2CErr>
+    fn write_iter<B>(&mut self, _address: u16, _bytes: B) -> Result<(), I2CErr>
         where
             B: IntoIterator<Item = u8>{
 
@@ -420,12 +420,12 @@ impl<USCI:EUsciI2CBus> SDL<USCI>{
         self.write(address, bytes)
     }
 
-    fn exec<'a>(&mut self, address: u16, operations: &mut [Operation<'a>])
+    fn exec<'a>(&mut self, _address: u16, _operations: &mut [Operation<'a>])
                 -> Result<(), I2CErr>{
         Err(I2CErr::Unimplemented)
     }
 
-    fn exec_iter<'a, O>(&mut self, address: u16, operations: O) -> Result<(), I2CErr>
+    fn exec_iter<'a, O>(&mut self, _address: u16, _operations: O) -> Result<(), I2CErr>
         where
             O: IntoIterator<Item = Operation<'a>>{
         Err(I2CErr::Unimplemented)
@@ -476,7 +476,7 @@ impl<USCI:EUsciI2CBus> WriteIter<SevenBitAddress> for SDL<USCI>{
             B: IntoIterator<Item = u8>{
         self.set_addressing_mode(AddressingMode::SevenBit);
         self.set_transmission_mode(TransmissionMode::Transmit);
-        SDL::writeIter(self, address as u16, bytes)
+        SDL::write_iter(self, address as u16, bytes)
     }
 }
 
@@ -487,7 +487,7 @@ impl<USCI:EUsciI2CBus> WriteIter<TenBitAddress> for SDL<USCI>{
             B: IntoIterator<Item = u8>{
         self.set_addressing_mode(AddressingMode::TenBit);
         self.set_transmission_mode(TransmissionMode::Transmit);
-        SDL::writeIter(self, address, bytes)
+        SDL::write_iter(self, address, bytes)
     }
 }
 
