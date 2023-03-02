@@ -395,9 +395,12 @@ pub trait EusciSPI : EUsci{
 
     fn receive_flag(&self) -> bool;
 
-    fn iv_rd(&self) -> SPIInterruptVector;
+    fn iv_rd(&self) -> u16;
 
-    fn spi_interrupt(){}
+}
+
+pub trait EusciSPIInterrupter{
+    unsafe fn spi_interrupt();
 }
 
 pub trait UartUcxStatw {
@@ -512,8 +515,8 @@ macro_rules! eusci_impl {
             }
 
             #[inline(always)]
-            fn iv_rd(&self) -> SPIInterruptVector{
-                SPIInterruptVector::from(self.$ucxiv().read().uciv().bits())
+            fn iv_rd(&self) -> u16{
+                self.$ucxiv().read().uciv().bits()
             }
         }
 
