@@ -368,7 +368,7 @@ pub struct SPIBusConfig<USCI: EUsciSPIBus>{
 
 impl<USCI: EUsciSPIBus> SPIBusConfig<USCI>{
     /// Create a new configuration for setting up a EUSCI peripheral in SPI mode
-    pub fn new(usci: USCI, mode:Mode)->Self{
+    pub fn new(usci: USCI, mode:Mode, msbFirst:bool)->Self{
         let ctlw0 = UcxSpiCtw0{
             ucckph: match mode.phase {
                 Phase::CaptureOnFirstTransition => true,
@@ -378,7 +378,7 @@ impl<USCI: EUsciSPIBus> SPIBusConfig<USCI>{
                 Polarity::IdleLow => false,
                 Polarity::IdleHigh => true,
             },
-            ucmsb: false,
+            ucmsb: msbFirst,
             uc7bit: false,
             ucmst: true,
             ucsync: true,

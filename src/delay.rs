@@ -27,7 +27,7 @@ impl DelayMs<u16> for Delay{
         //TODO take into account clock freq for delay
         //
         for _ in 0 .. ms{
-            for _ in 0 .. 200{
+            for _ in 0 .. 800{
                 asm::nop();
             }
         }
