@@ -1,6 +1,5 @@
 use super::Steal;
 use msp430fr2355 as pac;
-use msp430fr2355::interrupt;
 
 macro_rules! from_u8 {
     ($typ: ty) => {
@@ -119,19 +118,6 @@ pub enum Ucastp {
     Ucastp10b = 2,
 }
 from_u8!(Ucastp);
-
-#[derive(Copy, Clone)]
-pub enum SPIInterruptVector{
-    None = 0,
-    DataReceived = 2,
-    TXBufferEmpty = 4,
-}
-impl From<u16> for SPIInterruptVector {
-    #[inline(always)]
-    fn from(variant: u16) -> Self {
-        (variant & 0x4).into()
-    }
-}
 
 
 pub struct UcaCtlw0{
@@ -399,10 +385,6 @@ pub trait EusciSPI : EUsci{
 
 }
 
-pub trait EusciSPIInterrupter{
-    unsafe fn spi_interrupt();
-}
-
 pub trait UartUcxStatw {
     fn ucfe(&self) -> bool;
     fn ucoe(&self) -> bool;
@@ -449,11 +431,6 @@ macro_rules! eusci_impl {
 
         impl EUsci for pac::$EUsci {
 
-        }
-
-        #[interrupt]
-        unsafe fn $intr_vec(){
-            pac::$EUsci::spi_interrupt();
         }
 
         impl EusciSPI for pac::$EUsci {
