@@ -508,6 +508,13 @@ impl<USCI: SerialUsci> Rx<USCI> {
         let usci = unsafe { USCI::steal() };
         usci.rxie_clear();
     }
+
+    /// Reads raw value from Rx buffer with no checks for validity
+    #[inline(always)]
+    pub fn read_no_check(&mut self) -> u8{
+        let usci = unsafe { USCI::steal() };
+        usci.rx_rd()
+    }
 }
 
 /// Serial receive errors

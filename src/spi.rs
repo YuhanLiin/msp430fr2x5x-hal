@@ -295,7 +295,12 @@ impl<USCI: EUsciSPIBus> SPIPins<USCI>{
         usci.transmit_interrupt_set(flag);
     }
 
-
+    /// Writes raw value to Tx buffer with no checks for validity
+    #[inline(always)]
+    pub fn write_no_check(&mut self, val: u8){
+        let usci = unsafe { USCI::steal() };
+        usci.txbuf_wr(val)
+    }
 }
 
 /// SPI transmit/receive errors

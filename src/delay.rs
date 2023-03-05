@@ -5,13 +5,15 @@ use crate::hal::blocking::delay::{DelayMs, DelayUs};
 
 /// Delay provider struct
 pub struct Delay{
-    freq: u32
+    nops_per_ms: u16
 }
 
 impl Delay{
     #[doc(hidden)]
     pub fn new(freq: u32) -> Self{
-        Delay{freq}
+        // ~21 nops needed per 2^20 MHz to delay 1 ms
+        let nops : u32 = 210 * (freq >> 20);
+        Delay{nops_per_ms: (nops as u16)}
     }
 }
 
@@ -24,10 +26,8 @@ impl DelayMs<u8> for Delay{
 
 impl DelayMs<u16> for Delay{
     fn delay_ms(&mut self, ms: u16){
-        //TODO take into account clock freq for delay
-        //
         for _ in 0 .. ms{
-            for _ in 0 .. 800{
+            for _ in 0 .. self.nops_per_ms{
                 asm::nop();
             }
         }
