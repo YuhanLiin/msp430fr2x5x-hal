@@ -306,7 +306,6 @@ struct BaudConfig {
     ucos16: bool,
 }
 
-#[inline]
 fn calculate_baud_config(clk_freq: u32, bps: u32) -> BaudConfig {
     // Prevent division by 0
     let bps = bps.max(1);
@@ -337,56 +336,57 @@ fn calculate_baud_config(clk_freq: u32, bps: u32) -> BaudConfig {
     }
 }
 
+// Data from table 22-4 of MSP430FR4xx and MSP430FR2xx family user's guide (Rev. I)
+const BRS_LOOKUP_KEYS : [u16;36] =
+    [
+        0x0000, 0x00d9, 0x0125, 0x0156, 0x019a,
+        0x0201, 0x024a, 0x02ac, 0x036f, 0x038f,
+        0x0401, 0x04cd, 0x0556, 0x05b8, 0x0601,
+        0x0668, 0x06dc, 0x0701, 0x0801, 0x0925,
+        0x099b, 0x0a02, 0x0a4b, 0x0aab, 0x0b34,
+        0x0b6f, 0x0c01, 0x0c94, 0x0cce, 0x0d55,
+        0x0d8b, 0x0db7, 0x0e00, 0x0e68, 0x0eac,
+        0x0edc
+    ];
+
+const BRS_LOOKUP_VALS : [u8;36] =
+    [
+        0x00,0x01,0x02,0x04,0x08,
+        0x10,0x20,0x11,0x21,0x22,
+        0x44,0x25,0x49,0x4A,0x52,
+        0x92,0x53,0x55,0xAA,0x6B,
+        0xAD,0xB5,0xB6,0xD6,0xB7,
+        0xBB,0xDD,0xED,0xEE,0xBF,
+        0xDF,0xEF,0xF7,0xFB,0xFD,
+        0xFE
+    ];
+
+#[inline(always)]
+fn binary_search_brs_table(res : u16) -> u8{
+    let mut low: usize = 0;
+    let mut high: usize = BRS_LOOKUP_KEYS.len() - 1;
+    while low != high {
+        let mid = (low + high) >> 2;
+        let key = BRS_LOOKUP_KEYS[mid];
+        if res == key {
+            return BRS_LOOKUP_VALS[mid]
+        }else if res > key{
+            low = mid + 1;
+        }else{
+            high = mid - 1;
+        }
+    }
+    return BRS_LOOKUP_VALS[low];
+}
+
 #[inline(always)]
 fn lookup_brs(clk_freq: u32, bps: u32) -> u8 {
     let modulo = clk_freq % bps;
+    // 12 fractional bit fixed point result
+    let fixed_point_result : u32 = (modulo << 12) / bps;
 
-    // Fractional part lookup for the baud rate. Not extremely precise
-    if modulo * 19 < bps {
-        0x0
-    } else if modulo * 14 < bps {
-        0x1
-    } else if modulo * 12 < bps {
-        0x2
-    } else if modulo * 10 < bps {
-        0x4
-    } else if modulo * 8 < bps {
-        0x8
-    } else if modulo * 7 < bps {
-        0x10
-    } else if modulo * 6 < bps {
-        0x20
-    } else if modulo * 5 < bps {
-        0x11
-    } else if modulo * 4 < bps {
-        0x22
-    } else if modulo * 3 < bps {
-        0x44
-    } else if modulo * 11 < bps * 4 {
-        0x49
-    } else if modulo * 5 < bps * 2 {
-        0x4A
-    } else if modulo * 7 < bps * 3 {
-        0x92
-    } else if modulo * 2 < bps {
-        0x53
-    } else if modulo * 7 < bps * 4 {
-        0xAA
-    } else if modulo * 13 < bps * 8 {
-        0x6B
-    } else if modulo * 3 < bps * 2 {
-        0xAD
-    } else if modulo * 11 < bps * 8 {
-        0xD6
-    } else if modulo * 4 < bps * 3 {
-        0xBB
-    } else if modulo * 5 < bps * 4 {
-        0xDD
-    } else if modulo * 9 < bps * 8 {
-        0xEF
-    } else {
-        0xFD
-    }
+    // Throw away the upper bits since the fractional part is all we care about
+    binary_search_brs_table(fixed_point_result as u16)
 }
 
 impl<USCI: SerialUsci> SerialConfig<USCI, ClockSet> {
