@@ -306,6 +306,7 @@ struct BaudConfig {
     ucos16: bool,
 }
 
+#[inline]
 fn calculate_baud_config(clk_freq: u32, bps: u32) -> BaudConfig {
     // Prevent division by 0
     let bps = bps.max(1);
@@ -366,12 +367,18 @@ fn binary_search_brs_table(res : u16) -> u8{
     let mut low: usize = 0;
     let mut high: usize = BRS_LOOKUP_KEYS.len() - 1;
     while low != high {
-        let mid = (low + high) >> 2;
+        let mid = (low + high) >> 1;
         let key = BRS_LOOKUP_KEYS[mid];
         if res == key {
             return BRS_LOOKUP_VALS[mid]
+        }else if high - low == 1{
+            return if res < BRS_LOOKUP_KEYS[high] {
+                BRS_LOOKUP_VALS[low]
+            } else {
+                BRS_LOOKUP_VALS[high]
+            }
         }else if res > key{
-            low = mid + 1;
+            low = mid;
         }else{
             high = mid - 1;
         }
