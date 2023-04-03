@@ -234,16 +234,12 @@ impl AdcConfig {
         }
     }
 
-    pub fn config_hw<CHANNEL>(self, _channel: &CHANNEL) -> Adc<ADC>
-    where
-        CHANNEL: Channel<Adc<ADC>, ID=u8>, {
+    pub fn config_hw(self) -> Adc<ADC> {
         let adc_reg = self.adc;
 
-        // adc_reg.adcctl0.modify(|_, w| w.adcenc().adcenc_0());
-        adc_reg.adcctl0.modify(|_, w| w.adcon().adcon_1());
-        // adc_reg.adcctl0.modify(|_, w| w.adcsc().adcsc_0());
-
-        adc_reg.adcmctl0.modify(|_, w| w.adcinch().bits(CHANNEL::channel()));
+        adc_reg.adcctl0.modify(|_, w| w.adcenc().adcenc_0()
+                                                .adcon().adcon_0()
+                                                .adcsc().adcsc_0());
 
         let adcsht = self.sample_time.adcsht();
         adc_reg.adcctl0.modify(|_, w| w.adcsht().bits(adcsht));
@@ -273,14 +269,19 @@ impl Adc<ADC> {
     }
 
     pub fn adc_enable(&self) {
-        self.adc_reg.adcctl0.modify(|_, w| w.adcon().adcon_1().adcenc().adcenc_1());
+        self.adc_reg.adcctl0.modify(|_, w| w.adcon().adcon_1());
+    }
+
+    pub fn adc_disable(&self) {
+        self.adc_reg.adcctl0.modify(|_, w| 
+            w.adcon().adcon_0()
+            .adcenc().adcenc_0());
     }
 
     pub fn adc_start_conversion(&self) {
-        // self.adc_reg
-        //     .adcctl0
-        //     .modify(|_, w| w.adcenc().adcenc_1().adcon().adcon_1().adcsc().adcsc_1());
-        self.adc_reg.adcctl0.write(|w| unsafe { w.bits(0x0613) });
+        self.adc_reg
+            .adcctl0
+            .modify(|_, w| w.adcenc().adcenc_1().adcsc().adcsc_1());
     }
 
     pub fn adc_is_busy(&self) -> bool {
@@ -289,6 +290,11 @@ impl Adc<ADC> {
 
     pub fn adc_get_result(&self) -> u16 {
         return self.adc_reg.adcmem0.read().bits();
+    }
+
+    pub fn adc_set_pin<PIN>(&self, _pin: &PIN)
+    where PIN: Channel<Adc<ADC>, ID=u8> {
+        self.adc_reg.adcmctl0.modify(|_, w| w.adcinch().bits(PIN::channel()));
     }
 }
 
@@ -300,6 +306,10 @@ where
     type Error = ();
 
     fn read(&mut self, _pin: &mut PIN ) -> nb::Result<WORD, Self::Error> {
+        self.adc_disable();
+        self.adc_set_pin(_pin);
+        self.adc_enable();
+
         self.adc_start_conversion();
         while self.adc_is_busy() {}
         let result = self.adc_get_result();
