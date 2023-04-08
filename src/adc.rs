@@ -245,7 +245,7 @@ impl AdcConfig {
         adc_reg.adcctl0.modify(|_, w| w.adcsht().bits(adcsht));
 
         let adcssel = self.clock_source.adcssel();
-        adc_reg.adcctl1.modify(|_, w| w.adcssel().bits(adcssel));
+        adc_reg.adcctl1.modify(|_, w| w.adcssel().bits(adcssel).adcshp().adcshp_1());
 
         let adcdiv = self.clock_divider.adcdiv();
         adc_reg.adcctl1.modify(|_, w| w.adcdiv().bits(adcdiv));
