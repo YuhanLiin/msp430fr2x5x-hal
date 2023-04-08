@@ -2,17 +2,14 @@
 use core::marker::PhantomData;
 use embedded_hal::spi::FullDuplex;
 use msp430fr2355 as pac;
-use crate::hal::{
-    spi::{Mode, Polarity, Phase},
-};
+use crate::hal::spi::{Mode, Polarity, Phase};
 use crate::{
-    hw_traits::Steal,
     hw_traits::eusci::{EusciSPI, UcxSpiCtw0, Ucmode, Ucssel},
     gpio::{Alternate1, Pin, P1, P4, Pin0, Pin1, Pin2, Pin3, Pin4, Pin5, Pin6, Pin7},
     clock::{Smclk, Aclk},
     hal
 };
-use nb::Error::{WouldBlock};
+use nb::Error::WouldBlock;
 
 /// Marks a eUSCI capable of SPI communication (in this case, all euscis do)
 pub trait EUsciSPIBus : EusciSPI{
