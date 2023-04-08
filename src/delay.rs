@@ -1,6 +1,6 @@
 //! Embedded hal delay implementation
 use msp430::asm;
-use crate::hal::blocking::delay::{DelayMs, DelayUs};
+use crate::hal::blocking::delay::{DelayMs};
 
 
 /// Delay provider struct
