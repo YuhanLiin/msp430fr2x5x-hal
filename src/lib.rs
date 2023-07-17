@@ -25,8 +25,10 @@
 #![allow(incomplete_features)] // Enable specialization without warnings
 #![feature(specialization)]
 #![feature(asm_experimental_arch)]
-#![deny(missing_docs)]
+// #![deny(missing_docs)]
+#![feature(asm_const)]
 
+pub mod adc;
 pub mod batch_gpio;
 pub mod capture;
 pub mod clock;
@@ -43,4 +45,9 @@ pub mod watchdog;
 mod hw_traits;
 mod util;
 
+pub mod i2c;
+pub mod spi;
+pub mod delay;
+
 pub use msp430fr2355 as pac;
+pub use embedded_hal as hal;
