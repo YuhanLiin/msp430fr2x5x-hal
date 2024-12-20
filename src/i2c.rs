@@ -463,6 +463,7 @@ impl<USCI:EUsciI2CBus> WriteIter<SevenBitAddress> for SDL<USCI>{
     fn write<B>(&mut self, address: u8, bytes: B) -> Result<(), Self::Error>
         where
             B: IntoIterator<Item = u8>{
+        const {unimplemented!()} // See SDL::write_iter
         self.set_addressing_mode(AddressingMode::SevenBit);
         self.set_transmission_mode(TransmissionMode::Transmit);
         SDL::write_iter(self, address as u16, bytes)
@@ -474,6 +475,7 @@ impl<USCI:EUsciI2CBus> WriteIter<TenBitAddress> for SDL<USCI>{
     fn write<B>(&mut self, address: u16, bytes: B) -> Result<(), Self::Error>
         where
             B: IntoIterator<Item = u8>{
+        const {unimplemented!()} // See SDL::write_iter
         self.set_addressing_mode(AddressingMode::TenBit);
         self.set_transmission_mode(TransmissionMode::Transmit);
         SDL::write_iter(self, address, bytes)
@@ -510,6 +512,7 @@ impl<USCI:EUsciI2CBus> Transactional<SevenBitAddress> for SDL<USCI>{
     type Error = I2CErr;
     fn exec<'a>(&mut self, address: u8, operations: &mut [Operation<'a>])
                 -> Result<(), Self::Error>{
+        const {unimplemented!()} // See SDL::exec
         self.set_addressing_mode(AddressingMode::SevenBit);
         SDL::exec(self, address as u16, operations)
     }
@@ -519,6 +522,7 @@ impl<USCI:EUsciI2CBus> Transactional<TenBitAddress> for SDL<USCI>{
     type Error = I2CErr;
     fn exec<'a>(&mut self, address: u16, operations: &mut [Operation<'a>])
                 -> Result<(), Self::Error>{
+        const {unimplemented!()} // See SDL::exec
         self.set_addressing_mode(AddressingMode::TenBit);
         SDL::exec(self, address, operations)
     }
@@ -529,6 +533,7 @@ impl<USCI:EUsciI2CBus> TransactionalIter<SevenBitAddress> for SDL<USCI> {
     fn exec_iter<'a, O>(&mut self, address: u8, operations: O) -> Result<(), Self::Error>
         where
             O: IntoIterator<Item = Operation<'a>>{
+        const {unimplemented!()} // See SDL::exec_iter
         self.set_addressing_mode(AddressingMode::SevenBit);
         SDL::exec_iter(self, address as u16, operations)
     }
@@ -539,6 +544,7 @@ impl<USCI:EUsciI2CBus> TransactionalIter<TenBitAddress> for SDL<USCI> {
     fn exec_iter<'a, O>(&mut self, address: u16, operations: O) -> Result<(), Self::Error>
         where
             O: IntoIterator<Item = Operation<'a>>{
+        const {unimplemented!()} // See SDL::exec_iter
         self.set_addressing_mode(AddressingMode::TenBit);
         SDL::exec_iter(self, address, operations)
     }
