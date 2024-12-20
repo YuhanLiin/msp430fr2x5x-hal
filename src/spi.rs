@@ -51,149 +51,80 @@ impl EUsciSPIBus for pac::E_USCI_B1 {
     type STE  = UsciB1STEPin;
 }
 
-/// SPI MISO pin for eUSCI A0
-pub struct UsciA0MISOPin;
-impl<DIR> Into<UsciA0MISOPin> for Pin<P1, Pin7, Alternate1<DIR>> {
-    #[inline(always)]
-    fn into(self) -> UsciA0MISOPin {
-        UsciA0MISOPin
+// Allows a GPIO pin to be converted into an SPI object
+macro_rules! impl_spi_pin{
+    ($struct_name: ident, $port: ty, $pin: ty) => {
+        impl<DIR> Into<$struct_name> for Pin<$port, $pin, Alternate1<DIR>> {
+            #[inline(always)]
+            fn into(self) -> $struct_name {
+                $struct_name
+            }
+        }
     }
 }
+
+/// SPI MISO pin for eUSCI A0
+pub struct UsciA0MISOPin;
+impl_spi_pin!(UsciA0MISOPin, P1, Pin7);
 
 /// SPI MOSI pin for eUSCI A0
 pub struct UsciA0MOSIPin;
-impl<DIR> Into<UsciA0MOSIPin> for Pin<P1, Pin6, Alternate1<DIR>> {
-    #[inline(always)]
-    fn into(self) -> UsciA0MOSIPin {
-        UsciA0MOSIPin
-    }
-}
+impl_spi_pin!(UsciA0MOSIPin, P1, Pin6);
 
 /// SPI SCLK pin for eUSCI A0
 pub struct UsciA0SCLKPin;
-impl<DIR> Into<UsciA0SCLKPin> for Pin<P1, Pin5, Alternate1<DIR>> {
-    #[inline(always)]
-    fn into(self) -> UsciA0SCLKPin {
-        UsciA0SCLKPin
-    }
-}
+impl_spi_pin!(UsciA0SCLKPin, P1, Pin5);
 
 /// SPI STE pin for eUSCI A0
 pub struct UsciA0STEPin;
-impl<DIR> Into<UsciA0STEPin> for Pin<P1, Pin4, Alternate1<DIR>> {
-    #[inline(always)]
-    fn into(self) -> UsciA0STEPin {
-        UsciA0STEPin
-    }
-}
+impl_spi_pin!(UsciA0STEPin, P1, Pin4);
 
 /// SPI MISO pin for eUSCI A1
 pub struct UsciA1MISOPin;
-impl<DIR> Into<UsciA1MISOPin> for Pin<P4, Pin3, Alternate1<DIR>> {
-    #[inline(always)]
-    fn into(self) -> UsciA1MISOPin {
-        UsciA1MISOPin
-    }
-}
+impl_spi_pin!(UsciA1MISOPin, P4, Pin3);
 
 /// SPI MOSI pin for eUSCI A1
 pub struct UsciA1MOSIPin;
-impl<DIR> Into<UsciA1MOSIPin> for Pin<P4, Pin2, Alternate1<DIR>> {
-    #[inline(always)]
-    fn into(self) -> UsciA1MOSIPin {
-        UsciA1MOSIPin
-    }
-}
+impl_spi_pin!(UsciA1MOSIPin, P4, Pin2);
 
 /// SPI SCLK pin for eUSCI A1
 pub struct UsciA1SCLKPin;
-impl<DIR> Into<UsciA1SCLKPin> for Pin<P4, Pin1, Alternate1<DIR>> {
-    #[inline(always)]
-    fn into(self) -> UsciA1SCLKPin {
-        UsciA1SCLKPin
-    }
-}
-
+impl_spi_pin!(UsciA1SCLKPin, P4, Pin1);
 /// SPI STE pin for eUSCI A1
 pub struct UsciA1STEPin;
-impl<DIR> Into<UsciA1STEPin> for Pin<P4, Pin0, Alternate1<DIR>> {
-    #[inline(always)]
-    fn into(self) -> UsciA1STEPin {
-        UsciA1STEPin
-    }
-}
+impl_spi_pin!(UsciA1STEPin, P4, Pin0);
 
 /// SPI MISO pin for eUSCI B0
 pub struct UsciB0MISOPin;
-impl<DIR> Into<UsciB0MISOPin> for Pin<P1, Pin3, Alternate1<DIR>> {
-    #[inline(always)]
-    fn into(self) -> UsciB0MISOPin {
-        UsciB0MISOPin
-    }
-}
+impl_spi_pin!(UsciB0MISOPin, P1, Pin3);
 
 /// SPI MOSI pin for eUSCI B0
 pub struct UsciB0MOSIPin;
-impl<DIR> Into<UsciB0MOSIPin> for Pin<P1, Pin2, Alternate1<DIR>> {
-    #[inline(always)]
-    fn into(self) -> UsciB0MOSIPin {
-        UsciB0MOSIPin
-    }
-}
+impl_spi_pin!(UsciB0MOSIPin, P1, Pin2);
 
 /// SPI SCLK pin for eUSCI B0
 pub struct UsciB0SCLKPin;
-impl<DIR> Into<UsciB0SCLKPin> for Pin<P1, Pin1, Alternate1<DIR>> {
-    #[inline(always)]
-    fn into(self) -> UsciB0SCLKPin {
-        UsciB0SCLKPin
-    }
-}
+impl_spi_pin!(UsciB0SCLKPin, P1, Pin1);
 
 /// SPI STE pin for eUSCI B0
 pub struct UsciB0STEPin;
-impl<DIR> Into<UsciB0STEPin> for Pin<P1, Pin0, Alternate1<DIR>> {
-    #[inline(always)]
-    fn into(self) -> UsciB0STEPin {
-        UsciB0STEPin
-    }
-}
+impl_spi_pin!(UsciB0STEPin, P1, Pin0);
 
 /// SPI MISO pin for eUSCI B1
 pub struct UsciB1MISOPin;
-impl<DIR> Into<UsciB1MISOPin> for Pin<P4, Pin7, Alternate1<DIR>> {
-    #[inline(always)]
-    fn into(self) -> UsciB1MISOPin {
-        UsciB1MISOPin
-    }
-}
+impl_spi_pin!(UsciB1MISOPin, P4, Pin7);
 
 /// SPI MOSI pin for eUSCI B1
 pub struct UsciB1MOSIPin;
-impl<DIR> Into<UsciB1MOSIPin> for Pin<P4, Pin6, Alternate1<DIR>> {
-    #[inline(always)]
-    fn into(self) -> UsciB1MOSIPin {
-        UsciB1MOSIPin
-    }
-}
+impl_spi_pin!(UsciB1MOSIPin, P4, Pin6);
 
 /// SPI SCLK pin for eUSCI B1
 pub struct UsciB1SCLKPin;
-impl<DIR> Into<UsciB1SCLKPin> for Pin<P4, Pin5, Alternate1<DIR>> {
-    #[inline(always)]
-    fn into(self) -> UsciB1SCLKPin {
-        UsciB1SCLKPin
-    }
-}
+impl_spi_pin!(UsciB1SCLKPin, P4, Pin5);
 
 /// SPI STE pin for eUSCI B1
 pub struct UsciB1STEPin;
-impl<DIR> Into<UsciB1STEPin> for Pin<P4, Pin4, Alternate1<DIR>> {
-    #[inline(always)]
-    fn into(self) -> UsciB1STEPin {
-        UsciB1STEPin
-    }
-}
+impl_spi_pin!(UsciB1STEPin, P4, Pin4);
 
 /// Struct used to configure a SPI bus
 pub struct SPIBusConfig<USCI: EUsciSPIBus>{

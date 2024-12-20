@@ -127,77 +127,29 @@ impl SamplingRate {
     }
 }
 
-impl Channel<Adc<ADC>> for Pin<P1, Pin0, Alternate3<Input<Floating>>> {
-    type ID = u8;
-
-    fn channel() -> Self::ID { 0 }
+// Pins corresponding to an ADC channel. Pin types can have `::channel()` called on them to get their ADC channel index.
+macro_rules! impl_adc_channel {
+    ($port: ty, $pin: ty, $channel: literal ) => {
+        impl Channel<Adc<ADC>> for Pin<$port, $pin, Alternate3<Input<Floating>>> {
+            type ID = u8;
+        
+            fn channel() -> Self::ID { $channel }
+        }
+    };
 }
 
-impl Channel<Adc<ADC>> for Pin<P1, Pin1, Alternate3<Input<Floating>>> {
-    type ID = u8;
-
-    fn channel() -> Self::ID { 1 }
-}
-
-impl Channel<Adc<ADC>> for Pin<P1, Pin2, Alternate3<Input<Floating>>> {
-    type ID = u8;
-
-    fn channel() -> Self::ID { 2 }
-}
-
-impl Channel<Adc<ADC>> for Pin<P1, Pin3, Alternate3<Input<Floating>>> {
-    type ID = u8;
-
-    fn channel() -> Self::ID { 3 }
-}
-
-impl Channel<Adc<ADC>> for Pin<P1, Pin4, Alternate3<Input<Floating>>> {
-    type ID = u8;
-
-    fn channel() -> Self::ID { 4 }
-}
-
-impl Channel<Adc<ADC>> for Pin<P1, Pin5, Alternate3<Input<Floating>>> {
-    type ID = u8;
-
-    fn channel() -> Self::ID { 5 }
-}
-
-impl Channel<Adc<ADC>> for Pin<P1, Pin6, Alternate3<Input<Floating>>> {
-    type ID = u8;
-
-    fn channel() -> Self::ID { 6 }
-}
-
-impl Channel<Adc<ADC>> for Pin<P1, Pin7, Alternate3<Input<Floating>>> {
-    type ID = u8;
-
-    fn channel() -> Self::ID { 7 }
-}
-
-impl Channel<Adc<ADC>> for Pin<P5, Pin0, Alternate3<Input<Floating>>> {
-    type ID = u8;
-
-    fn channel() -> Self::ID { 8 }
-}
-
-impl Channel<Adc<ADC>> for Pin<P5, Pin1, Alternate3<Input<Floating>>> {
-    type ID = u8;
-
-    fn channel() -> Self::ID { 9 }
-}
-
-impl Channel<Adc<ADC>> for Pin<P5, Pin2, Alternate3<Input<Floating>>> {
-    type ID = u8;
-
-    fn channel() -> Self::ID { 10 }
-}
-
-impl Channel<Adc<ADC>> for Pin<P5, Pin3, Alternate3<Input<Floating>>> {
-    type ID = u8;
-
-    fn channel() -> Self::ID { 11 }
-}
+impl_adc_channel!(P1, Pin0, 0);
+impl_adc_channel!(P1, Pin1, 1);
+impl_adc_channel!(P1, Pin2, 2);
+impl_adc_channel!(P1, Pin3, 3);
+impl_adc_channel!(P1, Pin4, 4);
+impl_adc_channel!(P1, Pin5, 5);
+impl_adc_channel!(P1, Pin6, 6);
+impl_adc_channel!(P1, Pin7, 7);
+impl_adc_channel!(P5, Pin0, 8);
+impl_adc_channel!(P5, Pin1, 9);
+impl_adc_channel!(P5, Pin2, 10);
+impl_adc_channel!(P5, Pin3, 11);
 
 pub struct Adc<ADC> {
     adc_reg: ADC,

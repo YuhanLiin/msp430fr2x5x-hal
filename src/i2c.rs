@@ -111,41 +111,33 @@ impl EUsciI2CBus for pac::E_USCI_B1 {
     type DataPin = UsciB1SDAPin;
 }
 
+// Allows a GPIO pin to be converted into an I2C object
+macro_rules! impl_i2c_pin {
+    ($struct_name: ident, $port: ty, $pin: ty) => {
+        impl<DIR> Into<$struct_name> for Pin<$port, $pin, Alternate1<DIR>> {
+            #[inline(always)]
+            fn into(self) -> $struct_name {
+                $struct_name
+            }
+        }
+    };
+}
+
 /// I2C SCL pin for eUSCI B0
 pub struct UsciB0SCLPin;
-impl<DIR> Into<UsciB0SCLPin> for Pin<P1, Pin3, Alternate1<DIR>> {
-    #[inline(always)]
-    fn into(self) -> UsciB0SCLPin {
-        UsciB0SCLPin
-    }
-}
+impl_i2c_pin!(UsciB0SCLPin, P1, Pin3);
 
 /// I2C SDA pin for eUSCI B0
 pub struct UsciB0SDAPin;
-impl<DIR> Into<UsciB0SDAPin> for Pin<P1, Pin2, Alternate1<DIR>> {
-    #[inline(always)]
-    fn into(self) -> UsciB0SDAPin {
-        UsciB0SDAPin
-    }
-}
+impl_i2c_pin!(UsciB0SDAPin, P1, Pin2);
 
 /// I2C SCL pin for eUSCI B1
 pub struct UsciB1SCLPin;
-impl<DIR> Into<UsciB1SCLPin> for Pin<P4, Pin7, Alternate1<DIR>> {
-    #[inline(always)]
-    fn into(self) -> UsciB1SCLPin {
-        UsciB1SCLPin
-    }
-}
+impl_i2c_pin!(UsciB1SCLPin, P4, Pin7);
 
 /// I2C SDA pin for eUSCI B1
 pub struct UsciB1SDAPin;
-impl<DIR> Into<UsciB1SDAPin> for Pin<P4, Pin6, Alternate1<DIR>> {
-    #[inline(always)]
-    fn into(self) -> UsciB1SDAPin {
-        UsciB1SDAPin
-    }
-}
+impl_i2c_pin!(UsciB1SDAPin, P4, Pin6);
 
 impl<USCI: EUsciI2CBus> I2CBusConfig<USCI>{
     /// Create a new configuration for setting up a EUSCI peripheral in I2C master mode

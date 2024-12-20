@@ -135,32 +135,28 @@ impl SerialUsci for pac::E_USCI_A0 {
     type RxPin = UsciA0RxPin;
 }
 
+macro_rules! impl_serial_pin {
+    ($struct_name: ident, $port: ty, $pin: ty) => {
+        impl<DIR> Into<$struct_name> for Pin<$port, $pin, Alternate1<DIR>> {
+            #[inline(always)]
+            fn into(self) -> $struct_name {
+                $struct_name
+            }
+        }
+    };
+}
+
 /// UCLK pin for E_USCI_A0
 pub struct UsciA0ClockPin;
-impl<DIR> Into<UsciA0ClockPin> for Pin<P1, Pin5, Alternate1<DIR>> {
-    #[inline(always)]
-    fn into(self) -> UsciA0ClockPin {
-        UsciA0ClockPin
-    }
-}
+impl_serial_pin!(UsciA0ClockPin, P1, Pin5);
 
 /// Tx pin for E_USCI_A0
 pub struct UsciA0TxPin;
-impl<DIR> Into<UsciA0TxPin> for Pin<P1, Pin7, Alternate1<DIR>> {
-    #[inline(always)]
-    fn into(self) -> UsciA0TxPin {
-        UsciA0TxPin
-    }
-}
+impl_serial_pin!(UsciA0TxPin, P1, Pin7);
 
 /// Rx pin for E_USCI_A0
 pub struct UsciA0RxPin;
-impl<DIR> Into<UsciA0RxPin> for Pin<P1, Pin6, Alternate1<DIR>> {
-    #[inline(always)]
-    fn into(self) -> UsciA0RxPin {
-        UsciA0RxPin
-    }
-}
+impl_serial_pin!(UsciA0RxPin, P1, Pin6);
 
 impl SerialUsci for pac::E_USCI_A1 {
     type ClockPin = UsciA1ClockPin;
@@ -170,30 +166,15 @@ impl SerialUsci for pac::E_USCI_A1 {
 
 /// UCLK pin for E_USCI_A1
 pub struct UsciA1ClockPin;
-impl<DIR> Into<UsciA1ClockPin> for Pin<P4, Pin1, Alternate1<DIR>> {
-    #[inline(always)]
-    fn into(self) -> UsciA1ClockPin {
-        UsciA1ClockPin
-    }
-}
+impl_serial_pin!(UsciA1ClockPin, P4, Pin1);
 
 /// Tx pin for E_USCI_A1
 pub struct UsciA1TxPin;
-impl<DIR> Into<UsciA1TxPin> for Pin<P4, Pin3, Alternate1<DIR>> {
-    #[inline(always)]
-    fn into(self) -> UsciA1TxPin {
-        UsciA1TxPin
-    }
-}
+impl_serial_pin!(UsciA1TxPin, P4, Pin3);
 
 /// Rx pin for E_USCI_A1
 pub struct UsciA1RxPin;
-impl<DIR> Into<UsciA1RxPin> for Pin<P4, Pin2, Alternate1<DIR>> {
-    #[inline(always)]
-    fn into(self) -> UsciA1RxPin {
-        UsciA1RxPin
-    }
-}
+impl_serial_pin!(UsciA1RxPin, P4, Pin2);
 
 /// Typestate for a serial interface with an unspecified clock source
 pub struct NoClockSet {
