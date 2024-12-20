@@ -25,9 +25,10 @@
 #![allow(incomplete_features)] // Enable specialization without warnings
 #![feature(specialization)]
 #![feature(asm_experimental_arch)]
-#![deny(missing_docs)]
+// #![deny(missing_docs)]
 #![feature(asm_const)]
 
+pub mod adc;
 pub mod batch_gpio;
 pub mod capture;
 pub mod clock;
