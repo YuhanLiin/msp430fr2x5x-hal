@@ -339,7 +339,7 @@ impl<SMCLK: SmclkState> ClockConfig<MclkDefined, SMCLK> {
 }
 
 impl ClockConfig<MclkDefined, SmclkDefined> {
-    /// Apply clock configuration to hardware and return SMCLK and ACLK clock objects
+    /// Apply clock configuration to hardware and return SMCLK and ACLK clock objects.
     /// Also returns delay provider
     #[inline]
     pub fn freeze(self, fram: &mut Fram) -> (Smclk, Aclk, Delay) {
@@ -356,7 +356,7 @@ impl ClockConfig<MclkDefined, SmclkDefined> {
 }
 
 impl ClockConfig<MclkDefined, SmclkDisabled> {
-    /// Apply clock configuration to hardware and return ACLK clock object, as SMCLK is disabled
+    /// Apply clock configuration to hardware and return ACLK clock object, as SMCLK is disabled.
     /// Also returns delay provider.
     #[inline]
     pub fn freeze(self, fram: &mut Fram) -> (Aclk, Delay) {

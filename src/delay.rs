@@ -2,16 +2,15 @@
 use msp430::asm;
 use crate::hal::blocking::delay::{DelayMs};
 
-
 /// Delay provider struct
 pub struct Delay{
     nops_per_ms: u16
 }
 
 impl Delay{
-    #[doc(hidden)]
+    /// Create a new delay object
     pub fn new(freq: u32) -> Self{
-        // ~21 nops needed per 2^20 MHz to delay 1 ms
+        // ~21 nops needed per 2^20 Hz to delay 1 ms
         let nops : u32 = 210 * (freq >> 20);
         Delay{nops_per_ms: (nops as u16)}
     }
