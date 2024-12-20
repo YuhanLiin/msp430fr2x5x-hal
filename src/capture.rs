@@ -31,10 +31,10 @@ pub enum CapTrigger {
     BothEdges,
 }
 
-impl Into<Cm> for CapTrigger {
+impl From<CapTrigger> for Cm {
     #[inline]
-    fn into(self) -> Cm {
-        match self {
+    fn from(val: CapTrigger) -> Self {
+        match val {
             CapTrigger::RisingEdge => Cm::RisingEdge,
             CapTrigger::FallingEdge => Cm::FallingEdge,
             CapTrigger::BothEdges => Cm::BothEdges,

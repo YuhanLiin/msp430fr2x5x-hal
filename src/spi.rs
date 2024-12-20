@@ -54,9 +54,9 @@ impl EUsciSPIBus for pac::E_USCI_B1 {
 // Allows a GPIO pin to be converted into an SPI object
 macro_rules! impl_spi_pin{
     ($struct_name: ident, $port: ty, $pin: ty) => {
-        impl<DIR> Into<$struct_name> for Pin<$port, $pin, Alternate1<DIR>> {
+        impl<DIR> From<Pin<$port, $pin, Alternate1<DIR>>> for $struct_name {
             #[inline(always)]
-            fn into(self) -> $struct_name {
+            fn from(_val: Pin<$port, $pin, Alternate1<DIR>>) -> Self {
                 $struct_name
             }
         }
