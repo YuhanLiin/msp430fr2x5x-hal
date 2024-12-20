@@ -370,8 +370,8 @@ impl<USCI:EUsciI2CBus> SDL<USCI>{
             return Err::<(), I2CErr>(I2CErr::GotNACK);
         }
 
-        for i in 0 .. bytes.len() {
-            usci.uctxbuf_wr(bytes[i]);
+        for &byte in bytes {
+            usci.uctxbuf_wr(byte);
             ifg = usci.ifg_rd();
             while !ifg.uctxifg0() {
                 ifg = usci.ifg_rd();
@@ -404,10 +404,7 @@ impl<USCI:EUsciI2CBus> SDL<USCI>{
         buffer: &mut [u8],
     ) -> Result<(), I2CErr>{
         self.set_transmission_mode(TransmissionMode::Transmit);
-        let result = self.read(address, buffer);
-        if result.is_err() {
-            return result;
-        }
+        self.read(address, buffer)?;
         self.set_transmission_mode(TransmissionMode::Receive);
         self.write(address, bytes)
     }

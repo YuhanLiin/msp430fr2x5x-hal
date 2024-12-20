@@ -1,6 +1,6 @@
 use core::{u8};
 use crate::gpio::*;
-use embedded_hal::{adc::{Channel, OneShot}};
+use embedded_hal::adc::{Channel, OneShot};
 use msp430fr2355::ADC;
 
 pub enum SampleTime {
