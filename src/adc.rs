@@ -237,11 +237,12 @@ impl AdcConfig {
 
     pub fn config_hw(self) -> Adc<ADC> {
         let adc_reg = self.adc;
-
-        adc_reg.adcctl0.modify(|_, w| w.adcenc().adcenc_0()
-                                                .adcon().adcon_0()
-                                                .adcsc().adcsc_0());
-
+        unsafe {
+            adc_reg.adcctl0.clear_bits(|w| w
+                .adcenc().clear_bit()
+                .adcon().clear_bit()
+                .adcsc().clear_bit());
+        }
         let adcsht = self.sample_time.adcsht();
         adc_reg.adcctl0.modify(|_, w| w.adcsht().bits(adcsht));
 
@@ -259,6 +260,7 @@ impl AdcConfig {
 
         let adcsr = self.sampling_rate.adcsr();
         adc_reg.adcctl2.modify(|_, w| w.adcsr().bit(adcsr));
+        
 
         Adc { adc_reg, is_waiting: false }
     }
@@ -269,20 +271,26 @@ impl Adc<ADC> {
         Adc { adc_reg: adc, is_waiting: false }
     }
 
-    pub fn adc_enable(&self) {
-        self.adc_reg.adcctl0.modify(|_, w| w.adcon().adcon_1());
+    pub fn adc_enable(&mut self) {
+        unsafe {self.adc_reg.adcctl0.set_bits(|w| w.adcon().set_bit());}
     }
 
-    pub fn adc_disable(&self) {
-        self.adc_reg.adcctl0.modify(|_, w| 
-            w.adcon().adcon_0()
-            .adcenc().adcenc_0());
+    pub fn adc_disable(&mut self) {
+        unsafe {
+            self.adc_reg.adcctl0.clear_bits(|w| w
+                .adcon().clear_bit()
+                .adcenc().clear_bit());
+        }
     }
 
-    pub fn adc_start_conversion(&self) {
-        self.adc_reg
-            .adcctl0
-            .modify(|_, w| w.adcenc().adcenc_1().adcsc().adcsc_1());
+    pub fn adc_start_conversion(&mut self) {
+        unsafe {
+            self.adc_reg.adcctl0
+            .set_bits(|w| w
+                .adcenc().set_bit()
+                .adcsc().set_bit());
+        }
+        
     }
 
     pub fn adc_is_busy(&self) -> bool {
@@ -293,7 +301,7 @@ impl Adc<ADC> {
         return self.adc_reg.adcmem0.read().bits();
     }
 
-    pub fn adc_set_pin<PIN>(&self, _pin: &PIN)
+    pub fn adc_set_pin<PIN>(&mut self, _pin: &PIN)
     where PIN: Channel<Adc<ADC>, ID=u8> {
         self.adc_reg.adcmctl0.modify(|_, w| w.adcinch().bits(PIN::channel()));
     }
