@@ -201,6 +201,7 @@ impl Channel<Adc<ADC>> for Pin<P5, Pin3, Alternate3<Input<Floating>>> {
 
 pub struct Adc<ADC> {
     adc_reg: ADC,
+    is_waiting: bool,
 }
 
 pub struct AdcConfig {
@@ -259,13 +260,13 @@ impl AdcConfig {
         let adcsr = self.sampling_rate.adcsr();
         adc_reg.adcctl2.modify(|_, w| w.adcsr().bit(adcsr));
 
-        Adc { adc_reg }
+        Adc { adc_reg, is_waiting: false }
     }
 }
 
 impl Adc<ADC> {
     pub fn new(adc: ADC) -> Adc<ADC> {
-        Adc { adc_reg: adc }
+        Adc { adc_reg: adc, is_waiting: false }
     }
 
     pub fn adc_enable(&self) {
@@ -305,15 +306,23 @@ where
 {
     type Error = ();
 
-    fn read(&mut self, _pin: &mut PIN ) -> nb::Result<WORD, Self::Error> {
+    fn read(&mut self, pin: &mut PIN ) -> nb::Result<WORD, Self::Error> {
+        if self.is_waiting {
+            if self.adc_is_busy() {
+                return Err(nb::Error::WouldBlock);
+            }
+            else {
+                self.is_waiting = false;
+                return Ok(self.adc_get_result().into());
+            }
+        }
+        
         self.adc_disable();
-        self.adc_set_pin(_pin);
+        self.adc_set_pin(pin);
         self.adc_enable();
 
         self.adc_start_conversion();
-        while self.adc_is_busy() {}
-        let result = self.adc_get_result();
-
-        Ok(result.into())
+        self.is_waiting = true;
+        Err(nb::Error::WouldBlock)
     }
 }
