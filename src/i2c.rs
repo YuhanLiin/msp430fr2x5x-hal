@@ -278,7 +278,7 @@ impl<USCI: EUsciI2CBus> I2CBusConfig<USCI>{
         SDL(PhantomData)
     }
 
-    /// Performs hardware confiuration
+    /// Performs hardware configuration
     #[inline]
     fn configure(&self){
         self.usci.ctw0_wr_rst(true);
@@ -554,9 +554,3 @@ impl<USCI:EUsciI2CBus> TransactionalIter<TenBitAddress> for SDL<USCI> {
         SDL::exec_iter(self, address, operations)
     }
 }
-
-
-
-
-
-

@@ -342,15 +342,3 @@ impl<USCI:EUsciSPIBus> FullDuplex<u8> for SPIPins<USCI>{
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
