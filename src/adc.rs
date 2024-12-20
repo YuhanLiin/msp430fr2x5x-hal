@@ -205,13 +205,13 @@ pub struct Adc<ADC> {
 }
 
 pub struct AdcConfig {
-    adc: ADC,
-    clock_source: ClockSource,
-    clock_divider: ClockDivider,
-    predivider: Predivider,
-    resolution: Resolution,
-    sampling_rate: SamplingRate,
-    sample_time: SampleTime,
+    pub adc: ADC,
+    pub clock_source: ClockSource,
+    pub clock_divider: ClockDivider,
+    pub predivider: Predivider,
+    pub resolution: Resolution,
+    pub sampling_rate: SamplingRate,
+    pub sample_time: SampleTime,
 }
 
 impl AdcConfig {
