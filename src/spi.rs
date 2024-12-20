@@ -159,9 +159,9 @@ impl<USCI: EUsciSPIBus> SPIBusConfig<USCI>{
 
 
         SPIBusConfig{
-            usci: usci,
+            usci,
             prescaler: 0,
-            ctlw0: ctlw0
+            ctlw0
         }
     }
 

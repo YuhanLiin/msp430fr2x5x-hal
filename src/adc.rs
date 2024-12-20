@@ -178,12 +178,12 @@ impl AdcConfig {
     ) -> AdcConfig {
         AdcConfig {
             adc,
-            clock_source: clock_source,
-            clock_divider: clock_divider,
-            predivider: predivider,
-            resolution: resolution,
-            sampling_rate: sampling_rate,
-            sample_time: sample_time,
+            clock_source,
+            clock_divider,
+            predivider,
+            resolution,
+            sampling_rate,
+            sample_time,
         }
     }
 

@@ -233,14 +233,14 @@ impl<USCI: EUsciI2CBus> I2CBusConfig<USCI>{
         I2CBusConfig{
             usci,
             divisor: 1,
-            ctlw0: ctlw0,
-            ctlw1: ctlw1,
-            i2coa0: i2coa0,
-            i2coa1: i2coa1,
-            i2coa2: i2coa2,
-            i2coa3: i2coa3,
-            ie: ie,
-            ifg: ifg,
+            ctlw0,
+            ctlw1,
+            i2coa0,
+            i2coa1,
+            i2coa2,
+            i2coa3,
+            ie,
+            ifg,
         }
     }
 
