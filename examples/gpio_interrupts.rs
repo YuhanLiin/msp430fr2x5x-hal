@@ -28,7 +28,7 @@ static P2IV: Mutex<RefCell<Option<PxIV<P2>>>> = Mutex::new(RefCell::new(None));
 #[entry]
 fn main() -> ! {
     let periph = msp430fr2355::Peripherals::take().unwrap();
-    let (_smclk, aclk) = ClockConfig::new(periph.CS)
+    let (_smclk, aclk, _delay) = ClockConfig::new(periph.CS)
         .mclk_refoclk(MclkDiv::_1)
         // 32 KHz SMCLK
         .smclk_on(SmclkDiv::_2)

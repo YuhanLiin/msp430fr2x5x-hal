@@ -33,7 +33,7 @@ fn main() -> ! {
     let mut led = p1.pin0;
     let mut button = p2.pin3;
 
-    let (_smclk, _aclk) = ClockConfig::new(periph.CS)
+    let (_smclk, _aclk, _delay) = ClockConfig::new(periph.CS)
         .mclk_refoclk(MclkDiv::_1)
         .smclk_on(SmclkDiv::_1)
         .aclk_vloclk()

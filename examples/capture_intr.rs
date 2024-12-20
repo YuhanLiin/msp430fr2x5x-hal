@@ -50,7 +50,7 @@ fn main() -> ! {
 
         with(|cs| unsafe { *RED_LED.borrow(cs).get() = Some(red_led) });
 
-        let (_smclk, aclk) = ClockConfig::new(periph.CS)
+        let (_smclk, aclk, _delay) = ClockConfig::new(periph.CS)
             .mclk_dcoclk(DcoclkFreqSel::_1MHz, MclkDiv::_1)
             .smclk_on(SmclkDiv::_1)
             .aclk_vloclk()

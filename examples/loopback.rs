@@ -54,7 +54,7 @@ fn main() -> ! {
     let mut fram = Fram::new(periph.FRCTL);
     let _wdt = Wdt::constrain(periph.WDT_A);
 
-    let (smclk, _aclk) = ClockConfig::new(periph.CS)
+    let (smclk, _aclk, _delay) = ClockConfig::new(periph.CS)
         .mclk_dcoclk(DcoclkFreqSel::_4MHz, MclkDiv::_1)
         .smclk_on(SmclkDiv::_2)
         .aclk_refoclk()
