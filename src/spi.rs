@@ -307,20 +307,6 @@ pub enum SPIErr{
     Unimplemented = 0,
 }
 
-
-
-impl<USCI:EUsciSPIBus> hal::blocking::spi::Write<u8> for SPIPins<USCI>{
-    type Error = SPIErr;
-
-    fn write(&mut self, words: &[u8]) -> Result<(), SPIErr> {
-        for word in words {
-            nb::block!(self.send(*word))?;
-            nb::block!(self.read())?;
-        }
-        Ok(())
-    }
-}
-
 impl<USCI:EUsciSPIBus> FullDuplex<u8> for SPIPins<USCI>{
     type Error = SPIErr;
     fn read(&mut self) -> nb::Result<u8, Self::Error>{
@@ -342,3 +328,7 @@ impl<USCI:EUsciSPIBus> FullDuplex<u8> for SPIPins<USCI>{
         }
     }
 }
+
+// Implementing FullDuplex above gets us a blocking write and transfer implementation for free
+impl<USCI: EUsciSPIBus> embedded_hal::blocking::spi::write::Default<u8> for SPIPins<USCI> {}
+impl<USCI: EUsciSPIBus> embedded_hal::blocking::spi::transfer::Default<u8> for SPIPins<USCI> {}
