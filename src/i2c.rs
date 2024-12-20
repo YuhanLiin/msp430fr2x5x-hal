@@ -281,7 +281,7 @@ impl<USCI: EUsciI2CBus> I2CBusConfig<USCI>{
     /// Performs hardware configuration
     #[inline]
     fn configure(&self){
-        self.usci.ctw0_wr_rst(true);
+        self.usci.ctw0_set_rst();
 
         self.usci.ctw0_wr(&self.ctlw0);
         self.usci.ctw1_wr(&self.ctlw1);
@@ -295,7 +295,7 @@ impl<USCI: EUsciI2CBus> I2CBusConfig<USCI>{
         self.usci.brw_wr(self.divisor);
         self.usci.tbcnt_wr(0);
 
-        self.usci.ctw0_wr_rst(false);
+        self.usci.ctw0_clear_rst();
     }
 
 }

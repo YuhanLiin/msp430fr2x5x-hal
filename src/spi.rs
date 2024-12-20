@@ -259,13 +259,13 @@ impl<USCI: EUsciSPIBus> SPIBusConfig<USCI>{
 
     #[inline]
     fn configure_hw(&self){
-        self.usci.ctw0_wr_rst(true);
+        self.usci.ctw0_set_rst();
 
         self.usci.ctw0_wr(&self.ctlw0);
         self.usci.brw_wr(self.prescaler);
-        self.usci.uclisten_set(false);
+        self.usci.uclisten_clear();
 
-        self.usci.ctw0_wr_rst(false);
+        self.usci.ctw0_clear_rst();
 
         self.usci.transmit_interrupt_set(false);
         self.usci.receive_interrupt_set(false);

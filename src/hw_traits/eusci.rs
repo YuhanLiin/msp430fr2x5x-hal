@@ -311,7 +311,8 @@ pub trait EUsciI2C: EUsci {
 
     // Read or write to UCSWRST
     fn ctw0_rd_rst(&self) -> bool;
-    fn ctw0_wr_rst(&self, bit:bool);
+    fn ctw0_set_rst(&self);
+    fn ctw0_clear_rst(&self);
 
     // Modify only when UCSWRST = 1
     fn ctw0_rd(&self) -> UcbCtlw0;
@@ -359,7 +360,8 @@ pub trait EUsciI2C: EUsci {
 pub trait EusciSPI : EUsci{
     type Statw : SpiStatw;
 
-    fn ctw0_wr_rst(&self, bit:bool);
+    fn ctw0_set_rst(&self);
+    fn ctw0_clear_rst(&self);
 
     fn ctw0_wr(&self, reg:&UcxSpiCtw0);
 
@@ -367,7 +369,8 @@ pub trait EusciSPI : EUsci{
 
     fn statw_rd(&self) -> Self::Statw;
 
-    fn uclisten_set(&self, bit:bool);
+    fn uclisten_set(&self);
+    fn uclisten_clear(&self);
 
     fn rxbuf_rd(&self) -> u8;
 
@@ -437,8 +440,13 @@ macro_rules! eusci_impl {
             type Statw = $StatwSpi;
 
             #[inline(always)]
-            fn ctw0_wr_rst(&self, bit:bool){
-                self.$ucxctlw0().modify(|_, w| w.ucswrst().bit(bit))
+            fn ctw0_set_rst(&self){
+                unsafe { self.$ucxctlw0().set_bits(|w| w.ucswrst().set_bit()) }
+            }
+
+            #[inline(always)]
+            fn ctw0_clear_rst(&self){
+                unsafe { self.$ucxctlw0().clear_bits(|w| w.ucswrst().clear_bit()) }
             }
 
             #[inline(always)]
@@ -457,8 +465,12 @@ macro_rules! eusci_impl {
             }
 
             #[inline(always)]
-            fn uclisten_set(&self, bit:bool){
-                self.$ucxstatw().modify(|_, w| w.uclisten().bit(bit))
+            fn uclisten_set(&self){
+                unsafe { self.$ucxstatw().set_bits(|w| w.uclisten().set_bit()) }
+            }
+            #[inline(always)]
+            fn uclisten_clear(&self){
+                unsafe { self.$ucxstatw().clear_bits(|w| w.uclisten().clear_bit()) }
             }
 
             #[inline(always)]
@@ -472,13 +484,19 @@ macro_rules! eusci_impl {
             }
 
             #[inline(always)]
-            fn transmit_interrupt_set(&self, bit:bool){
-                self.$ucxie().modify(|_, w| w.uctxie().bit(bit));
+            fn transmit_interrupt_set(&self, bit: bool){
+                match bit {
+                    true => unsafe { self.$ucxie().set_bits(|w| w.uctxie().set_bit()) },
+                    false => unsafe { self.$ucxie().clear_bits(|w| w.uctxie().clear_bit()) },
+                }
             }
 
             #[inline(always)]
-            fn receive_interrupt_set(&self, bit:bool){
-                self.$ucxie().modify(|_, w| w.ucrxie().bit(bit));
+            fn receive_interrupt_set(&self, bit: bool){
+                match bit {
+                    true => unsafe { self.$ucxie().set_bits(|w| w.ucrxie().set_bit()) },
+                    false => unsafe { self.$ucxie().clear_bits(|w| w.ucrxie().clear_bit()) },
+                }
             }
 
             #[inline(always)]
@@ -712,28 +730,33 @@ macro_rules! eusci_b_impl {
             }
 
             #[inline(always)]
-            fn ctw0_wr_rst(&self, bit:bool){
-                self.$ucbxctlw0().modify(|_, w| w.ucswrst().bit(bit))
+            fn ctw0_set_rst(&self){
+                unsafe { self.$ucbxctlw0().set_bits(|w| w.ucswrst().set_bit()) } 
+            }
+
+            #[inline(always)]
+            fn ctw0_clear_rst(&self){
+                unsafe { self.$ucbxctlw0().clear_bits(|w| w.ucswrst().clear_bit()) } 
             }
 
             #[inline(always)]
             fn transmit_ack(&self){
-                self.$ucbxctlw0().modify(|_, w| w.uctxack().bit(true))
+                unsafe { self.$ucbxctlw0().set_bits(|w| w.uctxack().set_bit()) } 
             }
 
             #[inline(always)]
             fn transmit_nack(&self){
-                self.$ucbxctlw0().modify(|_, w| w.uctxnack().bit(true))
+                unsafe { self.$ucbxctlw0().set_bits(|w| w.uctxnack().set_bit()) } 
             }
 
             #[inline(always)]
             fn transmit_start(&self){
-                self.$ucbxctlw0().modify(|_, w| w.uctxstt().bit(true))
+                unsafe { self.$ucbxctlw0().set_bits(|w| w.uctxstt().set_bit()) } 
             }
 
             #[inline(always)]
             fn transmit_stop(&self){
-                self.$ucbxctlw0().modify(|_, w| w.uctxstp().bit(true))
+                unsafe { self.$ucbxctlw0().set_bits(|w| w.uctxstp().set_bit()) } 
             }
 
             #[inline(always)]
@@ -748,12 +771,18 @@ macro_rules! eusci_b_impl {
 
             #[inline(always)]
             fn set_ucsla10(&self, bit:bool){
-                self.$ucbxctlw0().modify(|_, w| w.ucsla10().bit(bit))
+                match bit {
+                    true => unsafe { self.$ucbxctlw0().set_bits(|w| w.ucsla10().set_bit()) },
+                    false => unsafe { self.$ucbxctlw0().clear_bits(|w| w.ucsla10().clear_bit()) },
+                }
             }
 
             #[inline(always)]
             fn set_uctr(&self, bit:bool){
-                self.$ucbxctlw0().modify(|_, w| w.uctr().bit(bit))
+                match bit {
+                    true => unsafe { self.$ucbxctlw0().set_bits(|w| w.uctr().set_bit()) },
+                    false => unsafe { self.$ucbxctlw0().clear_bits(|w| w.uctr().clear_bit()) },
+                }
             }
 
             #[inline(always)]
