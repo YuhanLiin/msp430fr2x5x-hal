@@ -18,7 +18,6 @@ use crate::hw_traits::gpio::{GpioPeriph, IntrPeriph};
 use crate::util::BitsExt;
 use core::marker::PhantomData;
 use embedded_hal::digital::v2::{InputPin, OutputPin, StatefulOutputPin, ToggleableOutputPin};
-use msp430::asm;
 use msp430fr2355 as pac;
 pub use pac::{P1, P2, P3, P4, P5, P6};
 
@@ -360,10 +359,6 @@ impl<PORT: PortNum, PIN: PinNum> OutputPin for Pin<PORT, PIN, Output> {
 
     #[inline]
     fn set_low(&mut self) -> Result<(), Self::Error> {
-        //TODO figure out why this is needed for screen
-        for _ in 0..200{
-            asm::nop();
-        }
         let p = unsafe { PORT::steal() };
         p.pxout_clear(PIN::CLR_MASK);
         Ok(())
@@ -371,10 +366,6 @@ impl<PORT: PortNum, PIN: PinNum> OutputPin for Pin<PORT, PIN, Output> {
 
     #[inline]
     fn set_high(&mut self) -> Result<(), Self::Error> {
-        //TODO figure out why this is needed for screen
-        for _ in 0..200{
-            asm::nop();
-        }
         let p = unsafe { PORT::steal() };
         p.pxout_set(PIN::SET_MASK);
         Ok(())
