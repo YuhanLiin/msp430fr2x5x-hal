@@ -1,115 +1,86 @@
 use core::{u8};
+use core::convert::Infallible;
 use crate::gpio::*;
 use embedded_hal::adc::{Channel, OneShot};
 use msp430fr2355::ADC;
 
 pub enum SampleTime {
-    _4,
-    _8,
-    _16,
-    _32,
-    _64,
-    _96,
-    _128,
-    _192,
-    _256,
-    _384,
-    _512,
-    _768,
-    _1024,
+    _4 = 0b0000,
+    _8 = 0b0001,
+    _16 = 0b0010,
+    _32 = 0b0011,
+    _64 = 0b0100,
+    _96 = 0b0101,
+    _128 = 0b0110,
+    _192 = 0b0111,
+    _256 = 0b1000,
+    _384 = 0b1001,
+    _512 = 0b1010,
+    _768 = 0b1011,
+    _1024 = 0b1100,
 }
 
 impl SampleTime {
+    #[inline(always)]
     fn adcsht(self) -> u8 {
-        match self {
-            SampleTime::_4 => 0b000,
-            SampleTime::_8 => 0b001,
-            SampleTime::_16 => 0b010,
-            SampleTime::_32 => 0b011,
-            SampleTime::_64 => 0b100,
-            SampleTime::_96 => 0b101,
-            SampleTime::_128 => 0b110,
-            SampleTime::_192 => 0b111,
-            SampleTime::_256 => 0b1000,
-            SampleTime::_384 => 0b1001,
-            SampleTime::_512 => 0b1010,
-            SampleTime::_768 => 0b1011,
-            SampleTime::_1024 => 0b1100,
-        }
+        self as u8
     }
 }
 
 pub enum ClockDivider {
-    _1,
-    _2,
-    _3,
-    _4,
-    _5,
-    _6,
-    _7,
-    _8,
+    _1 = 0b000,
+    _2 = 0b001,
+    _3 = 0b010,
+    _4 = 0b011,
+    _5 = 0b100,
+    _6 = 0b101,
+    _7 = 0b110,
+    _8 = 0b111,
 }
 
 impl ClockDivider {
+    #[inline(always)]
     fn adcdiv(self) -> u8 {
-        match self {
-            ClockDivider::_1 => 0b000,
-            ClockDivider::_2 => 0b001,
-            ClockDivider::_3 => 0b010,
-            ClockDivider::_4 => 0b011,
-            ClockDivider::_5 => 0b100,
-            ClockDivider::_6 => 0b101,
-            ClockDivider::_7 => 0b110,
-            ClockDivider::_8 => 0b111,
-        }
+        self as u8
     }
 }
 
 pub enum ClockSource {
-    MODCLK,
-    ACLK,
-    SMCLK,
+    MODCLK = 0b00,
+    ACLK = 0b01,
+    SMCLK = 0b10,
 }
 
 impl ClockSource {
+    #[inline(always)]
     fn adcssel(self) -> u8 {
-        match self {
-            ClockSource::MODCLK => 0b00,
-            ClockSource::ACLK => 0b01,
-            ClockSource::SMCLK => 0b10,
-        }
+        self as u8
     }
 }
 
 pub enum Predivider {
-    _1,
-    _4,
-    _64,
+    _1 = 0b00,
+    _4 = 0b01,
+    _64 = 0b10,
 }
 
 impl Predivider {
+    #[inline(always)]
     fn adcpdiv(self) -> u8 {
-        match self {
-            Predivider::_1 => 0b00,
-            Predivider::_4 => 0b01,
-            Predivider::_64 => 0b10,
-        }
+        self as u8
     }
 }
 
 pub enum Resolution {
-    _8BIT,
-    _10BIT,
-    _12BIT,
+    _8BIT = 0b00,
+    _10BIT = 0b01,
+    _12BIT = 0b10,
 }
 
 impl Resolution {
+    #[inline(always)]
     fn adcres(self) -> u8 {
-        match self {
-            Resolution::_8BIT => 0b00,
-            Resolution::_10BIT => 0b01,
-            Resolution::_12BIT => 0b10,
-        }
+        self as u8
     }
 }
 
@@ -119,6 +90,7 @@ pub enum SamplingRate {
 }
 
 impl SamplingRate {
+    #[inline(always)]
     fn adcsr(self) -> bool {
         match self {
             SamplingRate::_200KSPS => false,
@@ -246,11 +218,11 @@ impl Adc<ADC> {
     }
 
     pub fn adc_is_busy(&self) -> bool {
-        return self.adc_reg.adcctl1.read().adcbusy().bit_is_set();
+        self.adc_reg.adcctl1.read().adcbusy().bit_is_set()
     }
 
     pub fn adc_get_result(&self) -> u16 {
-        return self.adc_reg.adcmem0.read().bits();
+        self.adc_reg.adcmem0.read().bits()
     }
 
     pub fn adc_set_pin<PIN>(&mut self, _pin: &PIN)
@@ -264,7 +236,7 @@ where
     WORD: From<u16>,
     PIN: Channel<Adc<ADC>, ID = u8>,
 {
-    type Error = ();
+    type Error = Infallible; // Only returns WouldBlock
 
     fn read(&mut self, pin: &mut PIN ) -> nb::Result<WORD, Self::Error> {
         if self.is_waiting {
