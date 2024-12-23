@@ -3,39 +3,35 @@
 
 use embedded_hal::digital::v2::*;
 use msp430_rt::entry;
-use msp430fr2x5x_hal::{gpio::Batch, pmm::Pmm, watchdog::Wdt};
+use msp430fr2x5x_hal::{
+    clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv}, 
+    fram::Fram, gpio::Batch, hal::blocking::delay::DelayMs, pmm::Pmm, watchdog::Wdt};
 use panic_msp430 as _;
 
 // Red onboard LED should blink at a steady period.
-// Green onboard LED should go on when P2.3 button is pressed
 #[entry]
 fn main() -> ! {
+    // Take peripherals and disable watchdog
     let periph = msp430fr2355::Peripherals::take().unwrap();
     let _wdt = Wdt::constrain(periph.WDT_A);
 
+    // Configure GPIO
     let pmm = Pmm::new(periph.PMM);
-    let p1 = Batch::new(periph.P1).split(&pmm);
-    let p2 = Batch::new(periph.P2)
-        .config_pin3(|p| p.pullup())
-        .split(&pmm);
-    let p6 = Batch::new(periph.P6)
-        .config_pin6(|p| p.to_output())
-        .split(&pmm);
+    let port1 = Batch::new(periph.P1).split(&pmm);
+    let mut p1_0 = port1.pin0.to_output();
 
-    let mut p1_0 = p1.pin0.to_output();
-    let p2_3 = p2.pin3;
-    let mut p6_6 = p6.pin6;
+    // Configure clocks to get accurate delay timing
+    let mut fram = Fram::new(periph.FRCTL);
+    let (_smclk, _aclk, mut delay) = ClockConfig::new(periph.CS)
+        .mclk_dcoclk(DcoclkFreqSel::_8MHz, MclkDiv::_1)
+        .smclk_on(SmclkDiv::_1)
+        .freeze(&mut fram);
 
     loop {
-        p1_0.toggle().ok();
-
-        for _ in 0..5000 {
-            if p2_3.is_high().unwrap() {
-                p6_6.set_low().ok();
-            } else {
-                p6_6.set_high().ok();
-            }
-        }
+        // `toggle()` returns a `Result` because of embedded_hal, but the result is always `Ok` with MSP430 GPIO.
+        // Rust complains about unused Results, so we 'use' the Result by calling .ok()
+        p1_0.toggle().ok(); 
+        delay.delay_ms(500_u16);
     }
 }
 
