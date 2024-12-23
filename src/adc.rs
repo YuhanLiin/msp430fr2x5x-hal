@@ -1,12 +1,12 @@
 //! Analog to Digital Converter (ADC)
 //!
 //! The ADC may read from any of the following pins:
-//! 
+//!
 //! P1.0 - P1.7 (channels 0 to 7), P5.0 - P5.3 (channels 8 to 11)
-//! 
+//!
 
-use core::convert::Infallible;
 use crate::gpio::*;
+use core::convert::Infallible;
 use embedded_hal::adc::{Channel, OneShot};
 use msp430fr2355::ADC;
 
@@ -127,9 +127,9 @@ impl Resolution {
 
 /// Selects the drive capability of the ADC reference buffer, which can increase the maximum sampling speed at the cost of increased power draw.
 pub enum SamplingRate {
-    /// Maximum of 50 ksps. Lower power usage. 
+    /// Maximum of 50 ksps. Lower power usage.
     _50KSPS,
-    /// Maximum of 200 ksps. Higher power usage. 
+    /// Maximum of 200 ksps. Higher power usage.
     _200KSPS,
 }
 
@@ -148,8 +148,10 @@ macro_rules! impl_adc_channel {
     ($port: ty, $pin: ty, $channel: literal ) => {
         impl Channel<Adc<ADC>> for Pin<$port, $pin, Alternate3<Input<Floating>>> {
             type ID = u8;
-        
-            fn channel() -> Self::ID { $channel }
+
+            fn channel() -> Self::ID {
+                $channel
+            }
         }
     };
 }
@@ -217,16 +219,22 @@ impl AdcConfig {
     pub fn config_hw(self) -> Adc<ADC> {
         let adc_reg = self.adc;
         unsafe {
-            adc_reg.adcctl0.clear_bits(|w| w
-                .adcenc().clear_bit()
-                .adcon().clear_bit()
-                .adcsc().clear_bit());
+            adc_reg.adcctl0.clear_bits(|w| {
+                w.adcenc()
+                    .clear_bit()
+                    .adcon()
+                    .clear_bit()
+                    .adcsc()
+                    .clear_bit()
+            });
         }
         let adcsht = self.sample_time.adcsht();
         adc_reg.adcctl0.modify(|_, w| w.adcsht().bits(adcsht));
 
         let adcssel = self.clock_source.adcssel();
-        adc_reg.adcctl1.modify(|_, w| w.adcssel().bits(adcssel).adcshp().adcshp_1());
+        adc_reg
+            .adcctl1
+            .modify(|_, w| w.adcssel().bits(adcssel).adcshp().adcshp_1());
 
         let adcdiv = self.clock_divider.adcdiv();
         adc_reg.adcctl1.modify(|_, w| w.adcdiv().bits(adcdiv));
@@ -240,41 +248,47 @@ impl AdcConfig {
         let adcsr = self.sampling_rate.adcsr();
         adc_reg.adcctl2.modify(|_, w| w.adcsr().bit(adcsr));
 
-        Adc { adc_reg, is_waiting: false }
+        Adc {
+            adc_reg,
+            is_waiting: false,
+        }
     }
 }
 
 impl Adc<ADC> {
     /// Create an ADC instance with a default configuration.
-    /// 
+    ///
     /// If you need a custom configuration you should construct an ADC using AdcConfig instead.
     pub fn new(adc: ADC) -> Adc<ADC> {
-        Adc { adc_reg: adc, is_waiting: false }
+        Adc {
+            adc_reg: adc,
+            is_waiting: false,
+        }
     }
 
     /// Enables this ADC, ready to start a conversion.
     pub fn adc_enable(&mut self) {
-        unsafe {self.adc_reg.adcctl0.set_bits(|w| w.adcon().set_bit());}
+        unsafe {
+            self.adc_reg.adcctl0.set_bits(|w| w.adcon().set_bit());
+        }
     }
 
     /// Disables this ADC to save power.
     pub fn adc_disable(&mut self) {
         unsafe {
-            self.adc_reg.adcctl0.clear_bits(|w| w
-                .adcon().clear_bit()
-                .adcenc().clear_bit());
+            self.adc_reg
+                .adcctl0
+                .clear_bits(|w| w.adcon().clear_bit().adcenc().clear_bit());
         }
     }
 
     /// Starts an ADC conversion.
     pub fn adc_start_conversion(&mut self) {
         unsafe {
-            self.adc_reg.adcctl0
-            .set_bits(|w| w
-                .adcenc().set_bit()
-                .adcsc().set_bit());
+            self.adc_reg
+                .adcctl0
+                .set_bits(|w| w.adcenc().set_bit().adcsc().set_bit());
         }
-        
     }
 
     /// Whether the ADC is currently sampling or converting.
@@ -289,8 +303,12 @@ impl Adc<ADC> {
 
     /// Selects which pin to sample. Can only be modified when the ADC is not busy.
     pub fn adc_set_pin<PIN>(&mut self, _pin: &PIN)
-    where PIN: Channel<Adc<ADC>, ID=u8> {
-        self.adc_reg.adcmctl0.modify(|_, w| w.adcinch().bits(PIN::channel()));
+    where
+        PIN: Channel<Adc<ADC>, ID = u8>,
+    {
+        self.adc_reg
+            .adcmctl0
+            .modify(|_, w| w.adcinch().bits(PIN::channel()));
     }
 }
 
@@ -301,20 +319,19 @@ where
 {
     type Error = Infallible; // Only returns WouldBlock
 
-    /// Begins a single ADC conversion if one is not already underway. 
-    /// 
+    /// Begins a single ADC conversion if one is not already underway.
+    ///
     /// If the result is ready it is returned, otherwise returns `WouldBlock`
-    fn read(&mut self, pin: &mut PIN ) -> nb::Result<WORD, Self::Error> {
+    fn read(&mut self, pin: &mut PIN) -> nb::Result<WORD, Self::Error> {
         if self.is_waiting {
             if self.adc_is_busy() {
                 return Err(nb::Error::WouldBlock);
-            }
-            else {
+            } else {
                 self.is_waiting = false;
                 return Ok(self.adc_get_result().into());
             }
         }
-        
+
         self.adc_disable();
         self.adc_set_pin(pin);
         self.adc_enable();

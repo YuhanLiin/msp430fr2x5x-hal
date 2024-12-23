@@ -74,8 +74,8 @@ fn main() -> ! {
 #[interrupt]
 fn PORT2() {
     with(|cs| {
-        let Some(ref mut red_led) = *RED_LED.borrow_ref_mut(cs) else { return };
-        let Some(ref mut p2iv) = *P2IV.borrow_ref_mut(cs) else { return };
+        let Some(ref mut red_led) = *RED_LED.borrow_ref_mut(cs) else { return; };
+        let Some(ref mut p2iv) = *P2IV.borrow_ref_mut(cs) else { return; };
 
         if let GpioVector::Pin7Isr = p2iv.get_interrupt_vector() {
             red_led.toggle().ok();

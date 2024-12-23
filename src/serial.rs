@@ -8,7 +8,7 @@
 
 use crate::clock::{Aclk, Clock, Smclk};
 use crate::gpio::{Alternate1, Pin, Pin1, Pin2, Pin3, Pin5, Pin6, Pin7, P1, P4};
-use crate::hw_traits::eusci::{EUsciUart, UartUcxStatw, Ucssel, UcaCtlw0};
+use crate::hw_traits::eusci::{EUsciUart, UartUcxStatw, UcaCtlw0, Ucssel};
 use core::marker::PhantomData;
 use embedded_hal::serial::{Read, Write};
 use msp430fr2355 as pac;
@@ -235,7 +235,9 @@ impl<USCI: SerialUsci> SerialConfig<USCI, NoClockSet> {
             loopback,
             usci,
             // Safety: .max(1) ensures baudrate is non-zero
-            state: NoClockSet { baudrate: unsafe {core::num::NonZeroU32::new_unchecked(baudrate.max(1))} },
+            state: NoClockSet {
+                baudrate: unsafe { core::num::NonZeroU32::new_unchecked(baudrate.max(1)) },
+            },
         }
     }
 
@@ -294,20 +296,24 @@ fn calculate_baud_config(clk_freq: u32, bps: core::num::NonZeroU32) -> BaudConfi
     // Ensure n stays within the 16 bit boundary
     // Safety: NonZeroU32 prevents div/0
     // (clk_freq / bps).clamp(1, 0xFFFF)
-    let n = (unsafe{ clk_freq.checked_div(bps_u32).unwrap_unchecked()} ).clamp(1, 0xFFFF);
+    let n = (unsafe { clk_freq.checked_div(bps_u32).unwrap_unchecked() }).clamp(1, 0xFFFF);
 
     let brs = lookup_brs(clk_freq, bps);
 
-    if (n >= 16) && (bps_u32 < u32::MAX/16) {
+    if (n >= 16) && (bps_u32 < u32::MAX / 16) {
         let div = bps_u32 * 16;
         // n / 16, but more precise
-        // Safety:  0 < bps < u32::MAX/16  implies  0 < div < u32::MAX 
-        let br = (unsafe {clk_freq.checked_div(div).unwrap_unchecked()}) as u16;
-        
+        // Safety:  0 < bps < u32::MAX/16  implies  0 < div < u32::MAX
+        let br = (unsafe { clk_freq.checked_div(div).unwrap_unchecked() }) as u16;
+
         // same as n % 16, but more precise
         // Safety: div and bps non-zero due to above checks
         // (clk_freq % div) / bps
-        let brf = (unsafe{(clk_freq.checked_rem(div)).and_then(|a| a.checked_div(bps_u32)).unwrap_unchecked()}) as u8;
+        let brf = (unsafe {
+            (clk_freq.checked_rem(div))
+                .and_then(|a| a.checked_div(bps_u32))
+                .unwrap_unchecked()
+        }) as u8;
         BaudConfig {
             ucos16: true,
             br,
@@ -325,32 +331,20 @@ fn calculate_baud_config(clk_freq: u32, bps: core::num::NonZeroU32) -> BaudConfi
 }
 const BRS_LOOKUP_LEN: usize = 36;
 // Data from table 22-4 of MSP430FR4xx and MSP430FR2xx family user's guide (Rev. I)
-const BRS_LOOKUP_KEYS : [u16;BRS_LOOKUP_LEN] =
-    [
-        0x0000, 0x00d9, 0x0125, 0x0156, 0x019a,
-        0x0201, 0x024a, 0x02ac, 0x036f, 0x038f,
-        0x0401, 0x04cd, 0x0556, 0x05b8, 0x0601,
-        0x0668, 0x06dc, 0x0701, 0x0801, 0x0925,
-        0x099b, 0x0a02, 0x0a4b, 0x0aab, 0x0b34,
-        0x0b6f, 0x0c01, 0x0c94, 0x0cce, 0x0d55,
-        0x0d8b, 0x0db7, 0x0e00, 0x0e68, 0x0eac,
-        0x0edc
-    ];
+const BRS_LOOKUP_KEYS: [u16; BRS_LOOKUP_LEN] = [
+    0x0000, 0x00d9, 0x0125, 0x0156, 0x019a, 0x0201, 0x024a, 0x02ac, 0x036f, 0x038f, 0x0401, 0x04cd,
+    0x0556, 0x05b8, 0x0601, 0x0668, 0x06dc, 0x0701, 0x0801, 0x0925, 0x099b, 0x0a02, 0x0a4b, 0x0aab,
+    0x0b34, 0x0b6f, 0x0c01, 0x0c94, 0x0cce, 0x0d55, 0x0d8b, 0x0db7, 0x0e00, 0x0e68, 0x0eac, 0x0edc,
+];
 
-const BRS_LOOKUP_VALS : [u8;BRS_LOOKUP_LEN] =
-    [
-        0x00,0x01,0x02,0x04,0x08,
-        0x10,0x20,0x11,0x21,0x22,
-        0x44,0x25,0x49,0x4A,0x52,
-        0x92,0x53,0x55,0xAA,0x6B,
-        0xAD,0xB5,0xB6,0xD6,0xB7,
-        0xBB,0xDD,0xED,0xEE,0xBF,
-        0xDF,0xEF,0xF7,0xFB,0xFD,
-        0xFE
-    ];
+const BRS_LOOKUP_VALS: [u8; BRS_LOOKUP_LEN] = [
+    0x00, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x11, 0x21, 0x22, 0x44, 0x25, 0x49, 0x4A, 0x52, 0x92,
+    0x53, 0x55, 0xAA, 0x6B, 0xAD, 0xB5, 0xB6, 0xD6, 0xB7, 0xBB, 0xDD, 0xED, 0xEE, 0xBF, 0xDF, 0xEF,
+    0xF7, 0xFB, 0xFD, 0xFE,
+];
 
 #[inline(always)]
-fn binary_search_brs_table(res : u16) -> u8{
+fn binary_search_brs_table(res: u16) -> u8 {
     let mut low: usize = 0;
     let mut high: usize = BRS_LOOKUP_LEN - 1;
     // Safety: 0 <= low <= mid <= high < BRS_LOOKUP_LEN
@@ -358,20 +352,20 @@ fn binary_search_brs_table(res : u16) -> u8{
         let mid = (low + high) >> 1;
         let key = unsafe { *BRS_LOOKUP_KEYS.get_unchecked(mid) };
         if res == key {
-            return unsafe {*BRS_LOOKUP_VALS.get_unchecked(mid)}
-        }else if high - low == 1{
-            return if res < unsafe{ *BRS_LOOKUP_KEYS.get_unchecked(high) } {
-                unsafe {*BRS_LOOKUP_VALS.get_unchecked(low)}
+            return unsafe { *BRS_LOOKUP_VALS.get_unchecked(mid) };
+        } else if high - low == 1 {
+            return if res < unsafe { *BRS_LOOKUP_KEYS.get_unchecked(high) } {
+                unsafe { *BRS_LOOKUP_VALS.get_unchecked(low) }
             } else {
-                unsafe {*BRS_LOOKUP_VALS.get_unchecked(high)}
-            }
-        }else if res > key{
+                unsafe { *BRS_LOOKUP_VALS.get_unchecked(high) }
+            };
+        } else if res > key {
             low = mid;
-        }else{
+        } else {
             high = mid - 1;
         }
     }
-    return unsafe{ *BRS_LOOKUP_VALS.get_unchecked(low)};
+    return unsafe { *BRS_LOOKUP_VALS.get_unchecked(low) };
 }
 
 #[inline(always)]
@@ -510,7 +504,7 @@ impl<USCI: SerialUsci> Rx<USCI> {
 
     /// Reads raw value from Rx buffer with no checks for validity
     #[inline(always)]
-    pub fn read_no_check(&mut self) -> u8{
+    pub fn read_no_check(&mut self) -> u8 {
         let usci = unsafe { USCI::steal() };
         usci.rx_rd()
     }

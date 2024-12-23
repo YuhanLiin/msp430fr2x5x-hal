@@ -61,7 +61,7 @@ macro_rules! reg_methods {
 
         #[inline(always)]
         fn $wr(&self, bits: u8) {
-            self.$reg.write(|w| unsafe {w.bits(bits) });
+            self.$reg.write(|w| unsafe { w.bits(bits) });
         }
 
         #[inline(always)]
@@ -73,7 +73,7 @@ macro_rules! reg_methods {
         fn $clear(&self, bits: u8) {
             unsafe { self.$reg.clear_bits(|w| w.bits(bits)) }
         }
-    }
+    };
 }
 
 macro_rules! gpio_impl {

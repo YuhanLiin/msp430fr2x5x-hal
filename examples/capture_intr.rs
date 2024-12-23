@@ -41,7 +41,7 @@ static RED_LED: Mutex<UnsafeCell<Option<Pin<P1, Pin0, Output>>>> =
 // so sometimes inputs are missed.
 #[entry]
 fn main() -> ! {
-    let Some(periph) = msp430fr2355::Peripherals::take() else { loop{} };
+    let Some(periph) = msp430fr2355::Peripherals::take() else { loop {} };
     let mut fram = Fram::new(periph.FRCTL);
     Wdt::constrain(periph.WDT_A);
 
@@ -83,9 +83,9 @@ fn setup_capture<T: CapCmp<C>, C>(capture: &mut Capture<T, C>) {
 #[interrupt]
 fn TIMER0_B1() {
     with(|cs| {
-        let Some(vector) = unsafe { &mut *VECTOR.borrow(cs).get() }.as_mut() else { return };
-        let Some(capture) = unsafe { &mut *CAPTURE.borrow(cs).get() }.as_mut() else { return };
-        let Some(led) = unsafe { &mut *RED_LED.borrow(cs).get() }.as_mut() else { return };
+        let Some(vector) = unsafe { &mut *VECTOR.borrow(cs).get() }.as_mut() else { return; };
+        let Some(capture) = unsafe { &mut *CAPTURE.borrow(cs).get() }.as_mut() else { return; };
+        let Some(led) = unsafe { &mut *RED_LED.borrow(cs).get() }.as_mut() else { return; };
 
         if let CaptureVector::Capture1(cap) = vector.interrupt_vector() {
             if cap.interrupt_capture(capture).is_ok() {

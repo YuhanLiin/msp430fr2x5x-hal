@@ -4,8 +4,13 @@
 use embedded_hal::digital::v2::*;
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
-    clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv}, 
-    fram::Fram, gpio::Batch, hal::blocking::delay::DelayMs, pmm::Pmm, watchdog::Wdt};
+    clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv},
+    fram::Fram,
+    gpio::Batch,
+    hal::blocking::delay::DelayMs,
+    pmm::Pmm,
+    watchdog::Wdt,
+};
 use panic_msp430 as _;
 
 // Red onboard LED should blink at a steady period.
@@ -30,7 +35,7 @@ fn main() -> ! {
     loop {
         // `toggle()` returns a `Result` because of embedded_hal, but the result is always `Ok` with MSP430 GPIO.
         // Rust complains about unused Results, so we 'use' the Result by calling .ok()
-        p1_0.toggle().ok(); 
+        p1_0.toggle().ok();
         delay.delay_ms(500_u16);
     }
 }
