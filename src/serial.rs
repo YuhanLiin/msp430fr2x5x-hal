@@ -178,7 +178,7 @@ impl_serial_pin!(UsciA1RxPin, P4, Pin2);
 
 /// Typestate for a serial interface with an unspecified clock source
 pub struct NoClockSet {
-    baudrate: u32,
+    baudrate: core::num::NonZeroU32,
 }
 
 /// Typestate for a serial interface with a specified clock source
@@ -234,7 +234,8 @@ impl<USCI: SerialUsci> SerialConfig<USCI, NoClockSet> {
             parity,
             loopback,
             usci,
-            state: NoClockSet { baudrate },
+            // Safety: .max(1) ensures baudrate is non-zero
+            state: NoClockSet { baudrate: unsafe {core::num::NonZeroU32::new_unchecked(baudrate.max(1))} },
         }
     }
 
@@ -288,20 +289,25 @@ struct BaudConfig {
 }
 
 #[inline]
-fn calculate_baud_config(clk_freq: u32, bps: u32) -> BaudConfig {
-    // Prevent division by 0
-    let bps = bps.max(1);
+fn calculate_baud_config(clk_freq: u32, bps: core::num::NonZeroU32) -> BaudConfig {
+    let bps_u32: u32 = bps.into();
     // Ensure n stays within the 16 bit boundary
-    let n = (clk_freq / bps).max(1).min(0xFFFF);
+    // Safety: NonZeroU32 prevents div/0
+    // (clk_freq / bps).clamp(1, 0xFFFF)
+    let n = (unsafe{ clk_freq.checked_div(bps_u32).unwrap_unchecked()} ).clamp(1, 0xFFFF);
 
     let brs = lookup_brs(clk_freq, bps);
 
-    if n >= 16 {
-        let div = bps * 16;
+    if (n >= 16) && (bps_u32 < u32::MAX/16) {
+        let div = bps_u32 * 16;
         // n / 16, but more precise
-        let br = (clk_freq / div) as u16;
+        // Safety:  0 < bps < u32::MAX/16  implies  0 < div < u32::MAX 
+        let br = (unsafe {clk_freq.checked_div(div).unwrap_unchecked()}) as u16;
+        
         // same as n % 16, but more precise
-        let brf = ((clk_freq % div) / bps) as u8;
+        // Safety: div and bps non-zero due to above checks
+        // (clk_freq % div) / bps
+        let brf = (unsafe{(clk_freq.checked_rem(div)).and_then(|a| a.checked_div(bps_u32)).unwrap_unchecked()}) as u8;
         BaudConfig {
             ucos16: true,
             br,
@@ -317,9 +323,9 @@ fn calculate_baud_config(clk_freq: u32, bps: u32) -> BaudConfig {
         }
     }
 }
-
+const BRS_LOOKUP_LEN: usize = 36;
 // Data from table 22-4 of MSP430FR4xx and MSP430FR2xx family user's guide (Rev. I)
-const BRS_LOOKUP_KEYS : [u16;36] =
+const BRS_LOOKUP_KEYS : [u16;BRS_LOOKUP_LEN] =
     [
         0x0000, 0x00d9, 0x0125, 0x0156, 0x019a,
         0x0201, 0x024a, 0x02ac, 0x036f, 0x038f,
@@ -331,7 +337,7 @@ const BRS_LOOKUP_KEYS : [u16;36] =
         0x0edc
     ];
 
-const BRS_LOOKUP_VALS : [u8;36] =
+const BRS_LOOKUP_VALS : [u8;BRS_LOOKUP_LEN] =
     [
         0x00,0x01,0x02,0x04,0x08,
         0x10,0x20,0x11,0x21,0x22,
@@ -346,17 +352,18 @@ const BRS_LOOKUP_VALS : [u8;36] =
 #[inline(always)]
 fn binary_search_brs_table(res : u16) -> u8{
     let mut low: usize = 0;
-    let mut high: usize = BRS_LOOKUP_KEYS.len() - 1;
+    let mut high: usize = BRS_LOOKUP_LEN - 1;
+    // Safety: 0 <= low <= mid <= high < BRS_LOOKUP_LEN
     while low != high {
         let mid = (low + high) >> 1;
-        let key = BRS_LOOKUP_KEYS[mid];
+        let key = unsafe { *BRS_LOOKUP_KEYS.get_unchecked(mid) };
         if res == key {
-            return BRS_LOOKUP_VALS[mid]
+            return unsafe {*BRS_LOOKUP_VALS.get_unchecked(mid)}
         }else if high - low == 1{
-            return if res < BRS_LOOKUP_KEYS[high] {
-                BRS_LOOKUP_VALS[low]
+            return if res < unsafe{ *BRS_LOOKUP_KEYS.get_unchecked(high) } {
+                unsafe {*BRS_LOOKUP_VALS.get_unchecked(low)}
             } else {
-                BRS_LOOKUP_VALS[high]
+                unsafe {*BRS_LOOKUP_VALS.get_unchecked(high)}
             }
         }else if res > key{
             low = mid;
@@ -364,14 +371,18 @@ fn binary_search_brs_table(res : u16) -> u8{
             high = mid - 1;
         }
     }
-    return BRS_LOOKUP_VALS[low];
+    return unsafe{ *BRS_LOOKUP_VALS.get_unchecked(low)};
 }
 
 #[inline(always)]
-fn lookup_brs(clk_freq: u32, bps: u32) -> u8 {
-    let modulo = clk_freq % bps;
+fn lookup_brs(clk_freq: u32, bps: core::num::NonZeroU32) -> u8 {
+    // Safety: NonZeroU32 prevents /div0
+    // clk_freq % bps
+    let modulo = unsafe { clk_freq.checked_rem(bps.into()).unwrap_unchecked() };
     // 12 fractional bit fixed point result
-    let fixed_point_result : u32 = (modulo << 12) / bps;
+    // (modulo << 12) / bps
+    let fixed_point_result: u32 =
+        unsafe { (modulo << 12).checked_div(bps.into()).unwrap_unchecked() };
 
     // Throw away the upper bits since the fractional part is all we care about
     binary_search_brs_table(fixed_point_result as u16)
