@@ -6,7 +6,7 @@
 //!
 
 use crate::gpio::*;
-use core::convert::Infallible;
+use core::{convert::Infallible, marker::PhantomData};
 use embedded_hal::adc::{Channel, OneShot};
 use msp430fr2355::ADC;
 
@@ -146,7 +146,7 @@ impl SamplingRate {
 // Pins corresponding to an ADC channel. Pin types can have `::channel()` called on them to get their ADC channel index.
 macro_rules! impl_adc_channel {
     ($port: ty, $pin: ty, $channel: literal ) => {
-        impl Channel<Adc<ADC>> for Pin<$port, $pin, Alternate3<Input<Floating>>> {
+        impl<S: AdcState> Channel<Adc<S>> for Pin<$port, $pin, Alternate3<Input<Floating>>> {
             type ID = u8;
 
             fn channel() -> Self::ID {
@@ -170,9 +170,10 @@ impl_adc_channel!(P5, Pin2, 10);
 impl_adc_channel!(P5, Pin3, 11);
 
 /// Controls the onboard ADC
-pub struct Adc<ADC> {
+pub struct Adc<STATE: AdcState> {
     adc_reg: ADC,
     is_waiting: bool,
+    _phantom: PhantomData<STATE>,
 }
 
 /// Configuration object for an ADC.
@@ -216,81 +217,55 @@ impl AdcConfig {
     }
 
     /// Applies this ADC configuration to hardware registers, and returns an ADC.
-    pub fn config_hw(self) -> Adc<ADC> {
-        let adc_reg = self.adc;
-        unsafe {
-            adc_reg.adcctl0.clear_bits(|w| {
-                w.adcenc()
-                    .clear_bit()
-                    .adcon()
-                    .clear_bit()
-                    .adcsc()
-                    .clear_bit()
-            });
-        }
+    pub fn config_hw(self) -> Adc<Disabled> {
+        let mut adc_reg = self.adc;
+        // Disable the ADC before we set the other bits. Some can only be set while the ADC is disabled.
+        disable_adc_reg(&mut adc_reg);
+
         let adcsht = self.sample_time.adcsht();
-        adc_reg.adcctl0.modify(|_, w| w.adcsht().bits(adcsht));
+        adc_reg.adcctl0.write(|w| w.adcsht().bits(adcsht));
 
         let adcssel = self.clock_source.adcssel();
-        adc_reg
-            .adcctl1
-            .modify(|_, w| w.adcssel().bits(adcssel).adcshp().adcshp_1());
-
         let adcdiv = self.clock_divider.adcdiv();
-        adc_reg.adcctl1.modify(|_, w| w.adcdiv().bits(adcdiv));
+        adc_reg.adcctl1.write(|w| {w
+            .adcssel().bits(adcssel)
+            .adcshp().adcshp_1()
+            .adcdiv().bits(adcdiv)
+        });
 
         let adcpdiv = self.predivider.adcpdiv();
-        adc_reg.adcctl2.modify(|_, w| w.adcpdiv().bits(adcpdiv));
-
         let adcres = self.resolution.adcres();
-        adc_reg.adcctl2.modify(|_, w| w.adcres().bits(adcres));
-
         let adcsr = self.sampling_rate.adcsr();
-        adc_reg.adcctl2.modify(|_, w| w.adcsr().bit(adcsr));
+        adc_reg.adcctl2.write(|w| { w
+            .adcpdiv().bits(adcpdiv)
+            .adcres().bits(adcres)
+            .adcsr().bit(adcsr)
+        });
 
         Adc {
             adc_reg,
             is_waiting: false,
+            _phantom: PhantomData,
         }
     }
 }
+/// Typestate for an enabled ADC. It is ready to begin conversions. The ADC must be disabled before it can be reconfigured.
+pub struct Enabled;
+/// Typestate for a disabled ADC. It is ready to be configured. The ADC must be enabled before it can begin conversions.
+pub struct Disabled;
+/// Typestate trait for the current state of the ADC. The ADC may be either `Enabled` or `Disabled.`
+pub trait AdcState: private::Sealed {}
+impl AdcState for Enabled {}
+impl AdcState for Disabled {}
 
-impl Adc<ADC> {
-    /// Create an ADC instance with a default configuration.
-    ///
-    /// If you need a custom configuration you should construct an ADC using AdcConfig instead.
-    pub fn new(adc: ADC) -> Adc<ADC> {
-        Adc {
-            adc_reg: adc,
-            is_waiting: false,
-        }
-    }
+// Seal this supertrait so users can still refer to AdcState, but they can't add other implementations besides `Enabled` and `Disabled`.
+mod private {
+    pub trait Sealed {}
+    impl Sealed for super::Enabled {}
+    impl Sealed for super::Disabled {}
+}
 
-    /// Enables this ADC, ready to start a conversion.
-    pub fn adc_enable(&mut self) {
-        unsafe {
-            self.adc_reg.adcctl0.set_bits(|w| w.adcon().set_bit());
-        }
-    }
-
-    /// Disables this ADC to save power.
-    pub fn adc_disable(&mut self) {
-        unsafe {
-            self.adc_reg
-                .adcctl0
-                .clear_bits(|w| w.adcon().clear_bit().adcenc().clear_bit());
-        }
-    }
-
-    /// Starts an ADC conversion.
-    pub fn adc_start_conversion(&mut self) {
-        unsafe {
-            self.adc_reg
-                .adcctl0
-                .set_bits(|w| w.adcenc().set_bit().adcsc().set_bit());
-        }
-    }
-
+impl<S: AdcState> Adc<S> {
     /// Whether the ADC is currently sampling or converting.
     pub fn adc_is_busy(&self) -> bool {
         self.adc_reg.adcctl1.read().adcbusy().bit_is_set()
@@ -300,11 +275,23 @@ impl Adc<ADC> {
     pub fn adc_get_result(&self) -> u16 {
         self.adc_reg.adcmem0.read().bits()
     }
+}
 
-    /// Selects which pin to sample. Can only be modified when the ADC is not busy.
-    pub fn adc_set_pin<PIN>(&mut self, _pin: &PIN)
+impl Adc<Disabled> {
+    /// Enables this ADC, ready to start a conversion.
+    pub fn into_enabled(mut self) -> Adc<Enabled> {
+        enable_adc_reg(&mut self.adc_reg);
+        Adc {
+            adc_reg: self.adc_reg,
+            is_waiting: self.is_waiting,
+            _phantom: PhantomData,
+        }
+    }
+
+    /// Selects which pin to sample.
+    pub fn set_pin<PIN>(&mut self, _pin: &PIN)
     where
-        PIN: Channel<Adc<ADC>, ID = u8>,
+        PIN: Channel<Self, ID = u8>,
     {
         self.adc_reg
             .adcmctl0
@@ -312,10 +299,59 @@ impl Adc<ADC> {
     }
 }
 
-impl<WORD, PIN> OneShot<Adc<ADC>, WORD, PIN> for Adc<ADC>
+impl Adc<Enabled> {
+    /// Disables this ADC to save power.
+    pub fn into_disabled(mut self) -> Adc<Disabled> {
+        disable_adc_reg(&mut self.adc_reg);
+        Adc {
+            adc_reg: self.adc_reg,
+            is_waiting: self.is_waiting,
+            _phantom: PhantomData,
+        }
+    }
+
+    /// Starts an ADC conversion.
+    pub fn start_conversion(&mut self) {
+        unsafe {
+            self.adc_reg.adcctl0.set_bits(|w| w
+                .adcenc().set_bit()
+                .adcsc().set_bit());
+        }
+    }
+
+    // We use this fn to implement OneShot, as otherwise we'd need to consume the Adc to change state.
+    /// Disables the ADC, configures the input channel, then re-enables the ADC.
+    pub fn reset_and_set_pin<PIN>(&mut self, _pin: &PIN)
+    where
+        PIN: Channel<Self, ID = u8>,
+    {
+        disable_adc_reg(&mut self.adc_reg);
+        self.adc_reg
+            .adcmctl0
+            .modify(|_, w| w.adcinch().bits(PIN::channel()));
+
+        enable_adc_reg(&mut self.adc_reg);
+    }
+}
+
+fn disable_adc_reg(adc: &mut ADC) {
+    unsafe {
+        adc.adcctl0.clear_bits(|w| w
+            .adcon().clear_bit()
+            .adcenc().clear_bit());
+    }
+}
+
+fn enable_adc_reg(adc: &mut ADC) {
+    unsafe {
+        adc.adcctl0.set_bits(|w| w.adcon().set_bit());
+    }
+}
+
+impl<WORD, PIN> OneShot<Adc<Enabled>, WORD, PIN> for Adc<Enabled>
 where
     WORD: From<u16>,
-    PIN: Channel<Adc<ADC>, ID = u8>,
+    PIN: Channel<Adc<Enabled>, ID = u8>,
 {
     type Error = Infallible; // Only returns WouldBlock
 
@@ -332,11 +368,9 @@ where
             }
         }
 
-        self.adc_disable();
-        self.adc_set_pin(pin);
-        self.adc_enable();
+        self.reset_and_set_pin(pin);
 
-        self.adc_start_conversion();
+        self.start_conversion();
         self.is_waiting = true;
         Err(nb::Error::WouldBlock)
     }
