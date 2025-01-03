@@ -233,9 +233,7 @@ pub struct UcxSpiCtw0, UcxSpiCtw0_rd, UcxSpiCtw0_wr{
 }
 }
 
-pub trait EUsci: Steal {}
-
-pub trait EUsciUart: EUsci {
+pub trait EUsciUart: Steal {
     type Statw: UartUcxStatw;
 
     fn ctl0_reset(&self);
@@ -267,7 +265,7 @@ pub trait EUsciUart: EUsci {
     fn rxie_clear(&self);
 }
 
-pub trait EUsciI2C: EUsci {
+pub trait EUsciI2C: Steal {
     type IfgOut: I2CUcbIfgOut;
 
     fn transmit_ack(&self);
@@ -334,7 +332,7 @@ pub trait EUsciI2C: EUsci {
     fn iv_rd(&self) -> u16;
 }
 
-pub trait EusciSPI: EUsci {
+pub trait EusciSPI: Steal {
     type Statw: SpiStatw;
 
     fn ctw0_set_rst(&self);
@@ -406,8 +404,6 @@ macro_rules! eusci_impl {
                 pac::Peripherals::conjure().$EUsci
             }
         }
-
-        impl EUsci for pac::$EUsci {}
 
         impl EusciSPI for pac::$EUsci {
             type Statw = $StatwSpi;
