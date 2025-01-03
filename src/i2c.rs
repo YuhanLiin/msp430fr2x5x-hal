@@ -77,7 +77,12 @@ pub enum GlitchFilter {
 
 impl From<GlitchFilter> for Ucglit {
     fn from(f: GlitchFilter) -> Ucglit {
-        Ucglit::from(f as u8)
+        match f {
+            GlitchFilter::Max50ns => Ucglit::Max50ns,
+            GlitchFilter::Max25ns => Ucglit::Max25ns,
+            GlitchFilter::Max12_5ns => Ucglit::Max12_5ns,
+            GlitchFilter::Max6_25ns => Ucglit::Max6_25ns,
+        }
     }
 }
 

@@ -57,17 +57,6 @@ pub enum Ucssel {
     Aclk = 1,
     Smclk = 2,
 }
-impl From<u8> for Ucssel {
-    #[inline(always)]
-    fn from(u: u8) -> Self {
-        match u {
-            0 => Ucssel::Uclk,
-            1 => Ucssel::Aclk,
-            2 | 3 => Ucssel::Smclk,
-            _ => unreachable!(),
-        }
-    }
-}
 
 #[derive(Copy, Clone)]
 pub enum Ucmode {
@@ -76,18 +65,6 @@ pub enum Ucmode {
     FourPinSPI0 = 2,
     I2CMode = 3,
 }
-impl From<u8> for Ucmode {
-    #[inline(always)]
-    fn from(u: u8) -> Self {
-        match u {
-            0 => Ucmode::ThreePinSPI,
-            1 => Ucmode::FourPinSPI1,
-            2 => Ucmode::FourPinSPI0,
-            3 => Ucmode::I2CMode,
-            _ => unreachable!(),
-        }
-    }
-}
 
 #[derive(Copy, Clone)]
 pub enum Ucglit {
@@ -95,18 +72,6 @@ pub enum Ucglit {
     Max25ns = 1,
     Max12_5ns = 2,
     Max6_25ns = 3,
-}
-impl From<u8> for Ucglit {
-    #[inline(always)]
-    fn from(u: u8) -> Self {
-        match u {
-            0 => Ucglit::Max50ns,
-            1 => Ucglit::Max25ns,
-            2 => Ucglit::Max12_5ns,
-            3 => Ucglit::Max6_25ns,
-            _ => unreachable!(),
-        }
-    }
 }
 
 /// Clock low timeout select
@@ -120,18 +85,6 @@ pub enum Ucclto {
     Ucclto10b = 2,
     /// = 165000 MODCLK cycles (approximately 34 ms)
     Ucclto11b = 3,
-}
-impl From<u8> for Ucclto {
-    #[inline(always)]
-    fn from(u: u8) -> Self {
-        match u {
-            0 => Ucclto::Ucclto00b,
-            1 => Ucclto::Ucclto01b,
-            2 => Ucclto::Ucclto10b,
-            3 => Ucclto::Ucclto11b,
-            _ => unreachable!(),
-        }
-    }
 }
 
 /// Automatic STOP condition generation. In slave mode, only settings 00b and 01b
@@ -148,18 +101,6 @@ pub enum Ucastp {
     /// reached UCBxTBCNT. UCBCNTIFG is set with the byte counter reaching the
     /// threshold.
     Ucastp10b = 2,
-}
-impl From<u8> for Ucastp {
-    #[inline(always)]
-    fn from(u: u8) -> Self {
-        match u {
-            0 => Ucastp::Ucastp00b,
-            1 => Ucastp::Ucastp01b,
-            2 => Ucastp::Ucastp10b,
-            3 => panic!(), // 0b11 is reserved, but the register could still feasibly have this value. What to do?
-            _ => unreachable!(),
-        }
-    }
 }
 
 pub struct UcaCtlw0 {
@@ -193,9 +134,6 @@ pub struct UcbCtlw0, UcbCtlw0_rd, UcbCtlw0_wr {
     }
 }
 }
-
-// from_u8!(UCCLTO_A);
-// from_u8!(UCASTP_A);
 
 reg_struct! {
 pub struct UcbCtlw1, UcbCtlw1_rd, UcbCtlw1_wr {
@@ -354,11 +292,11 @@ pub trait EUsciI2C: EUsci {
     fn ctw0_clear_rst(&self);
 
     // Modify only when UCSWRST = 1
-    fn ctw0_rd(&self) -> UcbCtlw0;
+    // fn ctw0_rd(&self) -> UcbCtlw0;
     fn ctw0_wr(&self, reg: &UcbCtlw0);
 
     // Modify only when UCSWRST = 1
-    fn ctw1_rd(&self) -> UcbCtlw1;
+    // fn ctw1_rd(&self) -> UcbCtlw1;
     fn ctw1_wr(&self, reg: &UcbCtlw1);
 
     // Modify only when UCSWRST = 1
@@ -388,7 +326,7 @@ pub trait EUsciI2C: EUsci {
     fn i2csa_rd(&self) -> u16;
     fn i2csa_wr(&self, val: u16);
 
-    fn ie_rd(&self) -> UcbIe;
+    // fn ie_rd(&self) -> UcbIe;
     fn ie_wr(&self, reg: &UcbIe);
 
     fn ifg_rd(&self) -> Self::IfgOut;
@@ -825,22 +763,22 @@ macro_rules! eusci_b_impl {
                 self.$ucbxifg().read().ucrxifg0().bit()
             }
 
-            #[inline(always)]
-            fn ctw0_rd(&self) -> UcbCtlw0 {
-                let content = self.$ucbxctlw0().read();
-                UcbCtlw0_rd! {content}
-            }
+            // #[inline(always)]
+            // fn ctw0_rd(&self) -> UcbCtlw0 {
+            //     let content = self.$ucbxctlw0().read();
+            //     UcbCtlw0_rd! {content}
+            // }
 
             #[inline(always)]
             fn ctw0_wr(&self, reg: &UcbCtlw0) {
                 self.$ucbxctlw0().write(UcbCtlw0_wr! {reg});
             }
 
-            #[inline(always)]
-            fn ctw1_rd(&self) -> UcbCtlw1 {
-                let content = self.$ucbxctlw1.read();
-                UcbCtlw1_rd! {content}
-            }
+            // #[inline(always)]
+            // fn ctw1_rd(&self) -> UcbCtlw1 {
+            //     let content = self.$ucbxctlw1.read();
+            //     UcbCtlw1_rd! {content}
+            // }
 
             #[inline(always)]
             fn ctw1_wr(&self, reg: &UcbCtlw1) {
@@ -970,11 +908,12 @@ macro_rules! eusci_b_impl {
                 self.$ucbxi2csa.write(|w| unsafe { w.bits(val) });
             }
 
-            #[inline(always)]
-            fn ie_rd(&self) -> UcbIe {
-                let content = self.$ucbxie().read();
-                UcbIe_rd! {content}
-            }
+            // #[inline(always)]
+            // fn ie_rd(&self) -> UcbIe {
+            //     let content = self.$ucbxie().read();
+            //     UcbIe_rd! {content}
+            // }
+
             #[inline(always)]
             fn ie_wr(&self, reg: &UcbIe) {
                 self.$ucbxie().write(UcbIe_wr! {reg});
