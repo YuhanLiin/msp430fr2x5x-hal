@@ -497,6 +497,13 @@ impl<USCI: SerialUsci> Rx<USCI> {
         let usci = unsafe { USCI::steal() };
         usci.rx_rd()
     }
+
+    #[inline(always)]
+    /// Writes a byte into the Tx buffer with no checks for validity
+    pub fn write_no_check(&mut self, data: u8) {
+        let usci = unsafe { USCI::steal() };
+        usci.tx_wr(data);
+    }
 }
 
 /// Serial receive errors

@@ -178,6 +178,7 @@ impl<USCI: EUsciSPIBus> SPIBusConfig<USCI> {
     }
 
     /// Performs hardware configuration and creates an SPI bus
+    #[inline(always)]
     pub fn spi_pins<
         SO: Into<USCI::MISO>,
         SI: Into<USCI::MOSI>,
@@ -232,6 +233,13 @@ impl<USCI: EUsciSPIBus> SPIPins<USCI> {
     pub fn write_no_check(&mut self, val: u8) {
         let usci = unsafe { USCI::steal() };
         usci.txbuf_wr(val)
+    }
+
+    #[inline(always)]
+    /// Reads a raw value from the Rx buffer with no checks for validity
+    pub fn read_no_check(&mut self) -> u8 {
+        let usci = unsafe { USCI::steal() };
+        usci.rxbuf_rd()
     }
 }
 
