@@ -36,7 +36,7 @@ fn main() -> ! {
         // `toggle()` returns a `Result` because of embedded_hal, but the result is always `Ok` with MSP430 GPIO.
         // Rust complains about unused Results, so we 'use' the Result by calling .ok()
         p1_0.toggle().ok();
-        delay.delay_ms(500_u16);
+        delay.delay_ms(500);
     }
 }
 
