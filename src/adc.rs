@@ -11,10 +11,14 @@ use embedded_hal::adc::{Channel, OneShot};
 use msp430fr2355::ADC;
 
 /// How many ADCCLK cycles the ADC's sample-and-hold stage will last for.
+/// 
+/// Default: 8 cycles
+#[derive(Default, Copy, Clone, PartialEq, Eq)]
 pub enum SampleTime {
     /// Sample for 4 ADCCLK cycles
     _4 = 0b0000,
     /// Sample for 8 ADCCLK cycles
+    #[default]
     _8 = 0b0001,
     /// Sample for 16 ADCCLK cycles
     _16 = 0b0010,
@@ -48,8 +52,12 @@ impl SampleTime {
 }
 
 /// How much the ADC input clock will be divided by after being divided by the predivider
+/// 
+/// Default: Divide by 1
+#[derive(Default, Copy, Clone, PartialEq, Eq)]
 pub enum ClockDivider {
     /// Divide the input clock by 1
+    #[default]
     _1 = 0b000,
     /// Divide the input clock by 2
     _2 = 0b001,
@@ -75,8 +83,12 @@ impl ClockDivider {
 }
 
 /// Which clock source the ADC uses as input.
+/// 
+/// Default: MODCLK
+#[derive(Default, Copy, Clone, PartialEq, Eq)]
 pub enum ClockSource {
     /// Use MODCLK as the ADC input clock
+    #[default]
     MODCLK = 0b00,
     /// Use ACLK as the ADC input clock
     ACLK = 0b01,
@@ -92,8 +104,12 @@ impl ClockSource {
 }
 
 /// How much the ADC input clock will be divided by prior to being divided by the ADC clock divider
+/// 
+/// Default: Divide by 1
+#[derive(Default, Copy, Clone, PartialEq, Eq)]
 pub enum Predivider {
     /// Divide the input clock by 1
+    #[default]
     _1 = 0b00,
     /// Divide the input clock by 4
     _4 = 0b01,
@@ -109,10 +125,14 @@ impl Predivider {
 }
 
 /// The output resolution of the ADC conversion. Also determines how many ADCCLK cycles the conversion step takes.
+/// 
+/// Default: 10-bit resolution
+#[derive(Default, Copy, Clone, PartialEq, Eq)]
 pub enum Resolution {
     /// 8-bit ADC conversion result. The conversion step takes 10 ADCCLK cycles.
     _8BIT = 0b00,
     /// 10-bit ADC conversion result. The conversion step takes 12 ADCCLK cycles.
+    #[default]
     _10BIT = 0b01,
     /// 12-bit ADC conversion result. The conversion step takes 14 ADCCLK cycles.
     _12BIT = 0b10,
@@ -126,10 +146,14 @@ impl Resolution {
 }
 
 /// Selects the drive capability of the ADC reference buffer, which can increase the maximum sampling speed at the cost of increased power draw.
+/// 
+/// Default: 200ksps
+#[derive(Default, Copy, Clone, PartialEq, Eq)]
 pub enum SamplingRate {
     /// Maximum of 50 ksps. Lower power usage.
     _50KSPS,
     /// Maximum of 200 ksps. Higher power usage.
+    #[default]
     _200KSPS,
 }
 
@@ -177,9 +201,15 @@ pub struct Adc<STATE: AdcState> {
 }
 
 /// Configuration object for an ADC.
+/// 
+/// The default configuration is based on the default register values:
+/// - MODCLK as input clock
+/// - Predivider = 1 and clock divider = 1
+/// - 10-bit resolution
+/// - 8 cycle sample time
+/// - Max 200 ksps sample rate
+#[derive(Default, Clone, PartialEq, Eq)]
 pub struct AdcConfig {
-    /// ADC register
-    pub adc: ADC,
     /// Which clock source the ADC takes as an input. This clock will first be divided by the predivider, then the clock divider, to generate ADCCLK.
     pub clock_source: ClockSource,
     /// How much the input clock is divided by, after the predivider.
@@ -195,9 +225,8 @@ pub struct AdcConfig {
 }
 
 impl AdcConfig {
-    /// Creates an ADC configuration
+    /// Creates an ADC configuration. A default implementation is also available through `::default()`
     pub fn new(
-        adc: ADC,
         clock_source: ClockSource,
         clock_divider: ClockDivider,
         predivider: Predivider,
@@ -206,7 +235,6 @@ impl AdcConfig {
         sample_time: SampleTime,
     ) -> AdcConfig {
         AdcConfig {
-            adc,
             clock_source,
             clock_divider,
             predivider,
@@ -217,8 +245,7 @@ impl AdcConfig {
     }
 
     /// Applies this ADC configuration to hardware registers, and returns an ADC.
-    pub fn config_hw(self) -> Adc<Disabled> {
-        let mut adc_reg = self.adc;
+    pub fn config_hw(self, mut adc_reg: ADC) -> Adc<Disabled> {
         // Disable the ADC before we set the other bits. Some can only be set while the ADC is disabled.
         disable_adc_reg(&mut adc_reg);
 
