@@ -14,8 +14,7 @@ use crate::hw_traits::eusci::I2CUcbIfgOut;
 use crate::{
     gpio::{Alternate1, Pin, Pin2, Pin3, Pin6, Pin7, P1, P4},
     hal::blocking::i2c::{
-        Operation, Read, SevenBitAddress, TenBitAddress, Transactional, TransactionalIter, Write,
-        WriteIter, WriteRead,
+        Read, SevenBitAddress, TenBitAddress, Write, WriteRead,
     },
     hw_traits::eusci::{
         EUsciI2C, Ucastp, UcbCtlw0, UcbCtlw1, UcbI2coa, UcbIFG, UcbIe, Ucclto, Ucglit, Ucmode,
@@ -307,8 +306,6 @@ pub struct SDL<USCI: EUsciI2CBus>(PhantomData<USCI>);
 /// I2C transmit/receive errors
 #[derive(Clone, Copy)]
 pub enum I2CErr {
-    /// Function not implemented
-    Unimplemented = 0,
     /// Address was never acknolwedged by slave
     GotNACK,
     /// Device lost arbitration
@@ -415,30 +412,12 @@ impl<USCI: EUsciI2CBus> SDL<USCI> {
         Ok(())
     }
 
-    fn write_iter<B>(&mut self, _address: u16, _bytes: B) -> Result<(), I2CErr>
-    where
-        B: IntoIterator<Item = u8>,
-    {
-        Err(I2CErr::Unimplemented)
-    }
-
     /// blocking write then blocking read
     fn write_read(&mut self, address: u16, bytes: &[u8], buffer: &mut [u8]) -> Result<(), I2CErr> {
         self.set_transmission_mode(TransmissionMode::Transmit);
         self.read(address, buffer)?;
         self.set_transmission_mode(TransmissionMode::Receive);
         self.write(address, bytes)
-    }
-
-    fn exec<'a>(&mut self, _address: u16, _operations: &mut [Operation<'a>]) -> Result<(), I2CErr> {
-        Err(I2CErr::Unimplemented)
-    }
-
-    fn exec_iter<'a, O>(&mut self, _address: u16, _operations: O) -> Result<(), I2CErr>
-    where
-        O: IntoIterator<Item = Operation<'a>>,
-    {
-        Err(I2CErr::Unimplemented)
     }
 }
 
@@ -478,32 +457,6 @@ impl<USCI: EUsciI2CBus> Write<TenBitAddress> for SDL<USCI> {
     }
 }
 
-impl<USCI: EUsciI2CBus> WriteIter<SevenBitAddress> for SDL<USCI> {
-    type Error = I2CErr;
-    fn write<B>(&mut self, address: u8, bytes: B) -> Result<(), Self::Error>
-    where
-        B: IntoIterator<Item = u8>,
-    {
-        const { unimplemented!() } // See SDL::write_iter
-        self.set_addressing_mode(AddressingMode::SevenBit);
-        self.set_transmission_mode(TransmissionMode::Transmit);
-        SDL::write_iter(self, address as u16, bytes)
-    }
-}
-
-impl<USCI: EUsciI2CBus> WriteIter<TenBitAddress> for SDL<USCI> {
-    type Error = I2CErr;
-    fn write<B>(&mut self, address: u16, bytes: B) -> Result<(), Self::Error>
-    where
-        B: IntoIterator<Item = u8>,
-    {
-        const { unimplemented!() } // See SDL::write_iter
-        self.set_addressing_mode(AddressingMode::TenBit);
-        self.set_transmission_mode(TransmissionMode::Transmit);
-        SDL::write_iter(self, address, bytes)
-    }
-}
-
 impl<USCI: EUsciI2CBus> WriteRead<SevenBitAddress> for SDL<USCI> {
     type Error = I2CErr;
     fn write_read(
@@ -527,55 +480,5 @@ impl<USCI: EUsciI2CBus> WriteRead<TenBitAddress> for SDL<USCI> {
     ) -> Result<(), Self::Error> {
         self.set_addressing_mode(AddressingMode::TenBit);
         SDL::write_read(self, address, bytes, buffer)
-    }
-}
-
-impl<USCI: EUsciI2CBus> Transactional<SevenBitAddress> for SDL<USCI> {
-    type Error = I2CErr;
-    fn exec<'a>(
-        &mut self,
-        address: u8,
-        operations: &mut [Operation<'a>],
-    ) -> Result<(), Self::Error> {
-        const { unimplemented!() } // See SDL::exec
-        self.set_addressing_mode(AddressingMode::SevenBit);
-        SDL::exec(self, address as u16, operations)
-    }
-}
-
-impl<USCI: EUsciI2CBus> Transactional<TenBitAddress> for SDL<USCI> {
-    type Error = I2CErr;
-    fn exec<'a>(
-        &mut self,
-        address: u16,
-        operations: &mut [Operation<'a>],
-    ) -> Result<(), Self::Error> {
-        const { unimplemented!() } // See SDL::exec
-        self.set_addressing_mode(AddressingMode::TenBit);
-        SDL::exec(self, address, operations)
-    }
-}
-
-impl<USCI: EUsciI2CBus> TransactionalIter<SevenBitAddress> for SDL<USCI> {
-    type Error = I2CErr;
-    fn exec_iter<'a, O>(&mut self, address: u8, operations: O) -> Result<(), Self::Error>
-    where
-        O: IntoIterator<Item = Operation<'a>>,
-    {
-        const { unimplemented!() } // See SDL::exec_iter
-        self.set_addressing_mode(AddressingMode::SevenBit);
-        SDL::exec_iter(self, address as u16, operations)
-    }
-}
-
-impl<USCI: EUsciI2CBus> TransactionalIter<TenBitAddress> for SDL<USCI> {
-    type Error = I2CErr;
-    fn exec_iter<'a, O>(&mut self, address: u16, operations: O) -> Result<(), Self::Error>
-    where
-        O: IntoIterator<Item = Operation<'a>>,
-    {
-        const { unimplemented!() } // See SDL::exec_iter
-        self.set_addressing_mode(AddressingMode::TenBit);
-        SDL::exec_iter(self, address, operations)
     }
 }
