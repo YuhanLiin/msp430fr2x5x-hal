@@ -322,53 +322,61 @@ fn calculate_baud_config(clk_freq: u32, bps: NonZeroU32) -> BaudConfig {
         }
     }
 }
-const BRS_LOOKUP_LEN: usize = 36;
-// Data from table 22-4 of MSP430FR4xx and MSP430FR2xx family user's guide (Rev. I)
-const BRS_LOOKUP_KEYS: [u16; BRS_LOOKUP_LEN] = [
-    0x0000, 0x00d9, 0x0125, 0x0156, 0x019a, 0x0201, 0x024a, 0x02ac, 0x036f, 0x038f, 0x0401, 0x04cd,
-    0x0556, 0x05b8, 0x0601, 0x0668, 0x06dc, 0x0701, 0x0801, 0x0925, 0x099b, 0x0a02, 0x0a4b, 0x0aab,
-    0x0b34, 0x0b6f, 0x0c01, 0x0c94, 0x0cce, 0x0d55, 0x0d8b, 0x0db7, 0x0e00, 0x0e68, 0x0eac, 0x0edc,
-];
-
-const BRS_LOOKUP_VALS: [u8; BRS_LOOKUP_LEN] = [
-    0x00, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x11, 0x21, 0x22, 0x44, 0x25, 0x49, 0x4A, 0x52, 0x92,
-    0x53, 0x55, 0xAA, 0x6B, 0xAD, 0xB5, 0xB6, 0xD6, 0xB7, 0xBB, 0xDD, 0xED, 0xEE, 0xBF, 0xDF, 0xEF,
-    0xF7, 0xFB, 0xFD, 0xFE,
-];
-
-#[inline(always)]
-fn binary_search_brs_table(res: u16) -> u8 {
-    let mut low: usize = 0;
-    let mut high: usize = BRS_LOOKUP_LEN - 1;
-    // Safety: 0 <= low <= mid <= high < BRS_LOOKUP_LEN
-    while low != high {
-        let mid = (low + high) >> 1;
-        let key = unsafe { *BRS_LOOKUP_KEYS.get_unchecked(mid) };
-        if res == key {
-            return unsafe { *BRS_LOOKUP_VALS.get_unchecked(mid) };
-        } else if high - low == 1 {
-            return if res < unsafe { *BRS_LOOKUP_KEYS.get_unchecked(high) } {
-                unsafe { *BRS_LOOKUP_VALS.get_unchecked(low) }
-            } else {
-                unsafe { *BRS_LOOKUP_VALS.get_unchecked(high) }
-            };
-        } else if res > key {
-            low = mid;
-        } else {
-            high = mid - 1;
-        }
-    }
-    return unsafe { *BRS_LOOKUP_VALS.get_unchecked(low) };
-}
 
 #[inline(always)]
 fn lookup_brs(clk_freq: u32, bps: NonZeroU32) -> u8 {
-    let modulo = clk_freq % bps;
-    // 12 fractional bit fixed point result
-    let fixed_point_result: u32 = (modulo << 12) / bps;
+    // bps is between [1, u32::MAX]
+    // clk_freq is between [0, u32::MAX]
 
-    // Throw away the upper bits since the fractional part is all we care about
-    binary_search_brs_table(fixed_point_result as u16)
+    // modulo = clk_freq % bps => modulo is between [0, bps-1]
+    let modulo = clk_freq % bps;
+
+    // fraction = modulo * 10_000 / bps, so within [0, ((bps-1) * 10_000) / bps].
+    // To prove upper bound we note `(bps-1)/bps` is largest when bps == u32::MAX:
+    // (4_294_967_294 * 10_000) / 4_294_967_295 = 42_949_672_940_000 / 4_294_967_295 = 9999.99... truncated to 9_999 because integer division
+    // So fraction is within [0, 9999]
+    let fraction_as_ten_thousandths =
+        ((modulo as u64 * 10_000) / core::num::NonZeroU64::from(bps)) as u16;
+
+    // See Table 22-4 from MSP430FR4xx and MSP430FR2xx family user's guide (Rev. I)
+    match fraction_as_ten_thousandths {
+        0..529     => 0x00,
+        529..715   => 0x01,
+        715..835   => 0x02,
+        835..1001  => 0x04,
+        1001..1252 => 0x08,
+        1252..1430 => 0x10,
+        1430..1670 => 0x20,
+        1670..2147 => 0x11,
+        2147..2224 => 0x21,
+        2224..2503 => 0x22,
+        2503..3000 => 0x44,
+        3000..3335 => 0x25,
+        3335..3575 => 0x49,
+        3575..3753 => 0x4A,
+        3753..4003 => 0x52,
+        4003..4286 => 0x92,
+        4286..4378 => 0x53,
+        4378..5002 => 0x55,
+        5002..5715 => 0xAA,
+        5715..6003 => 0x6B,
+        6003..6254 => 0xAD,
+        6254..6432 => 0xB5,
+        6432..6667 => 0xB6,
+        6667..7001 => 0xD6,
+        7001..7147 => 0xB7,
+        7147..7503 => 0xBB,
+        7503..7861 => 0xDD,
+        7861..8004 => 0xED,
+        8004..8333 => 0xEE,
+        8333..8464 => 0xBF,
+        8464..8572 => 0xDF,
+        8572..8751 => 0xEF,
+        8751..9004 => 0xF7,
+        9004..9170 => 0xFB,
+        9170..9288 => 0xFD,
+        9288..     => 0xFE,
+    }
 }
 
 impl<USCI: SerialUsci> SerialConfig<USCI, ClockSet> {
