@@ -149,7 +149,7 @@ impl_i2c_pin!(UsciB1SDAPin, P4, Pin6);
 
 impl<USCI: EUsciI2CBus> I2CBusConfig<USCI> {
     /// Create a new configuration for setting up a EUSCI peripheral in I2C master mode
-    pub fn new(usci: USCI) -> Self {
+    pub fn new(usci: USCI, deglitch_time: GlitchFilter) -> Self {
         let ctlw0 = UcbCtlw0 {
             uca10: false,
             ucsla10: false,
@@ -172,7 +172,7 @@ impl<USCI: EUsciI2CBus> I2CBusConfig<USCI> {
             ucswack: false,
             ucclto: Ucclto::Ucclto00b,
             ucastp: Ucastp::Ucastp00b,
-            ucglit: Ucglit::Max6_25ns,
+            ucglit: deglitch_time.into(),
         };
 
         let i2coa0 = UcbI2coa {
@@ -263,12 +263,6 @@ impl<USCI: EUsciI2CBus> I2CBusConfig<USCI> {
         self.divisor = clk_divisor;
     }
 
-    /// Configures the glitch filter length for the SDA and SCL lines
-    #[inline(always)]
-    pub fn set_deglitch_time(&mut self, deglitch_time: GlitchFilter) {
-        self.ctlw1.ucglit = deglitch_time.into();
-    }
-
     /// Performs hardware configuration and creates the SDL pin
     pub fn sdl<C: Into<USCI::ClockPin>, D: Into<USCI::DataPin>>(
         &self,
@@ -327,6 +321,8 @@ impl<USCI: EUsciI2CBus> SDL<USCI> {
 
     /// Blocking read
     fn read(&mut self, address: u16, buffer: &mut [u8]) -> Result<(), I2CErr> {
+        if buffer.is_empty() { return Ok(()) }
+
         let usci = unsafe { USCI::steal() };
 
         usci.i2csa_wr(address);
@@ -366,6 +362,7 @@ impl<USCI: EUsciI2CBus> SDL<USCI> {
 
     /// Blocking write
     fn write(&mut self, address: u16, bytes: &[u8]) -> Result<(), I2CErr> {
+        if bytes.is_empty() { return Ok(()) }
         let usci = unsafe { USCI::steal() };
 
         usci.i2csa_wr(address);
