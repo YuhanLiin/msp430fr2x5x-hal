@@ -228,6 +228,7 @@ impl<USCI: SerialUsci> SerialConfig<USCI, NoClockSet> {
         loopback: Loopback,
         baudrate: u32,
     ) -> Self {
+        const ONE: NonZeroU32 = NonZeroU32::new(1).unwrap();
         SerialConfig {
             order,
             cnt,
@@ -235,9 +236,8 @@ impl<USCI: SerialUsci> SerialConfig<USCI, NoClockSet> {
             parity,
             loopback,
             usci,
-            // Safety: .max(1) ensures baudrate is non-zero
             state: NoClockSet {
-                baudrate: NonZeroU32::new(baudrate).unwrap_or( const {NonZeroU32::new(1).unwrap()} ),
+                baudrate: NonZeroU32::new(baudrate).unwrap_or(ONE),
             },
         }
     }
@@ -300,7 +300,8 @@ fn calculate_baud_config(clk_freq: u32, bps: NonZeroU32) -> BaudConfig {
 
     if (n >= 16) && (bps.get() < u32::MAX / 16) {
         //  div = bps * 16
-        let div = bps.saturating_mul(const { NonZeroU32::new(16).unwrap() });
+        const SIXTEEN: NonZeroU32 = NonZeroU32::new(16).unwrap();
+        let div = bps.saturating_mul(SIXTEEN);
 
         // n / 16, but more precise
         let br = (clk_freq / div) as u16;
@@ -325,19 +326,25 @@ fn calculate_baud_config(clk_freq: u32, bps: NonZeroU32) -> BaudConfig {
 
 #[inline(always)]
 fn lookup_brs(clk_freq: u32, bps: NonZeroU32) -> u8 {
-    // bps is between [1, u32::MAX]
-    // clk_freq is between [0, u32::MAX]
+    // bps is between [1, 5_000_000] (datasheet max)
+    // clk_freq is between [0, 24_000_000] (datasheet max)
 
-    // modulo = clk_freq % bps => modulo is between [0, bps-1]
+    // modulo = clk_freq % bps => modulo is between [0, 4_999_999]
     let modulo = clk_freq % bps;
 
-    // fraction = modulo * 10_000 / bps, so within [0, ((bps-1) * 10_000) / bps].
-    // To prove upper bound we note `(bps-1)/bps` is largest when bps == u32::MAX:
-    // (4_294_967_294 * 10_000) / 4_294_967_295 = 42_949_672_940_000 / 4_294_967_295 = 9999.99... truncated to 9_999 because integer division
+    // fraction = modulo * 10_000 / (bps), so within [0, ((bps-1) * 10_000) / bps].
+    // To prove upper bound we note `(bps-1)/bps` is largest when bps == 5_000_000:
+    // (4_999_999 * 10_000) / 5_000_000 = 49_999_990_000 (watch out for overflow!) / 5_000_000 = 9999.99... truncated to 9_999 because integer division
     // So fraction is within [0, 9999]
-    let fraction_as_ten_thousandths =
-        ((modulo as u64 * 10_000) / core::num::NonZeroU64::from(bps)) as u16;
-
+    let fraction_as_ten_thousandths = if modulo < u32::MAX/10_000 {
+        // Most accurate
+        ((modulo * 10_000) / bps) as u16
+    }
+    else { 
+        // Avoid overflow if modulo is large. Assume modulo < 5_000_000 from datasheet max
+        (((modulo * 500) / bps) * 20) as u16
+    };
+    
     // See Table 22-4 from MSP430FR4xx and MSP430FR2xx family user's guide (Rev. I)
     match fraction_as_ten_thousandths {
         0..529     => 0x00,
@@ -500,15 +507,19 @@ impl<USCI: SerialUsci> Rx<USCI> {
     }
 
     /// Reads raw value from Rx buffer with no checks for validity
+    /// # Safety
+    /// May read duplicate data
     #[inline(always)]
-    pub fn read_no_check(&mut self) -> u8 {
+    pub unsafe fn read_no_check(&mut self) -> u8 {
         let usci = unsafe { USCI::steal() };
         usci.rx_rd()
     }
 
     #[inline(always)]
     /// Writes a byte into the Tx buffer with no checks for validity
-    pub fn write_no_check(&mut self, data: u8) {
+    /// # Safety
+    /// May clobber unsent data still in the buffer
+    pub unsafe fn write_no_check(&mut self, data: u8) {
         let usci = unsafe { USCI::steal() };
         usci.tx_wr(data);
     }
