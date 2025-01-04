@@ -208,7 +208,7 @@ impl<USCI: EUsciI2CBus> I2CBusConfig<USCI, NotConfigured> {
             uctxstt: false,
             ucswrst: true,
             ucmode: Ucmode::I2CMode,
-            ucssel: Ucssel::Smclk,
+            ucssel: Ucssel::Smclk, // overwritten by `use_smclk/uclk/aclk()`
         };
 
         let ctlw1 = UcbCtlw1 {
@@ -354,19 +354,19 @@ impl<USCI: EUsciI2CBus> I2CBusConfig<USCI, NotConfigured> {
 
 #[allow(private_bounds)]
 impl<CLOCK: ClockConfigured, USCI: EUsciI2CBus> I2CBusConfig<USCI, CLOCK> {
-    /// Performs hardware configuration and creates the SDL pin
-    pub fn sdl<C: Into<USCI::ClockPin>, D: Into<USCI::DataPin>>(
+    /// Performs hardware configuration and creates the I2C bus
+    pub fn configure<C: Into<USCI::ClockPin>, D: Into<USCI::DataPin>>(
         &self,
         _scl: C,
-        _sdl: D,
-    ) -> SDL<USCI> {
-        self.configure();
-        SDL(PhantomData)
+        _sda: D,
+    ) -> I2cBus<USCI> {
+        self.configure_regs();
+        I2cBus(PhantomData)
     }
 
     /// Performs hardware configuration
     #[inline]
-    fn configure(&self) {
+    fn configure_regs(&self) {
         self.usci.ctw0_set_rst();
 
         self.usci.ctw0_wr(&self.ctlw0);
@@ -385,8 +385,8 @@ impl<CLOCK: ClockConfigured, USCI: EUsciI2CBus> I2CBusConfig<USCI, CLOCK> {
     }
 }
 
-/// I2C data pin
-pub struct SDL<USCI: EUsciI2CBus>(PhantomData<USCI>);
+/// I2C data bus
+pub struct I2cBus<USCI: EUsciI2CBus>(PhantomData<USCI>);
 
 /// I2C transmit/receive errors
 #[derive(Clone, Copy)]
@@ -397,7 +397,7 @@ pub enum I2CErr {
     ArbitrationLost,
 }
 
-impl<USCI: EUsciI2CBus> SDL<USCI> {
+impl<USCI: EUsciI2CBus> I2cBus<USCI> {
     #[inline(always)]
     fn set_addressing_mode(&mut self, mode: AddressingMode) {
         let usci = unsafe { USCI::steal() };
@@ -509,43 +509,43 @@ impl<USCI: EUsciI2CBus> SDL<USCI> {
     }
 }
 
-impl<USCI: EUsciI2CBus> Read<SevenBitAddress> for SDL<USCI> {
+impl<USCI: EUsciI2CBus> Read<SevenBitAddress> for I2cBus<USCI> {
     type Error = I2CErr;
     fn read(&mut self, address: u8, buffer: &mut [u8]) -> Result<(), Self::Error> {
         self.set_addressing_mode(AddressingMode::SevenBit);
         self.set_transmission_mode(TransmissionMode::Receive);
-        SDL::read(self, address as u16, buffer)
+        I2cBus::read(self, address as u16, buffer)
     }
 }
 
-impl<USCI: EUsciI2CBus> Read<TenBitAddress> for SDL<USCI> {
+impl<USCI: EUsciI2CBus> Read<TenBitAddress> for I2cBus<USCI> {
     type Error = I2CErr;
     fn read(&mut self, address: u16, buffer: &mut [u8]) -> Result<(), Self::Error> {
         self.set_addressing_mode(AddressingMode::TenBit);
         self.set_transmission_mode(TransmissionMode::Receive);
-        SDL::read(self, address, buffer)
+        I2cBus::read(self, address, buffer)
     }
 }
 
-impl<USCI: EUsciI2CBus> Write<SevenBitAddress> for SDL<USCI> {
+impl<USCI: EUsciI2CBus> Write<SevenBitAddress> for I2cBus<USCI> {
     type Error = I2CErr;
     fn write(&mut self, address: u8, bytes: &[u8]) -> Result<(), Self::Error> {
         self.set_addressing_mode(AddressingMode::SevenBit);
         self.set_transmission_mode(TransmissionMode::Transmit);
-        SDL::write(self, address as u16, bytes)
+        I2cBus::write(self, address as u16, bytes)
     }
 }
 
-impl<USCI: EUsciI2CBus> Write<TenBitAddress> for SDL<USCI> {
+impl<USCI: EUsciI2CBus> Write<TenBitAddress> for I2cBus<USCI> {
     type Error = I2CErr;
     fn write(&mut self, address: u16, bytes: &[u8]) -> Result<(), Self::Error> {
         self.set_addressing_mode(AddressingMode::TenBit);
         self.set_transmission_mode(TransmissionMode::Transmit);
-        SDL::write(self, address, bytes)
+        I2cBus::write(self, address, bytes)
     }
 }
 
-impl<USCI: EUsciI2CBus> WriteRead<SevenBitAddress> for SDL<USCI> {
+impl<USCI: EUsciI2CBus> WriteRead<SevenBitAddress> for I2cBus<USCI> {
     type Error = I2CErr;
     fn write_read(
         &mut self,
@@ -554,11 +554,11 @@ impl<USCI: EUsciI2CBus> WriteRead<SevenBitAddress> for SDL<USCI> {
         buffer: &mut [u8],
     ) -> Result<(), Self::Error> {
         self.set_addressing_mode(AddressingMode::SevenBit);
-        SDL::write_read(self, address as u16, bytes, buffer)
+        I2cBus::write_read(self, address as u16, bytes, buffer)
     }
 }
 
-impl<USCI: EUsciI2CBus> WriteRead<TenBitAddress> for SDL<USCI> {
+impl<USCI: EUsciI2CBus> WriteRead<TenBitAddress> for I2cBus<USCI> {
     type Error = I2CErr;
     fn write_read(
         &mut self,
@@ -567,6 +567,6 @@ impl<USCI: EUsciI2CBus> WriteRead<TenBitAddress> for SDL<USCI> {
         buffer: &mut [u8],
     ) -> Result<(), Self::Error> {
         self.set_addressing_mode(AddressingMode::TenBit);
-        SDL::write_read(self, address, bytes, buffer)
+        I2cBus::write_read(self, address, bytes, buffer)
     }
 }
