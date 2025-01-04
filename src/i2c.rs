@@ -10,6 +10,7 @@
 //!
 
 use crate::clock::{Aclk, Smclk};
+use crate::gpio::{Pin1, Pin5};
 use crate::hw_traits::eusci::I2CUcbIfgOut;
 use crate::{
     gpio::{Alternate1, Pin, Pin2, Pin3, Pin6, Pin7, P1, P4},
@@ -86,7 +87,7 @@ impl From<GlitchFilter> for Ucglit {
 }
 
 ///Struct used to configure a I2C bus
-pub struct I2CBusConfig<USCI: EUsciI2CBus> {
+pub struct I2CBusConfig<USCI: EUsciI2CBus, STATE: ClockConfigState> {
     usci: USCI,
     divisor: u16,
 
@@ -99,6 +100,7 @@ pub struct I2CBusConfig<USCI: EUsciI2CBus> {
     i2coa3: UcbI2coa,
     ie: UcbIe,
     ifg: UcbIFG,
+    _phantom: PhantomData<STATE>,
 }
 
 /// Marks a usci capable of I2C communication
@@ -107,16 +109,20 @@ pub trait EUsciI2CBus: EUsciI2C {
     type ClockPin;
     /// I2C SDA
     type DataPin;
+    /// I2C UCLKI
+    type UClkIPin;
 }
 
 impl EUsciI2CBus for pac::E_USCI_B0 {
     type ClockPin = UsciB0SCLPin;
     type DataPin = UsciB0SDAPin;
+    type UClkIPin = UsciB0UCLKIPin;
 }
 
 impl EUsciI2CBus for pac::E_USCI_B1 {
     type ClockPin = UsciB1SCLPin;
     type DataPin = UsciB1SDAPin;
+    type UClkIPin = UsciB1UCLKIPin;
 }
 
 // Allows a GPIO pin to be converted into an I2C object
@@ -139,6 +145,10 @@ impl_i2c_pin!(UsciB0SCLPin, P1, Pin3);
 pub struct UsciB0SDAPin;
 impl_i2c_pin!(UsciB0SDAPin, P1, Pin2);
 
+/// UCLKI pin for eUSCI B0. Used as an external clock source.
+pub struct UsciB0UCLKIPin;
+impl_i2c_pin!(UsciB0UCLKIPin, P1, Pin1);
+
 /// I2C SCL pin for eUSCI B1
 pub struct UsciB1SCLPin;
 impl_i2c_pin!(UsciB1SCLPin, P4, Pin7);
@@ -147,9 +157,44 @@ impl_i2c_pin!(UsciB1SCLPin, P4, Pin7);
 pub struct UsciB1SDAPin;
 impl_i2c_pin!(UsciB1SDAPin, P4, Pin6);
 
-impl<USCI: EUsciI2CBus> I2CBusConfig<USCI> {
+/// UCLKI pin for eUSCI B1. Used as an external clock source.
+pub struct UsciB1UCLKIPin;
+impl_i2c_pin!(UsciB1UCLKIPin, P4, Pin5);
+
+/// Typestate trait for an I2C bus configuration. An I2C bus must have a clock selected before it can be configured
+pub trait ClockConfigState : private::Sealed {}
+/// Typestate for an I2C bus configuration with no clock source selected
+pub struct NotConfigured;
+/// Typestate for an I2C bus configuration with SMCLK selected as the clock source
+pub struct UsingSmclk;
+/// Typestate for an I2C bus configuration with ACLK selected as the clock source
+pub struct UsingAclk;
+/// Typestate for an I2C bus configuration with UCLKI selected as the clock source
+pub struct UsingUclkI;
+
+impl ClockConfigState for NotConfigured {}
+impl ClockConfigState for UsingSmclk {}
+impl ClockConfigState for UsingAclk {}
+impl ClockConfigState for UsingUclkI {}
+
+trait ClockConfigured : ClockConfigState {}
+impl ClockConfigured for UsingSmclk {}
+impl ClockConfigured for UsingAclk {}
+impl ClockConfigured for UsingUclkI {}
+
+// Seal the supertrait so users can still refer to the traits, but they can't add other implementations.
+mod private {
+    pub trait Sealed {}
+    // I2cBusConfig states
+    impl Sealed for super::NotConfigured {}
+    impl Sealed for super::UsingSmclk {}
+    impl Sealed for super::UsingAclk {}
+    impl Sealed for super::UsingUclkI {}
+}
+
+impl<USCI: EUsciI2CBus> I2CBusConfig<USCI, NotConfigured> {
     /// Create a new configuration for setting up a EUSCI peripheral in I2C master mode
-    pub fn new(usci: USCI, deglitch_time: GlitchFilter) -> Self {
+    pub fn new(usci: USCI, deglitch_time: GlitchFilter) -> I2CBusConfig<USCI, NotConfigured> {
         let ctlw0 = UcbCtlw0 {
             uca10: false,
             ucsla10: false,
@@ -246,23 +291,69 @@ impl<USCI: EUsciI2CBus> I2CBusConfig<USCI> {
             i2coa3,
             ie,
             ifg,
+            _phantom: PhantomData,
         }
     }
 
-    /// Configures this peripheral to use smclk
+    /// Configures this peripheral to use SMCLK
     #[inline]
-    pub fn use_smclk(&mut self, _smclk: &Smclk, clk_divisor: u16) {
+    pub fn use_smclk(mut self, _smclk: &Smclk, clk_divisor: u16) -> I2CBusConfig<USCI, UsingSmclk> {
         self.ctlw0.ucssel = Ucssel::Smclk;
         self.divisor = clk_divisor;
+        I2CBusConfig{ 
+            usci: self.usci, 
+            divisor: self.divisor, 
+            ctlw0: self.ctlw0, 
+            ctlw1: self.ctlw1, 
+            i2coa0: self.i2coa0, 
+            i2coa1: self.i2coa1, 
+            i2coa2: self.i2coa2, 
+            i2coa3: self.i2coa3, 
+            ie: self.ie, 
+            ifg: self.ifg, 
+            _phantom: PhantomData }
     }
 
-    /// Configures this peripheral to use aclk
+    /// Configures this peripheral to use ACLK
     #[inline]
-    pub fn use_aclk(&mut self, _aclk: &Aclk, clk_divisor: u16) {
+    pub fn use_aclk(mut self, _aclk: &Aclk, clk_divisor: u16) -> I2CBusConfig<USCI, UsingAclk> {
         self.ctlw0.ucssel = Ucssel::Aclk;
         self.divisor = clk_divisor;
+        I2CBusConfig{ 
+            usci: self.usci, 
+            divisor: self.divisor, 
+            ctlw0: self.ctlw0, 
+            ctlw1: self.ctlw1, 
+            i2coa0: self.i2coa0, 
+            i2coa1: self.i2coa1, 
+            i2coa2: self.i2coa2, 
+            i2coa3: self.i2coa3, 
+            ie: self.ie, 
+            ifg: self.ifg, 
+            _phantom: PhantomData }
     }
+    /// Configures this peripheral to use UCLK
+    #[inline]
+    pub fn use_uclk<Pin: Into<USCI::UClkIPin> >(mut self, _uclk: Pin, clk_divisor: u16) -> I2CBusConfig<USCI, UsingUclkI> {
+        self.ctlw0.ucssel = Ucssel::Uclk;
+        self.divisor = clk_divisor;
+        I2CBusConfig{ 
+            usci: self.usci, 
+            divisor: self.divisor, 
+            ctlw0: self.ctlw0, 
+            ctlw1: self.ctlw1, 
+            i2coa0: self.i2coa0, 
+            i2coa1: self.i2coa1, 
+            i2coa2: self.i2coa2, 
+            i2coa3: self.i2coa3, 
+            ie: self.ie, 
+            ifg: self.ifg, 
+            _phantom: PhantomData }
+    }
+}
 
+#[allow(private_bounds)]
+impl<CLOCK: ClockConfigured, USCI: EUsciI2CBus> I2CBusConfig<USCI, CLOCK> {
     /// Performs hardware configuration and creates the SDL pin
     pub fn sdl<C: Into<USCI::ClockPin>, D: Into<USCI::DataPin>>(
         &self,
