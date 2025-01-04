@@ -351,9 +351,13 @@ pub trait EusciSPI: Steal {
 
     fn txbuf_wr(&self, val: u8);
 
-    fn transmit_interrupt_set(&self, bit: bool);
+    fn set_transmit_interrupt(&self);
 
-    fn receive_interrupt_set(&self, bit: bool);
+    fn clear_transmit_interrupt(&self);
+
+    fn set_receive_interrupt(&self);
+
+    fn clear_receive_interrupt(&self);
 
     fn transmit_flag(&self) -> bool;
 
@@ -453,19 +457,23 @@ macro_rules! eusci_impl {
             }
 
             #[inline(always)]
-            fn transmit_interrupt_set(&self, bit: bool) {
-                match bit {
-                    true => unsafe { self.$ucxie().set_bits(|w| w.uctxie().set_bit()) },
-                    false => unsafe { self.$ucxie().clear_bits(|w| w.uctxie().clear_bit()) },
-                }
+            fn set_transmit_interrupt(&self) {
+                unsafe { self.$ucxie().set_bits(|w| w.uctxie().set_bit()) }
             }
 
             #[inline(always)]
-            fn receive_interrupt_set(&self, bit: bool) {
-                match bit {
-                    true => unsafe { self.$ucxie().set_bits(|w| w.ucrxie().set_bit()) },
-                    false => unsafe { self.$ucxie().clear_bits(|w| w.ucrxie().clear_bit()) },
-                }
+            fn clear_transmit_interrupt(&self) {
+                unsafe { self.$ucxie().clear_bits(|w| w.uctxie().clear_bit()) }
+            }
+
+            #[inline(always)]
+            fn set_receive_interrupt(&self) {
+                unsafe { self.$ucxie().set_bits(|w| w.ucrxie().set_bit()) }
+            }
+
+            #[inline(always)]
+            fn clear_receive_interrupt(&self) {
+                unsafe { self.$ucxie().clear_bits(|w| w.ucrxie().clear_bit()) }
             }
 
             #[inline(always)]

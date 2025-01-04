@@ -205,8 +205,8 @@ impl<USCI: EUsciSPIBus> SPIBusConfig<USCI> {
 
         self.usci.ctw0_clear_rst();
 
-        self.usci.transmit_interrupt_set(false);
-        self.usci.receive_interrupt_set(false);
+        self.usci.clear_transmit_interrupt();
+        self.usci.clear_receive_interrupt();
     }
 }
 
@@ -214,30 +214,48 @@ impl<USCI: EUsciSPIBus> SPIBusConfig<USCI> {
 pub struct SPIPins<USCI: EUsciSPIBus>(PhantomData<USCI>);
 
 impl<USCI: EUsciSPIBus> SPIPins<USCI> {
-    /// Enable or disable Rx interrupts, which fire when a byte is ready to be read
+    /// Enable Rx interrupts, which fire when a byte is ready to be read
     #[inline(always)]
-    pub fn rx_interrupt_set(&mut self, flag: bool) {
+    pub fn set_rx_interrupt(&mut self) {
         let usci = unsafe { USCI::steal() };
-        usci.receive_interrupt_set(flag);
+        usci.set_receive_interrupt();
     }
 
-    /// Enable or disable Tx interrupts, which fire when the transmit buffer is empty
+    /// Disable Rx interrupts, which fire when a byte is ready to be read
     #[inline(always)]
-    pub fn tx_interrupt_set(&mut self, flag: bool) {
+    pub fn clear_rx_interrupt(&mut self) {
         let usci = unsafe { USCI::steal() };
-        usci.transmit_interrupt_set(flag);
+        usci.clear_receive_interrupt();
+    }
+
+    /// Enable Tx interrupts, which fire when the transmit buffer is empty
+    #[inline(always)]
+    pub fn set_tx_interrupt(&mut self) {
+        let usci = unsafe { USCI::steal() };
+        usci.set_transmit_interrupt();
+    }
+
+    /// Disable Tx interrupts, which fire when the transmit buffer is empty
+    #[inline(always)]
+    pub fn clear_tx_interrupt(&mut self) {
+        let usci = unsafe { USCI::steal() };
+        usci.clear_transmit_interrupt();
     }
 
     /// Writes raw value to Tx buffer with no checks for validity
+    /// # Safety
+    /// May clobber unsent data still in the buffer
     #[inline(always)]
-    pub fn write_no_check(&mut self, val: u8) {
+    pub unsafe fn write_no_check(&mut self, val: u8) {
         let usci = unsafe { USCI::steal() };
         usci.txbuf_wr(val)
     }
 
     #[inline(always)]
     /// Reads a raw value from the Rx buffer with no checks for validity
-    pub fn read_no_check(&mut self) -> u8 {
+    /// # Safety
+    /// May read duplicate data
+    pub unsafe fn read_no_check(&mut self) -> u8 {
         let usci = unsafe { USCI::steal() };
         usci.rxbuf_rd()
     }
