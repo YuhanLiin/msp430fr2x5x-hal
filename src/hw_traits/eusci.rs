@@ -30,17 +30,6 @@ macro_rules! reg_struct {
         }
 
         #[allow(unused_macros)]
-        macro_rules! $macro_rd {
-            ($reader : expr) => {
-                $struct_name{
-                    $($($bool_name : $reader.$bool_name().bit(),)*)?
-                    $($($val_name : <$val_type>::from(<$size>::from($reader.$val_name().variant())),)*)?
-                    $($($int_name : <$int_size>::from($reader.$int_name().bits()),)*)?
-                }
-            };
-        }
-
-        #[allow(unused_macros)]
         macro_rules! $macro_wr {
             ($reg : expr) => { |w|
                 w$($(.$bool_name().bit($reg.$bool_name))*)?
@@ -146,19 +135,6 @@ pub struct UcbCtlw1, UcbCtlw1_rd, UcbCtlw1_wr {
         pub ucclto: Ucclto : u8,
         pub ucastp: Ucastp : u8,
         pub ucglit: Ucglit : u8,
-    }
-}
-}
-
-reg_struct! {
-pub struct UcbStatw, UcbStatw_rd, UcbStatw_wr{
-    flags{
-        pub ucscllow: bool,
-        pub ucgc: bool,
-        pub ucbbusy: bool,
-    }
-    ints {
-        pub ucbcnt: u8,
     }
 }
 }
@@ -290,18 +266,14 @@ pub trait EUsciI2C: Steal {
     fn ctw0_clear_rst(&self);
 
     // Modify only when UCSWRST = 1
-    // fn ctw0_rd(&self) -> UcbCtlw0;
     fn ctw0_wr(&self, reg: &UcbCtlw0);
 
     // Modify only when UCSWRST = 1
-    // fn ctw1_rd(&self) -> UcbCtlw1;
     fn ctw1_wr(&self, reg: &UcbCtlw1);
 
     // Modify only when UCSWRST = 1
     fn brw_rd(&self) -> u16;
     fn brw_wr(&self, val: u16);
-
-    fn statw_rd(&self) -> UcbStatw;
 
     // Modify only when UCSWRST = 1
     fn tbcnt_rd(&self) -> u16;
@@ -324,7 +296,6 @@ pub trait EUsciI2C: Steal {
     fn i2csa_rd(&self) -> u16;
     fn i2csa_wr(&self, val: u16);
 
-    // fn ie_rd(&self) -> UcbIe;
     fn ie_wr(&self, reg: &UcbIe);
 
     fn ifg_rd(&self) -> Self::IfgOut;
@@ -341,8 +312,6 @@ pub trait EusciSPI: Steal {
     fn ctw0_wr(&self, reg: &UcxSpiCtw0);
 
     fn brw_wr(&self, val: u16);
-
-    fn statw_rd(&self) -> Self::Statw;
 
     fn uclisten_set(&self);
     fn uclisten_clear(&self);
@@ -430,11 +399,6 @@ macro_rules! eusci_impl {
             #[inline(always)]
             fn brw_wr(&self, val: u16) {
                 self.$ucxbrw().write(|w| unsafe { w.bits(val) });
-            }
-
-            #[inline(always)]
-            fn statw_rd(&self) -> Self::Statw {
-                self.$ucxstatw().read()
             }
 
             #[inline(always)]
@@ -767,22 +731,10 @@ macro_rules! eusci_b_impl {
                 self.$ucbxifg().read().ucrxifg0().bit()
             }
 
-            // #[inline(always)]
-            // fn ctw0_rd(&self) -> UcbCtlw0 {
-            //     let content = self.$ucbxctlw0().read();
-            //     UcbCtlw0_rd! {content}
-            // }
-
             #[inline(always)]
             fn ctw0_wr(&self, reg: &UcbCtlw0) {
                 self.$ucbxctlw0().write(UcbCtlw0_wr! {reg});
             }
-
-            // #[inline(always)]
-            // fn ctw1_rd(&self) -> UcbCtlw1 {
-            //     let content = self.$ucbxctlw1.read();
-            //     UcbCtlw1_rd! {content}
-            // }
 
             #[inline(always)]
             fn ctw1_wr(&self, reg: &UcbCtlw1) {
@@ -796,12 +748,6 @@ macro_rules! eusci_b_impl {
             #[inline(always)]
             fn brw_wr(&self, val: u16) {
                 self.$ucbxbrw().write(|w| unsafe { w.bits(val) });
-            }
-
-            #[inline(always)]
-            fn statw_rd(&self) -> UcbStatw {
-                let content = self.$ucbxstatw().read();
-                UcbStatw_rd! {content}
             }
 
             #[inline(always)]
@@ -911,12 +857,6 @@ macro_rules! eusci_b_impl {
             fn i2csa_wr(&self, val: u16) {
                 self.$ucbxi2csa.write(|w| unsafe { w.bits(val) });
             }
-
-            // #[inline(always)]
-            // fn ie_rd(&self) -> UcbIe {
-            //     let content = self.$ucbxie().read();
-            //     UcbIe_rd! {content}
-            // }
 
             #[inline(always)]
             fn ie_wr(&self, reg: &UcbIe) {
