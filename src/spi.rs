@@ -125,16 +125,43 @@ impl_spi_pin!(UsciB1SCLKPin, P4, Pin5);
 pub struct UsciB1STEPin;
 impl_spi_pin!(UsciB1STEPin, P4, Pin4);
 
+/// Typestate trait for an SPI bus configuration. An SPI bus must have a clock selected before it can be configured
+pub trait ClockConfigState : private::Sealed {}
+/// Typestate for an SPI bus configuration with no clock source selected
+pub struct NotConfigured;
+/// Typestate for an SPI bus configuration with SMCLK selected as the clock source
+pub struct UsingSmclk;
+/// Typestate for an SPI bus configuration with ACLK selected as the clock source
+pub struct UsingAclk;
+
+impl ClockConfigState for NotConfigured {}
+impl ClockConfigState for UsingSmclk {}
+impl ClockConfigState for UsingAclk {}
+
+trait ClockConfigured : ClockConfigState {}
+impl ClockConfigured for UsingSmclk {}
+impl ClockConfigured for UsingAclk {}
+
+// Seal the supertrait so users can still refer to the traits, but they can't add other implementations.
+mod private {
+    pub trait Sealed {}
+    // SpiBusConfig states
+    impl Sealed for super::NotConfigured {}
+    impl Sealed for super::UsingSmclk {}
+    impl Sealed for super::UsingAclk {}
+}
+
 /// Struct used to configure a SPI bus
-pub struct SPIBusConfig<USCI: EUsciSPIBus> {
+pub struct SpiBusConfig<USCI: EUsciSPIBus, STATE: ClockConfigState> {
     usci: USCI,
     prescaler: u16,
 
     // Register configs
     ctlw0: UcxSpiCtw0,
+    _phantom: PhantomData<STATE>,
 }
 
-impl<USCI: EUsciSPIBus> SPIBusConfig<USCI> {
+impl<USCI: EUsciSPIBus> SpiBusConfig<USCI, NotConfigured> {
     /// Create a new configuration for setting up a EUSCI peripheral in SPI mode
     pub fn new(usci: USCI, mode: Mode, msb_first: bool) -> Self {
         let ctlw0 = UcxSpiCtw0 {
@@ -153,33 +180,38 @@ impl<USCI: EUsciSPIBus> SPIBusConfig<USCI> {
             ucstem: true,
             ucswrst: true,
             ucmode: Ucmode::FourPinSPI0,
-            ucssel: Ucssel::Uclk,
+            ucssel: Ucssel::Smclk, // overwritten by `use_smclk/aclk()`
         };
 
-        SPIBusConfig {
+        SpiBusConfig {
             usci,
             prescaler: 0,
             ctlw0,
+            _phantom: PhantomData,
         }
     }
 
     /// Configures this peripheral to use smclk
     #[inline]
-    pub fn use_smclk(&mut self, _smclk: &Smclk, clk_divisor: u16) {
+    pub fn use_smclk(mut self, _smclk: &Smclk, clk_divisor: u16) -> SpiBusConfig<USCI, UsingSmclk>{
         self.ctlw0.ucssel = Ucssel::Smclk;
         self.prescaler = clk_divisor;
+        SpiBusConfig { usci: self.usci, prescaler: self.prescaler, ctlw0: self.ctlw0, _phantom: PhantomData }
     }
 
     /// Configures this peripheral to use aclk
     #[inline]
-    pub fn use_aclk(&mut self, _aclk: &Aclk, clk_divisor: u16) {
+    pub fn use_aclk(mut self, _aclk: &Aclk, clk_divisor: u16) -> SpiBusConfig<USCI, UsingAclk> {
         self.ctlw0.ucssel = Ucssel::Aclk;
         self.prescaler = clk_divisor;
+        SpiBusConfig { usci: self.usci, prescaler: self.prescaler, ctlw0: self.ctlw0, _phantom: PhantomData }
     }
-
+}
+#[allow(private_bounds)]
+impl<USCI: EUsciSPIBus, CLOCK: ClockConfigured> SpiBusConfig<USCI, CLOCK> {
     /// Performs hardware configuration and creates an SPI bus
     #[inline(always)]
-    pub fn spi_pins<
+    pub fn configure<
         SO: Into<USCI::MISO>,
         SI: Into<USCI::MOSI>,
         CLK: Into<USCI::SCLK>,
@@ -190,9 +222,9 @@ impl<USCI: EUsciSPIBus> SPIBusConfig<USCI> {
         _mosi: SI,
         _sclk: CLK,
         _cs: STE,
-    ) -> SPIPins<USCI> {
+    ) -> SpiBus<USCI> {
         self.configure_hw();
-        SPIPins(PhantomData)
+        SpiBus(PhantomData)
     }
 
     #[inline]
@@ -211,9 +243,9 @@ impl<USCI: EUsciSPIBus> SPIBusConfig<USCI> {
 }
 
 /// Represents a group of pins configured for SPI communication
-pub struct SPIPins<USCI: EUsciSPIBus>(PhantomData<USCI>);
+pub struct SpiBus<USCI: EUsciSPIBus>(PhantomData<USCI>);
 
-impl<USCI: EUsciSPIBus> SPIPins<USCI> {
+impl<USCI: EUsciSPIBus> SpiBus<USCI> {
     /// Enable Rx interrupts, which fire when a byte is ready to be read
     #[inline(always)]
     pub fn set_rx_interrupt(&mut self) {
@@ -268,7 +300,7 @@ pub enum SPIErr {
     Unimplemented = 0,
 }
 
-impl<USCI: EUsciSPIBus> FullDuplex<u8> for SPIPins<USCI> {
+impl<USCI: EUsciSPIBus> FullDuplex<u8> for SpiBus<USCI> {
     type Error = SPIErr;
     fn read(&mut self) -> nb::Result<u8, Self::Error> {
         let usci = unsafe { USCI::steal() };
@@ -291,5 +323,5 @@ impl<USCI: EUsciSPIBus> FullDuplex<u8> for SPIPins<USCI> {
 }
 
 // Implementing FullDuplex above gets us a blocking write and transfer implementation for free
-impl<USCI: EUsciSPIBus> embedded_hal::blocking::spi::write::Default<u8> for SPIPins<USCI> {}
-impl<USCI: EUsciSPIBus> embedded_hal::blocking::spi::transfer::Default<u8> for SPIPins<USCI> {}
+impl<USCI: EUsciSPIBus> embedded_hal::blocking::spi::write::Default<u8> for SpiBus<USCI> {}
+impl<USCI: EUsciSPIBus> embedded_hal::blocking::spi::transfer::Default<u8> for SpiBus<USCI> {}
