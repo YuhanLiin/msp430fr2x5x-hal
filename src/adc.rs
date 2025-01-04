@@ -5,7 +5,7 @@
 //! P1.0 - P1.7 (channels 0 to 7), P5.0 - P5.3 (channels 8 to 11)
 //!
 
-use crate::gpio::*;
+use crate::{clock::{Aclk, Smclk}, gpio::*};
 use core::{convert::Infallible, marker::PhantomData};
 use embedded_hal::adc::{Channel, OneShot};
 use msp430fr2355::ADC;
@@ -82,18 +82,15 @@ impl ClockDivider {
     }
 }
 
-/// Which clock source the ADC uses as input.
-/// 
-/// Default: MODCLK
 #[derive(Default, Copy, Clone, PartialEq, Eq)]
-pub enum ClockSource {
+enum ClockSource {
     /// Use MODCLK as the ADC input clock
     #[default]
-    MODCLK = 0b00,
+    ModClk = 0b00,
     /// Use ACLK as the ADC input clock
-    ACLK = 0b01,
+    AClk = 0b01,
     /// Use SMCLK as the ADC input clock
-    SMCLK = 0b10,
+    SmClk = 0b10,
 }
 
 impl ClockSource {
@@ -170,7 +167,7 @@ impl SamplingRate {
 // Pins corresponding to an ADC channel. Pin types can have `::channel()` called on them to get their ADC channel index.
 macro_rules! impl_adc_channel {
     ($port: ty, $pin: ty, $channel: literal ) => {
-        impl<S: AdcState> Channel<Adc<S>> for Pin<$port, $pin, Alternate3<Input<Floating>>> {
+        impl Channel<Adc> for Pin<$port, $pin, Alternate3<Input<Floating>>> {
             type ID = u8;
 
             fn channel() -> Self::ID {
@@ -193,25 +190,54 @@ impl_adc_channel!(P5, Pin1, 9);
 impl_adc_channel!(P5, Pin2, 10);
 impl_adc_channel!(P5, Pin3, 11);
 
-/// Controls the onboard ADC
-pub struct Adc<STATE: AdcState> {
-    adc_reg: ADC,
-    is_waiting: bool,
-    _phantom: PhantomData<STATE>,
+/// Typestate trait for an ADC configuration. An ADC must have a clock selected before it can be configured
+pub trait ClockConfigState : private::Sealed {}
+/// Typestate for an ADC configuration with no clock source selected
+pub struct NotConfigured;
+/// Typestate for an ADC configuration with SMCLK selected as the clock source
+pub struct UsingSmclk;
+/// Typestate for an ADC configuration with ACLK selected as the clock source
+pub struct UsingAclk;
+/// Typestate for an ADC configuration with MODCLK selected as the clock source
+pub struct UsingModclk;
+
+impl ClockConfigState for NotConfigured {}
+impl ClockConfigState for UsingSmclk {}
+impl ClockConfigState for UsingAclk {}
+impl ClockConfigState for UsingModclk {}
+
+trait ClockConfigured : ClockConfigState {
+    fn clock_source() -> ClockSource;
+}
+impl ClockConfigured for UsingSmclk {
+    fn clock_source() -> ClockSource { ClockSource::SmClk }
+}
+impl ClockConfigured for UsingAclk {
+    fn clock_source() -> ClockSource { ClockSource::AClk }
+}
+impl ClockConfigured for UsingModclk {
+    fn clock_source() -> ClockSource { ClockSource::ModClk }
+}
+
+// Seal the supertrait so users can still refer to the traits, but they can't add other implementations.
+mod private {
+    pub trait Sealed {}
+    // AdcConfig states
+    impl Sealed for super::NotConfigured {}
+    impl Sealed for super::UsingSmclk {}
+    impl Sealed for super::UsingAclk {}
+    impl Sealed for super::UsingModclk {}
 }
 
 /// Configuration object for an ADC.
 /// 
 /// The default configuration is based on the default register values:
-/// - MODCLK as input clock
 /// - Predivider = 1 and clock divider = 1
 /// - 10-bit resolution
 /// - 8 cycle sample time
 /// - Max 200 ksps sample rate
-#[derive(Default, Clone, PartialEq, Eq)]
-pub struct AdcConfig {
-    /// Which clock source the ADC takes as an input. This clock will first be divided by the predivider, then the clock divider, to generate ADCCLK.
-    pub clock_source: ClockSource,
+#[derive(Clone, PartialEq, Eq)]
+pub struct AdcConfig<STATE: ClockConfigState> {
     /// How much the input clock is divided by, after the predivider.
     pub clock_divider: ClockDivider,
     /// How much the input clock is initially divided by, before the clock divider.
@@ -222,37 +248,82 @@ pub struct AdcConfig {
     pub sampling_rate: SamplingRate,
     /// Determines the number of ADCCLK cycles the sampling time takes.
     pub sample_time: SampleTime,
+    _phantom: PhantomData<STATE>,
 }
 
-impl AdcConfig {
+// Only implement Default for NotConfigured
+impl Default for AdcConfig<NotConfigured> {
+    fn default() -> Self {
+        Self { 
+            clock_divider: Default::default(), 
+            predivider: Default::default(), 
+            resolution: Default::default(), 
+            sampling_rate: Default::default(), 
+            sample_time: Default::default(), 
+            _phantom: Default::default() }
+    }
+}
+
+impl AdcConfig<NotConfigured> {
     /// Creates an ADC configuration. A default implementation is also available through `::default()`
     pub fn new(
-        clock_source: ClockSource,
         clock_divider: ClockDivider,
         predivider: Predivider,
         resolution: Resolution,
         sampling_rate: SamplingRate,
         sample_time: SampleTime,
-    ) -> AdcConfig {
+    ) -> AdcConfig<NotConfigured> {
         AdcConfig {
-            clock_source,
             clock_divider,
             predivider,
             resolution,
             sampling_rate,
             sample_time,
+            _phantom: PhantomData,
         }
     }
-
+    /// Configure the ADC to use SMCLK
+    pub fn use_smclk(self, _smclk: &Smclk) -> AdcConfig<UsingSmclk>{
+        AdcConfig { 
+            clock_divider: self.clock_divider, 
+            predivider: self.predivider, 
+            resolution: self.resolution, 
+            sampling_rate: self.sampling_rate, 
+            sample_time: self.sample_time, 
+            _phantom: PhantomData }
+    }
+    /// Configure the ADC to use ACLK
+    pub fn use_aclk(self, _aclk: &Aclk) -> AdcConfig<UsingAclk>{
+        AdcConfig { 
+            clock_divider: self.clock_divider, 
+            predivider: self.predivider, 
+            resolution: self.resolution, 
+            sampling_rate: self.sampling_rate, 
+            sample_time: self.sample_time, 
+            _phantom: PhantomData }
+    }
+    /// Configure the ADC to use MODCLK
+    pub fn use_modclk(self) -> AdcConfig<UsingModclk>{
+        AdcConfig { 
+            clock_divider: self.clock_divider, 
+            predivider: self.predivider, 
+            resolution: self.resolution, 
+            sampling_rate: self.sampling_rate, 
+            sample_time: self.sample_time, 
+            _phantom: PhantomData }
+    }
+}
+#[allow(private_bounds)]
+impl<CLOCK: ClockConfigured> AdcConfig<CLOCK> {
     /// Applies this ADC configuration to hardware registers, and returns an ADC.
-    pub fn config_hw(self, mut adc_reg: ADC) -> Adc<Disabled> {
+    pub fn configure(self, mut adc_reg: ADC) -> Adc {
         // Disable the ADC before we set the other bits. Some can only be set while the ADC is disabled.
         disable_adc_reg(&mut adc_reg);
 
         let adcsht = self.sample_time.adcsht();
         adc_reg.adcctl0.write(|w| w.adcsht().bits(adcsht));
 
-        let adcssel = self.clock_source.adcssel();
+        let adcssel = CLOCK::clock_source().adcssel();
         let adcdiv = self.clock_divider.adcdiv();
         adc_reg.adcctl1.write(|w| {w
             .adcssel().bits(adcssel)
@@ -272,27 +343,17 @@ impl AdcConfig {
         Adc {
             adc_reg,
             is_waiting: false,
-            _phantom: PhantomData,
         }
     }
 }
-/// Typestate for an enabled ADC. It is ready to begin conversions. The ADC must be disabled before it can be reconfigured.
-pub struct Enabled;
-/// Typestate for a disabled ADC. It is ready to be configured. The ADC must be enabled before it can begin conversions.
-pub struct Disabled;
-/// Typestate trait for the current state of the ADC. The ADC may be either `Enabled` or `Disabled.`
-pub trait AdcState: private::Sealed {}
-impl AdcState for Enabled {}
-impl AdcState for Disabled {}
 
-// Seal this supertrait so users can still refer to AdcState, but they can't add other implementations besides `Enabled` and `Disabled`.
-mod private {
-    pub trait Sealed {}
-    impl Sealed for super::Enabled {}
-    impl Sealed for super::Disabled {}
+/// Controls the onboard ADC
+pub struct Adc {
+    adc_reg: ADC,
+    is_waiting: bool,
 }
 
-impl<S: AdcState> Adc<S> {
+impl Adc {
     /// Whether the ADC is currently sampling or converting.
     pub fn adc_is_busy(&self) -> bool {
         self.adc_reg.adcctl1.read().adcbusy().bit_is_set()
@@ -302,21 +363,21 @@ impl<S: AdcState> Adc<S> {
     pub fn adc_get_result(&self) -> u16 {
         self.adc_reg.adcmem0.read().bits()
     }
-}
 
-impl Adc<Disabled> {
-    /// Enables this ADC, ready to start a conversion.
-    pub fn into_enabled(mut self) -> Adc<Enabled> {
-        enable_adc_reg(&mut self.adc_reg);
-        Adc {
-            adc_reg: self.adc_reg,
-            is_waiting: self.is_waiting,
-            _phantom: PhantomData,
+    /// Enables this ADC, ready to start conversions.
+    pub fn enable(&mut self) {
+        unsafe {
+            self.adc_reg.adcctl0.set_bits(|w| w.adcon().set_bit());
         }
     }
 
+    /// Disables this ADC to save power.
+    pub fn disable(&mut self) {
+        disable_adc_reg(&mut self.adc_reg);
+    }
+
     /// Selects which pin to sample.
-    pub fn set_pin<PIN>(&mut self, _pin: &PIN)
+    fn set_pin<PIN>(&mut self, _pin: &PIN)
     where
         PIN: Channel<Self, ID = u8>,
     {
@@ -324,21 +385,9 @@ impl Adc<Disabled> {
             .adcmctl0
             .modify(|_, w| w.adcinch().bits(PIN::channel()));
     }
-}
-
-impl Adc<Enabled> {
-    /// Disables this ADC to save power.
-    pub fn into_disabled(mut self) -> Adc<Disabled> {
-        disable_adc_reg(&mut self.adc_reg);
-        Adc {
-            adc_reg: self.adc_reg,
-            is_waiting: self.is_waiting,
-            _phantom: PhantomData,
-        }
-    }
 
     /// Starts an ADC conversion.
-    pub fn start_conversion(&mut self) {
+    fn start_conversion(&mut self) {
         unsafe {
             self.adc_reg.adcctl0.set_bits(|w| w
                 .adcenc().set_bit()
@@ -346,19 +395,6 @@ impl Adc<Enabled> {
         }
     }
 
-    // We use this fn to implement OneShot, as otherwise we'd need to consume the Adc to change state.
-    /// Disables the ADC, configures the input channel, then re-enables the ADC.
-    pub fn reset_and_set_pin<PIN>(&mut self, _pin: &PIN)
-    where
-        PIN: Channel<Self, ID = u8>,
-    {
-        disable_adc_reg(&mut self.adc_reg);
-        self.adc_reg
-            .adcmctl0
-            .modify(|_, w| w.adcinch().bits(PIN::channel()));
-
-        enable_adc_reg(&mut self.adc_reg);
-    }
 }
 
 fn disable_adc_reg(adc: &mut ADC) {
@@ -369,16 +405,10 @@ fn disable_adc_reg(adc: &mut ADC) {
     }
 }
 
-fn enable_adc_reg(adc: &mut ADC) {
-    unsafe {
-        adc.adcctl0.set_bits(|w| w.adcon().set_bit());
-    }
-}
-
-impl<WORD, PIN> OneShot<Adc<Enabled>, WORD, PIN> for Adc<Enabled>
+impl<WORD, PIN> OneShot<Adc, WORD, PIN> for Adc
 where
     WORD: From<u16>,
-    PIN: Channel<Adc<Enabled>, ID = u8>,
+    PIN: Channel<Self, ID = u8>,
 {
     type Error = Infallible; // Only returns WouldBlock
 
@@ -394,8 +424,9 @@ where
                 return Ok(self.adc_get_result().into());
             }
         }
-
-        self.reset_and_set_pin(pin);
+        self.disable();
+        self.set_pin(pin);
+        self.enable();
 
         self.start_conversion();
         self.is_waiting = true;
