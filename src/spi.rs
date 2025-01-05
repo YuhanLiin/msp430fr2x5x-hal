@@ -128,27 +128,19 @@ impl_spi_pin!(UsciB1STEPin, P4, Pin4);
 /// Typestate trait for an SPI bus configuration. An SPI bus must have a clock selected before it can be configured
 pub trait ClockConfigState : private::Sealed {}
 /// Typestate for an SPI bus configuration with no clock source selected
-pub struct NotConfigured;
-/// Typestate for an SPI bus configuration with SMCLK selected as the clock source
-pub struct UsingSmclk;
-/// Typestate for an SPI bus configuration with ACLK selected as the clock source
-pub struct UsingAclk;
+pub struct NoClockSet;
+/// Typestate for an SPI bus configuration with a clock source selected
+pub struct ClockSet;
 
-impl ClockConfigState for NotConfigured {}
-impl ClockConfigState for UsingSmclk {}
-impl ClockConfigState for UsingAclk {}
-
-trait ClockConfigured : ClockConfigState {}
-impl ClockConfigured for UsingSmclk {}
-impl ClockConfigured for UsingAclk {}
+impl ClockConfigState for NoClockSet {}
+impl ClockConfigState for ClockSet {}
 
 // Seal the supertrait so users can still refer to the traits, but they can't add other implementations.
 mod private {
     pub trait Sealed {}
     // SpiBusConfig states
-    impl Sealed for super::NotConfigured {}
-    impl Sealed for super::UsingSmclk {}
-    impl Sealed for super::UsingAclk {}
+    impl Sealed for super::NoClockSet {}
+    impl Sealed for super::ClockSet {}
 }
 
 /// Struct used to configure a SPI bus
@@ -161,7 +153,7 @@ pub struct SpiBusConfig<USCI: EUsciSPIBus, STATE: ClockConfigState> {
     _phantom: PhantomData<STATE>,
 }
 
-impl<USCI: EUsciSPIBus> SpiBusConfig<USCI, NotConfigured> {
+impl<USCI: EUsciSPIBus> SpiBusConfig<USCI, NoClockSet> {
     /// Create a new configuration for setting up a EUSCI peripheral in SPI mode
     pub fn new(usci: USCI, mode: Mode, msb_first: bool) -> Self {
         let ctlw0 = UcxSpiCtw0 {
@@ -193,7 +185,7 @@ impl<USCI: EUsciSPIBus> SpiBusConfig<USCI, NotConfigured> {
 
     /// Configures this peripheral to use smclk
     #[inline]
-    pub fn use_smclk(mut self, _smclk: &Smclk, clk_divisor: u16) -> SpiBusConfig<USCI, UsingSmclk>{
+    pub fn use_smclk(mut self, _smclk: &Smclk, clk_divisor: u16) -> SpiBusConfig<USCI, ClockSet>{
         self.ctlw0.ucssel = Ucssel::Smclk;
         self.prescaler = clk_divisor;
         SpiBusConfig { usci: self.usci, prescaler: self.prescaler, ctlw0: self.ctlw0, _phantom: PhantomData }
@@ -201,14 +193,14 @@ impl<USCI: EUsciSPIBus> SpiBusConfig<USCI, NotConfigured> {
 
     /// Configures this peripheral to use aclk
     #[inline]
-    pub fn use_aclk(mut self, _aclk: &Aclk, clk_divisor: u16) -> SpiBusConfig<USCI, UsingAclk> {
+    pub fn use_aclk(mut self, _aclk: &Aclk, clk_divisor: u16) -> SpiBusConfig<USCI, ClockSet> {
         self.ctlw0.ucssel = Ucssel::Aclk;
         self.prescaler = clk_divisor;
         SpiBusConfig { usci: self.usci, prescaler: self.prescaler, ctlw0: self.ctlw0, _phantom: PhantomData }
     }
 }
 #[allow(private_bounds)]
-impl<USCI: EUsciSPIBus, CLOCK: ClockConfigured> SpiBusConfig<USCI, CLOCK> {
+impl<USCI: EUsciSPIBus> SpiBusConfig<USCI, ClockSet> {
     /// Performs hardware configuration and creates an SPI bus
     #[inline(always)]
     pub fn configure<

@@ -164,37 +164,24 @@ impl_i2c_pin!(UsciB1UCLKIPin, P4, Pin5);
 /// Typestate trait for an I2C bus configuration. An I2C bus must have a clock selected before it can be configured
 pub trait ClockConfigState : private::Sealed {}
 /// Typestate for an I2C bus configuration with no clock source selected
-pub struct NotConfigured;
-/// Typestate for an I2C bus configuration with SMCLK selected as the clock source
-pub struct UsingSmclk;
-/// Typestate for an I2C bus configuration with ACLK selected as the clock source
-pub struct UsingAclk;
-/// Typestate for an I2C bus configuration with UCLKI selected as the clock source
-pub struct UsingUclkI;
+pub struct NoClockSet;
+/// Typestate for an I2C bus configuration with a clock source selected
+pub struct ClockSet;
 
-impl ClockConfigState for NotConfigured {}
-impl ClockConfigState for UsingSmclk {}
-impl ClockConfigState for UsingAclk {}
-impl ClockConfigState for UsingUclkI {}
-
-trait ClockConfigured : ClockConfigState {}
-impl ClockConfigured for UsingSmclk {}
-impl ClockConfigured for UsingAclk {}
-impl ClockConfigured for UsingUclkI {}
+impl ClockConfigState for NoClockSet {}
+impl ClockConfigState for ClockSet {}
 
 // Seal the supertrait so users can still refer to the traits, but they can't add other implementations.
 mod private {
     pub trait Sealed {}
     // I2cBusConfig states
-    impl Sealed for super::NotConfigured {}
-    impl Sealed for super::UsingSmclk {}
-    impl Sealed for super::UsingAclk {}
-    impl Sealed for super::UsingUclkI {}
+    impl Sealed for super::NoClockSet {}
+    impl Sealed for super::ClockSet {}
 }
 
-impl<USCI: EUsciI2CBus> I2CBusConfig<USCI, NotConfigured> {
+impl<USCI: EUsciI2CBus> I2CBusConfig<USCI, NoClockSet> {
     /// Create a new configuration for setting up a EUSCI peripheral in I2C master mode
-    pub fn new(usci: USCI, deglitch_time: GlitchFilter) -> I2CBusConfig<USCI, NotConfigured> {
+    pub fn new(usci: USCI, deglitch_time: GlitchFilter) -> I2CBusConfig<USCI, NoClockSet> {
         let ctlw0 = UcbCtlw0 {
             uca10: false,
             ucsla10: false,
@@ -297,7 +284,7 @@ impl<USCI: EUsciI2CBus> I2CBusConfig<USCI, NotConfigured> {
 
     /// Configures this peripheral to use SMCLK
     #[inline]
-    pub fn use_smclk(mut self, _smclk: &Smclk, clk_divisor: u16) -> I2CBusConfig<USCI, UsingSmclk> {
+    pub fn use_smclk(mut self, _smclk: &Smclk, clk_divisor: u16) -> I2CBusConfig<USCI, ClockSet> {
         self.ctlw0.ucssel = Ucssel::Smclk;
         self.divisor = clk_divisor;
         I2CBusConfig{ 
@@ -316,7 +303,7 @@ impl<USCI: EUsciI2CBus> I2CBusConfig<USCI, NotConfigured> {
 
     /// Configures this peripheral to use ACLK
     #[inline]
-    pub fn use_aclk(mut self, _aclk: &Aclk, clk_divisor: u16) -> I2CBusConfig<USCI, UsingAclk> {
+    pub fn use_aclk(mut self, _aclk: &Aclk, clk_divisor: u16) -> I2CBusConfig<USCI, ClockSet> {
         self.ctlw0.ucssel = Ucssel::Aclk;
         self.divisor = clk_divisor;
         I2CBusConfig{ 
@@ -334,7 +321,7 @@ impl<USCI: EUsciI2CBus> I2CBusConfig<USCI, NotConfigured> {
     }
     /// Configures this peripheral to use UCLK
     #[inline]
-    pub fn use_uclk<Pin: Into<USCI::UClkIPin> >(mut self, _uclk: Pin, clk_divisor: u16) -> I2CBusConfig<USCI, UsingUclkI> {
+    pub fn use_uclk<Pin: Into<USCI::UClkIPin> >(mut self, _uclk: Pin, clk_divisor: u16) -> I2CBusConfig<USCI, ClockSet> {
         self.ctlw0.ucssel = Ucssel::Uclk;
         self.divisor = clk_divisor;
         I2CBusConfig{ 
@@ -353,7 +340,7 @@ impl<USCI: EUsciI2CBus> I2CBusConfig<USCI, NotConfigured> {
 }
 
 #[allow(private_bounds)]
-impl<CLOCK: ClockConfigured, USCI: EUsciI2CBus> I2CBusConfig<USCI, CLOCK> {
+impl<USCI: EUsciI2CBus> I2CBusConfig<USCI, ClockSet> {
     /// Performs hardware configuration and creates the I2C bus
     pub fn configure<C: Into<USCI::ClockPin>, D: Into<USCI::DataPin>>(
         &self,

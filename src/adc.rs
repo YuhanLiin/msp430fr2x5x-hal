@@ -193,40 +193,18 @@ impl_adc_channel!(P5, Pin3, 11);
 /// Typestate trait for an ADC configuration. An ADC must have a clock selected before it can be configured
 pub trait ClockConfigState : private::Sealed {}
 /// Typestate for an ADC configuration with no clock source selected
-pub struct NotConfigured;
-/// Typestate for an ADC configuration with SMCLK selected as the clock source
-pub struct UsingSmclk;
-/// Typestate for an ADC configuration with ACLK selected as the clock source
-pub struct UsingAclk;
-/// Typestate for an ADC configuration with MODCLK selected as the clock source
-pub struct UsingModclk;
+pub struct NoClockSet;
+/// Typestate for an ADC configuration with a clock source selected
+pub struct ClockSet;
 
-impl ClockConfigState for NotConfigured {}
-impl ClockConfigState for UsingSmclk {}
-impl ClockConfigState for UsingAclk {}
-impl ClockConfigState for UsingModclk {}
-
-trait ClockConfigured : ClockConfigState {
-    fn clock_source() -> ClockSource;
-}
-impl ClockConfigured for UsingSmclk {
-    fn clock_source() -> ClockSource { ClockSource::SmClk }
-}
-impl ClockConfigured for UsingAclk {
-    fn clock_source() -> ClockSource { ClockSource::AClk }
-}
-impl ClockConfigured for UsingModclk {
-    fn clock_source() -> ClockSource { ClockSource::ModClk }
-}
-
+impl ClockConfigState for NoClockSet {}
+impl ClockConfigState for ClockSet {}
 // Seal the supertrait so users can still refer to the traits, but they can't add other implementations.
 mod private {
     pub trait Sealed {}
     // AdcConfig states
-    impl Sealed for super::NotConfigured {}
-    impl Sealed for super::UsingSmclk {}
-    impl Sealed for super::UsingAclk {}
-    impl Sealed for super::UsingModclk {}
+    impl Sealed for super::NoClockSet {}
+    impl Sealed for super::ClockSet {}
 }
 
 /// Configuration object for an ADC.
@@ -238,6 +216,7 @@ mod private {
 /// - Max 200 ksps sample rate
 #[derive(Clone, PartialEq, Eq)]
 pub struct AdcConfig<STATE: ClockConfigState> {
+    clock_source: ClockSource,
     /// How much the input clock is divided by, after the predivider.
     pub clock_divider: ClockDivider,
     /// How much the input clock is initially divided by, before the clock divider.
@@ -252,9 +231,10 @@ pub struct AdcConfig<STATE: ClockConfigState> {
 }
 
 // Only implement Default for NotConfigured
-impl Default for AdcConfig<NotConfigured> {
+impl Default for AdcConfig<NoClockSet> {
     fn default() -> Self {
         Self { 
+            clock_source: Default::default(),
             clock_divider: Default::default(), 
             predivider: Default::default(), 
             resolution: Default::default(), 
@@ -264,7 +244,7 @@ impl Default for AdcConfig<NotConfigured> {
     }
 }
 
-impl AdcConfig<NotConfigured> {
+impl AdcConfig<NoClockSet> {
     /// Creates an ADC configuration. A default implementation is also available through `::default()`
     pub fn new(
         clock_divider: ClockDivider,
@@ -272,8 +252,9 @@ impl AdcConfig<NotConfigured> {
         resolution: Resolution,
         sampling_rate: SamplingRate,
         sample_time: SampleTime,
-    ) -> AdcConfig<NotConfigured> {
+    ) -> AdcConfig<NoClockSet> {
         AdcConfig {
+            clock_source: ClockSource::ModClk, // This will be overwritten by `use_smclk/aclk/...` later
             clock_divider,
             predivider,
             resolution,
@@ -283,8 +264,9 @@ impl AdcConfig<NotConfigured> {
         }
     }
     /// Configure the ADC to use SMCLK
-    pub fn use_smclk(self, _smclk: &Smclk) -> AdcConfig<UsingSmclk>{
+    pub fn use_smclk(self, _smclk: &Smclk) -> AdcConfig<ClockSet>{
         AdcConfig { 
+            clock_source: ClockSource::SmClk,
             clock_divider: self.clock_divider, 
             predivider: self.predivider, 
             resolution: self.resolution, 
@@ -293,8 +275,9 @@ impl AdcConfig<NotConfigured> {
             _phantom: PhantomData }
     }
     /// Configure the ADC to use ACLK
-    pub fn use_aclk(self, _aclk: &Aclk) -> AdcConfig<UsingAclk>{
+    pub fn use_aclk(self, _aclk: &Aclk) -> AdcConfig<ClockSet>{
         AdcConfig { 
+            clock_source: ClockSource::AClk,
             clock_divider: self.clock_divider, 
             predivider: self.predivider, 
             resolution: self.resolution, 
@@ -303,8 +286,9 @@ impl AdcConfig<NotConfigured> {
             _phantom: PhantomData }
     }
     /// Configure the ADC to use MODCLK
-    pub fn use_modclk(self) -> AdcConfig<UsingModclk>{
+    pub fn use_modclk(self) -> AdcConfig<ClockSet>{
         AdcConfig { 
+            clock_source: ClockSource::ModClk,
             clock_divider: self.clock_divider, 
             predivider: self.predivider, 
             resolution: self.resolution, 
@@ -313,8 +297,7 @@ impl AdcConfig<NotConfigured> {
             _phantom: PhantomData }
     }
 }
-#[allow(private_bounds)]
-impl<CLOCK: ClockConfigured> AdcConfig<CLOCK> {
+impl AdcConfig<ClockSet> {
     /// Applies this ADC configuration to hardware registers, and returns an ADC.
     pub fn configure(self, mut adc_reg: ADC) -> Adc {
         // Disable the ADC before we set the other bits. Some can only be set while the ADC is disabled.
@@ -323,7 +306,7 @@ impl<CLOCK: ClockConfigured> AdcConfig<CLOCK> {
         let adcsht = self.sample_time.adcsht();
         adc_reg.adcctl0.write(|w| w.adcsht().bits(adcsht));
 
-        let adcssel = CLOCK::clock_source().adcssel();
+        let adcssel = self.clock_source.adcssel();
         let adcdiv = self.clock_divider.adcdiv();
         adc_reg.adcctl1.write(|w| {w
             .adcssel().bits(adcssel)
