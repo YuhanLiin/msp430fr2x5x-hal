@@ -6,7 +6,7 @@
 //!
 
 use crate::{clock::{Aclk, Smclk}, gpio::*};
-use core::{convert::Infallible, marker::PhantomData};
+use core::convert::Infallible;
 use embedded_hal::adc::{Channel, OneShot};
 use msp430fr2355::ADC;
 
@@ -190,22 +190,10 @@ impl_adc_channel!(P5, Pin1, 9);
 impl_adc_channel!(P5, Pin2, 10);
 impl_adc_channel!(P5, Pin3, 11);
 
-/// Typestate trait for an ADC configuration. An ADC must have a clock selected before it can be configured
-pub trait ClockConfigState : private::Sealed {}
 /// Typestate for an ADC configuration with no clock source selected
 pub struct NoClockSet;
 /// Typestate for an ADC configuration with a clock source selected
-pub struct ClockSet;
-
-impl ClockConfigState for NoClockSet {}
-impl ClockConfigState for ClockSet {}
-// Seal the supertrait so users can still refer to the traits, but they can't add other implementations.
-mod private {
-    pub trait Sealed {}
-    // AdcConfig states
-    impl Sealed for super::NoClockSet {}
-    impl Sealed for super::ClockSet {}
-}
+pub struct ClockSet(ClockSource);
 
 /// Configuration object for an ADC.
 /// 
@@ -215,8 +203,8 @@ mod private {
 /// - 8 cycle sample time
 /// - Max 200 ksps sample rate
 #[derive(Clone, PartialEq, Eq)]
-pub struct AdcConfig<STATE: ClockConfigState> {
-    clock_source: ClockSource,
+pub struct AdcConfig<STATE> {
+    state: STATE,
     /// How much the input clock is divided by, after the predivider.
     pub clock_divider: ClockDivider,
     /// How much the input clock is initially divided by, before the clock divider.
@@ -227,20 +215,19 @@ pub struct AdcConfig<STATE: ClockConfigState> {
     pub sampling_rate: SamplingRate,
     /// Determines the number of ADCCLK cycles the sampling time takes.
     pub sample_time: SampleTime,
-    _phantom: PhantomData<STATE>,
 }
 
-// Only implement Default for NotConfigured
+// Only implement Default for NoClockSet
 impl Default for AdcConfig<NoClockSet> {
     fn default() -> Self {
         Self { 
-            clock_source: Default::default(),
+            state: NoClockSet,
             clock_divider: Default::default(), 
             predivider: Default::default(), 
             resolution: Default::default(), 
             sampling_rate: Default::default(), 
             sample_time: Default::default(), 
-            _phantom: Default::default() }
+        }
     }
 }
 
@@ -254,47 +241,46 @@ impl AdcConfig<NoClockSet> {
         sample_time: SampleTime,
     ) -> AdcConfig<NoClockSet> {
         AdcConfig {
-            clock_source: ClockSource::ModClk, // This will be overwritten by `use_smclk/aclk/...` later
+            state: NoClockSet,
             clock_divider,
             predivider,
             resolution,
             sampling_rate,
             sample_time,
-            _phantom: PhantomData,
         }
     }
     /// Configure the ADC to use SMCLK
     pub fn use_smclk(self, _smclk: &Smclk) -> AdcConfig<ClockSet>{
         AdcConfig { 
-            clock_source: ClockSource::SmClk,
+            state: ClockSet(ClockSource::SmClk),
             clock_divider: self.clock_divider, 
             predivider: self.predivider, 
             resolution: self.resolution, 
             sampling_rate: self.sampling_rate, 
             sample_time: self.sample_time, 
-            _phantom: PhantomData }
+        }
     }
     /// Configure the ADC to use ACLK
     pub fn use_aclk(self, _aclk: &Aclk) -> AdcConfig<ClockSet>{
         AdcConfig { 
-            clock_source: ClockSource::AClk,
+            state: ClockSet(ClockSource::AClk),
             clock_divider: self.clock_divider, 
             predivider: self.predivider, 
             resolution: self.resolution, 
             sampling_rate: self.sampling_rate, 
             sample_time: self.sample_time, 
-            _phantom: PhantomData }
+        }
     }
     /// Configure the ADC to use MODCLK
     pub fn use_modclk(self) -> AdcConfig<ClockSet>{
         AdcConfig { 
-            clock_source: ClockSource::ModClk,
+            state: ClockSet(ClockSource::ModClk),
             clock_divider: self.clock_divider, 
             predivider: self.predivider, 
             resolution: self.resolution, 
             sampling_rate: self.sampling_rate, 
             sample_time: self.sample_time, 
-            _phantom: PhantomData }
+        }
     }
 }
 impl AdcConfig<ClockSet> {
@@ -306,7 +292,7 @@ impl AdcConfig<ClockSet> {
         let adcsht = self.sample_time.adcsht();
         adc_reg.adcctl0.write(|w| w.adcsht().bits(adcsht));
 
-        let adcssel = self.clock_source.adcssel();
+        let adcssel = self.state.0.adcssel();
         let adcdiv = self.clock_divider.adcdiv();
         adc_reg.adcctl1.write(|w| {w
             .adcssel().bits(adcssel)

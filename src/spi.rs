@@ -125,26 +125,13 @@ impl_spi_pin!(UsciB1SCLKPin, P4, Pin5);
 pub struct UsciB1STEPin;
 impl_spi_pin!(UsciB1STEPin, P4, Pin4);
 
-/// Typestate trait for an SPI bus configuration. An SPI bus must have a clock selected before it can be configured
-pub trait ClockConfigState : private::Sealed {}
 /// Typestate for an SPI bus configuration with no clock source selected
 pub struct NoClockSet;
 /// Typestate for an SPI bus configuration with a clock source selected
 pub struct ClockSet;
 
-impl ClockConfigState for NoClockSet {}
-impl ClockConfigState for ClockSet {}
-
-// Seal the supertrait so users can still refer to the traits, but they can't add other implementations.
-mod private {
-    pub trait Sealed {}
-    // SpiBusConfig states
-    impl Sealed for super::NoClockSet {}
-    impl Sealed for super::ClockSet {}
-}
-
 /// Struct used to configure a SPI bus
-pub struct SpiBusConfig<USCI: SpiUsci, STATE: ClockConfigState> {
+pub struct SpiBusConfig<USCI: SpiUsci, STATE> {
     usci: USCI,
     prescaler: u16,
 

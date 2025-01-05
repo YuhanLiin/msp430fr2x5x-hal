@@ -87,7 +87,7 @@ impl From<GlitchFilter> for Ucglit {
 }
 
 ///Struct used to configure a I2C bus
-pub struct I2CBusConfig<USCI: I2cUsci, STATE: ClockConfigState> {
+pub struct I2CBusConfig<USCI: I2cUsci, STATE> {
     usci: USCI,
     divisor: u16,
 
@@ -161,23 +161,10 @@ impl_i2c_pin!(UsciB1SDAPin, P4, Pin6);
 pub struct UsciB1UCLKIPin;
 impl_i2c_pin!(UsciB1UCLKIPin, P4, Pin5);
 
-/// Typestate trait for an I2C bus configuration. An I2C bus must have a clock selected before it can be configured
-pub trait ClockConfigState : private::Sealed {}
 /// Typestate for an I2C bus configuration with no clock source selected
 pub struct NoClockSet;
 /// Typestate for an I2C bus configuration with a clock source selected
 pub struct ClockSet;
-
-impl ClockConfigState for NoClockSet {}
-impl ClockConfigState for ClockSet {}
-
-// Seal the supertrait so users can still refer to the traits, but they can't add other implementations.
-mod private {
-    pub trait Sealed {}
-    // I2cBusConfig states
-    impl Sealed for super::NoClockSet {}
-    impl Sealed for super::ClockSet {}
-}
 
 impl<USCI: I2cUsci> I2CBusConfig<USCI, NoClockSet> {
     /// Create a new configuration for setting up a EUSCI peripheral in I2C master mode
