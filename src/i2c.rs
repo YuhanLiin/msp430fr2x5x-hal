@@ -406,17 +406,16 @@ impl<USCI: I2cUsci> I2cBus<USCI> {
             return Err::<(), I2CErr>(I2CErr::GotNACK);
         }
 
-        for i in 0..buffer.len() - 1 {
+        let len = buffer.len();
+        for (idx, byte) in buffer.iter_mut().enumerate() {
             while !ifg.ucrxifg0() {
                 ifg = usci.ifg_rd();
             }
-            buffer[i] = usci.ucrxbuf_rd();
+            *byte = usci.ucrxbuf_rd();
+            if idx == len - 2 {
+                usci.transmit_stop();
+            }
         }
-        usci.transmit_stop();
-        while !ifg.ucrxifg0() {
-            ifg = usci.ifg_rd();
-        }
-        buffer[buffer.len() - 1] = usci.ucrxbuf_rd();
 
         while usci.uctxstp_rd() {
             asm::nop();
