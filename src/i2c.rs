@@ -87,7 +87,7 @@ impl From<GlitchFilter> for Ucglit {
 }
 
 ///Struct used to configure a I2C bus
-pub struct I2CBusConfig<USCI: EUsciI2CBus, STATE: ClockConfigState> {
+pub struct I2CBusConfig<USCI: I2cUsci, STATE: ClockConfigState> {
     usci: USCI,
     divisor: u16,
 
@@ -104,25 +104,25 @@ pub struct I2CBusConfig<USCI: EUsciI2CBus, STATE: ClockConfigState> {
 }
 
 /// Marks a usci capable of I2C communication
-pub trait EUsciI2CBus: EUsciI2C {
-    /// I2C SCL
+pub trait I2cUsci: EUsciI2C {
+    /// I2C SCL pin
     type ClockPin;
-    /// I2C SDA
+    /// I2C SDA pin
     type DataPin;
-    /// I2C UCLKI
-    type UClkIPin;
+    /// I2C external clock source pin. Only necessary if UCLKI is selected as a clock source.
+    type ExternalClockPin;
 }
 
-impl EUsciI2CBus for pac::E_USCI_B0 {
+impl I2cUsci for pac::E_USCI_B0 {
     type ClockPin = UsciB0SCLPin;
     type DataPin = UsciB0SDAPin;
-    type UClkIPin = UsciB0UCLKIPin;
+    type ExternalClockPin = UsciB0UCLKIPin;
 }
 
-impl EUsciI2CBus for pac::E_USCI_B1 {
+impl I2cUsci for pac::E_USCI_B1 {
     type ClockPin = UsciB1SCLPin;
     type DataPin = UsciB1SDAPin;
-    type UClkIPin = UsciB1UCLKIPin;
+    type ExternalClockPin = UsciB1UCLKIPin;
 }
 
 // Allows a GPIO pin to be converted into an I2C object
@@ -179,7 +179,7 @@ mod private {
     impl Sealed for super::ClockSet {}
 }
 
-impl<USCI: EUsciI2CBus> I2CBusConfig<USCI, NoClockSet> {
+impl<USCI: I2cUsci> I2CBusConfig<USCI, NoClockSet> {
     /// Create a new configuration for setting up a EUSCI peripheral in I2C master mode
     pub fn new(usci: USCI, deglitch_time: GlitchFilter) -> I2CBusConfig<USCI, NoClockSet> {
         let ctlw0 = UcbCtlw0 {
@@ -321,7 +321,7 @@ impl<USCI: EUsciI2CBus> I2CBusConfig<USCI, NoClockSet> {
     }
     /// Configures this peripheral to use UCLK
     #[inline]
-    pub fn use_uclk<Pin: Into<USCI::UClkIPin> >(mut self, _uclk: Pin, clk_divisor: u16) -> I2CBusConfig<USCI, ClockSet> {
+    pub fn use_uclk<Pin: Into<USCI::ExternalClockPin> >(mut self, _uclk: Pin, clk_divisor: u16) -> I2CBusConfig<USCI, ClockSet> {
         self.ctlw0.ucssel = Ucssel::Uclk;
         self.divisor = clk_divisor;
         I2CBusConfig{ 
@@ -340,7 +340,7 @@ impl<USCI: EUsciI2CBus> I2CBusConfig<USCI, NoClockSet> {
 }
 
 #[allow(private_bounds)]
-impl<USCI: EUsciI2CBus> I2CBusConfig<USCI, ClockSet> {
+impl<USCI: I2cUsci> I2CBusConfig<USCI, ClockSet> {
     /// Performs hardware configuration and creates the I2C bus
     pub fn configure<C: Into<USCI::ClockPin>, D: Into<USCI::DataPin>>(
         &self,
@@ -373,7 +373,7 @@ impl<USCI: EUsciI2CBus> I2CBusConfig<USCI, ClockSet> {
 }
 
 /// I2C data bus
-pub struct I2cBus<USCI: EUsciI2CBus>(PhantomData<USCI>);
+pub struct I2cBus<USCI: I2cUsci>(PhantomData<USCI>);
 
 /// I2C transmit/receive errors
 #[derive(Clone, Copy)]
@@ -384,7 +384,7 @@ pub enum I2CErr {
     ArbitrationLost,
 }
 
-impl<USCI: EUsciI2CBus> I2cBus<USCI> {
+impl<USCI: I2cUsci> I2cBus<USCI> {
     #[inline(always)]
     fn set_addressing_mode(&mut self, mode: AddressingMode) {
         let usci = unsafe { USCI::steal() };
@@ -496,7 +496,7 @@ impl<USCI: EUsciI2CBus> I2cBus<USCI> {
     }
 }
 
-impl<USCI: EUsciI2CBus> Read<SevenBitAddress> for I2cBus<USCI> {
+impl<USCI: I2cUsci> Read<SevenBitAddress> for I2cBus<USCI> {
     type Error = I2CErr;
     fn read(&mut self, address: u8, buffer: &mut [u8]) -> Result<(), Self::Error> {
         self.set_addressing_mode(AddressingMode::SevenBit);
@@ -505,7 +505,7 @@ impl<USCI: EUsciI2CBus> Read<SevenBitAddress> for I2cBus<USCI> {
     }
 }
 
-impl<USCI: EUsciI2CBus> Read<TenBitAddress> for I2cBus<USCI> {
+impl<USCI: I2cUsci> Read<TenBitAddress> for I2cBus<USCI> {
     type Error = I2CErr;
     fn read(&mut self, address: u16, buffer: &mut [u8]) -> Result<(), Self::Error> {
         self.set_addressing_mode(AddressingMode::TenBit);
@@ -514,7 +514,7 @@ impl<USCI: EUsciI2CBus> Read<TenBitAddress> for I2cBus<USCI> {
     }
 }
 
-impl<USCI: EUsciI2CBus> Write<SevenBitAddress> for I2cBus<USCI> {
+impl<USCI: I2cUsci> Write<SevenBitAddress> for I2cBus<USCI> {
     type Error = I2CErr;
     fn write(&mut self, address: u8, bytes: &[u8]) -> Result<(), Self::Error> {
         self.set_addressing_mode(AddressingMode::SevenBit);
@@ -523,7 +523,7 @@ impl<USCI: EUsciI2CBus> Write<SevenBitAddress> for I2cBus<USCI> {
     }
 }
 
-impl<USCI: EUsciI2CBus> Write<TenBitAddress> for I2cBus<USCI> {
+impl<USCI: I2cUsci> Write<TenBitAddress> for I2cBus<USCI> {
     type Error = I2CErr;
     fn write(&mut self, address: u16, bytes: &[u8]) -> Result<(), Self::Error> {
         self.set_addressing_mode(AddressingMode::TenBit);
@@ -532,7 +532,7 @@ impl<USCI: EUsciI2CBus> Write<TenBitAddress> for I2cBus<USCI> {
     }
 }
 
-impl<USCI: EUsciI2CBus> WriteRead<SevenBitAddress> for I2cBus<USCI> {
+impl<USCI: I2cUsci> WriteRead<SevenBitAddress> for I2cBus<USCI> {
     type Error = I2CErr;
     fn write_read(
         &mut self,
@@ -545,7 +545,7 @@ impl<USCI: EUsciI2CBus> WriteRead<SevenBitAddress> for I2cBus<USCI> {
     }
 }
 
-impl<USCI: EUsciI2CBus> WriteRead<TenBitAddress> for I2cBus<USCI> {
+impl<USCI: I2cUsci> WriteRead<TenBitAddress> for I2cBus<USCI> {
     type Error = I2CErr;
     fn write_read(
         &mut self,
