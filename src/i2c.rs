@@ -363,7 +363,7 @@ impl<USCI: I2cUsci> I2CBusConfig<USCI, ClockSet> {
 pub struct I2cBus<USCI: I2cUsci>(PhantomData<USCI>);
 
 /// I2C transmit/receive errors
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum I2CErr {
     /// Address was never acknolwedged by slave
     GotNACK,
