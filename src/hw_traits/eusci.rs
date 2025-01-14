@@ -332,6 +332,8 @@ pub trait EusciSPI: Steal {
 
     fn receive_flag(&self) -> bool;
 
+    fn overrun_flag(&self) -> bool;
+
     fn iv_rd(&self) -> u16;
 }
 
@@ -448,6 +450,11 @@ macro_rules! eusci_impl {
             #[inline(always)]
             fn receive_flag(&self) -> bool {
                 self.$ucxifg().read().ucrxifg().bit()
+            }
+
+            #[inline(always)]
+            fn overrun_flag(&self) -> bool {
+                self.$ucxstatw().read().ucoe().bit()
             }
 
             #[inline(always)]

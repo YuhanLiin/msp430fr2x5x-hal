@@ -158,7 +158,7 @@ impl<USCI: SpiUsci> SpiBusConfig<USCI, NoClockSet> {
             ucsync: true,
             ucstem: true,
             ucswrst: true,
-            ucmode: Ucmode::FourPinSPI0,
+            ucmode: Ucmode::FourPinSPI0, // overwritten by `configure_with_software_cs()`
             ucssel: Ucssel::Smclk, // overwritten by `use_smclk/aclk()`
         };
 
@@ -188,9 +188,9 @@ impl<USCI: SpiUsci> SpiBusConfig<USCI, NoClockSet> {
 }
 #[allow(private_bounds)]
 impl<USCI: SpiUsci> SpiBusConfig<USCI, ClockSet> {
-    /// Performs hardware configuration and creates an SPI bus
+    /// Performs hardware configuration and creates an SPI bus. The STE pin is used as an automatically controlled chip select pin. Suitable for systems with only one slave device.
     #[inline(always)]
-    pub fn configure<
+    pub fn configure_with_hardware_cs<
         SO: Into<USCI::MISO>,
         SI: Into<USCI::MOSI>,
         CLK: Into<USCI::SCLK>,
@@ -202,6 +202,23 @@ impl<USCI: SpiUsci> SpiBusConfig<USCI, ClockSet> {
         _sclk: CLK,
         _cs: STE,
     ) -> SpiBus<USCI> {
+        self.configure_hw();
+        SpiBus(PhantomData)
+    }
+
+    /// Performs hardware configuration and creates an SPI bus. You must configure and control any chip select pins yourself. Suitable for systems with multiple slave devices. 
+    #[inline(always)]
+    pub fn configure_with_software_cs<
+        SO: Into<USCI::MISO>,
+        SI: Into<USCI::MOSI>,
+        CLK: Into<USCI::SCLK>,
+    >(
+        &mut self,
+        _miso: SO,
+        _mosi: SI,
+        _sclk: CLK
+    ) -> SpiBus<USCI> {
+        self.ctlw0.ucmode = Ucmode::ThreePinSPI;
         self.configure_hw();
         SpiBus(PhantomData)
     }
@@ -273,18 +290,25 @@ impl<USCI: SpiUsci> SpiBus<USCI> {
 }
 
 /// SPI transmit/receive errors
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum SPIErr {
-    /// Function not implemented
-    Unimplemented = 0,
+    /// Data in the recieve buffer was overwritten before it was read. The contained data is the new contents of the recieve buffer.
+    OverrunError(u8),
+    // In future the framing error bit UCFE may appear here. Right now it's unimplemented.
 }
 
 impl<USCI: SpiUsci> FullDuplex<u8> for SpiBus<USCI> {
     type Error = SPIErr;
     fn read(&mut self) -> nb::Result<u8, Self::Error> {
         let usci = unsafe { USCI::steal() };
+        
         if usci.receive_flag() {
-            Ok(usci.rxbuf_rd())
+            if usci.overrun_flag() {
+                Err(nb::Error::Other(SPIErr::OverrunError(usci.rxbuf_rd())))
+            }
+            else {
+                Ok(usci.rxbuf_rd())
+            }
         } else {
             Err(WouldBlock)
         }
