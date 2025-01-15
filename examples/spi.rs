@@ -7,7 +7,7 @@ use embedded_hal::spi::MODE_0;
 use embedded_hal::blocking::delay::DelayMs;
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
-    clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv}, fram::Fram, gpio::Batch, pmm::Pmm, spi::{SpiBusConfig, SPIErr}, watchdog::Wdt
+    clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv}, fram::Fram, gpio::Batch, pmm::Pmm, spi::SpiBusConfig, watchdog::Wdt
 };
 use nb::block;
 use panic_msp430 as _;
@@ -38,23 +38,25 @@ fn main() -> ! {
         .configure_with_hardware_cs(miso, mosi, sck, cs);
 
     loop {
-        // Non-blocking send. Sending is infallible, besides `nb::WouldBlock`.
-        spi.send(0b10101010).ok();
+        // Non-blocking send. Sending is infallible, besides `nb::WouldBlock` when the bus is busy.
+        // In this particular case we know the SPI bus isn't busy, so we unwrap here
+        spi.send(0b10101010).unwrap();
 
         // Wait for the above send to complete. Wrap the non-blocking `.read()` with `block!()` to make it blocking. 
         // Note `.read()` only checks the recieve buffer, it does not send any SPI packets,
         // so if you haven't previously used `.send()` there will be nothing to read.
-        match block!(spi.read()) {
-            Ok(_data) => (),
-            // We previously recieved some data but it was overwritten before it was read.
-            Err(SPIErr::OverrunError(_new_data)) => (),
-        }
+        let _data = match block!(spi.read()) {
+            Ok(d) => d,
+            // You should handle any errors
+            Err(_e) => todo!(), 
+        };
 
         // Multi-byte blocking send + recieve example
-        let mut buf = [0b11001100; 10];
-        match spi.transfer(&mut buf) {
+        let mut send_recv_buf = [0b11001100; 10];
+        match spi.transfer(&mut send_recv_buf) {
             Ok(_) => (),
-            Err(SPIErr::OverrunError(_)) => (),
+            // You should handle any errors
+            Err(_e) => todo!(),
         }; 
 
         delay.delay_ms(1000);

@@ -4,7 +4,7 @@
 use embedded_hal::blocking::{i2c::{Read, Write, WriteRead}, delay::DelayMs};
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
-    clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv}, fram::Fram, gpio::Batch, i2c::{GlitchFilter, I2CBusConfig, I2CErr}, pmm::Pmm, watchdog::Wdt
+    clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv}, fram::Fram, gpio::Batch, i2c::{GlitchFilter, I2CBusConfig}, pmm::Pmm, watchdog::Wdt
 };
 use panic_msp430 as _;
 
@@ -34,31 +34,27 @@ fn main() -> ! {
     loop {
         // Blocking read. Read 10 bytes (length of buffer) from address 0x12.
         // Pass a u8 address for 7-bit addressing mode, pass a u16 for 10-bit addressing mode.
-        let mut buf = [0u8; 10];
+        let mut buf = [0; 10];
         match i2c.read(0x12_u8, &mut buf) {
             Ok(_) => (),
-            Err(I2CErr::ArbitrationLost) => (),
-            Err(I2CErr::GotNACK) => (),
+            // You should handle any errors
+            Err(_e) => todo!(),
         };
-
-        delay.delay_ms(10);
 
         // Blocking write. Write one byte to address 0x12.
         match i2c.write(0x12_u8, &[0b10101010]) {
             Ok(_) => (),
-            Err(I2CErr::ArbitrationLost) => (),
-            Err(I2CErr::GotNACK) => (),
+            // You should handle any errors
+            Err(_e) => todo!(),
         };
 
-        delay.delay_ms(10);
-
-        // Blocking send + recieve. Write 10 bytes to 0x12, read 20 bytes from 0x12
+        // Blocking send + recieve. Write 10 bytes to 0x12, then read 20 bytes
         let send_buf = [0b11001100; 10];
-        let mut recv_buf = [0b11001100; 20];
+        let mut recv_buf = [0; 20];
         match i2c.write_read(0x12_u8, &send_buf, &mut recv_buf) {
             Ok(_) => (),
-            Err(I2CErr::ArbitrationLost) => (),
-            Err(I2CErr::GotNACK) => (),
+            // You should handle any errors
+            Err(_e) => todo!(),
         }; 
 
         delay.delay_ms(1000);
