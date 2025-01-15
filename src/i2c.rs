@@ -364,11 +364,13 @@ pub struct I2cBus<USCI: I2cUsci>(PhantomData<USCI>);
 
 /// I2C transmit/receive errors
 #[derive(Clone, Copy, Debug)]
+#[non_exhaustive]
 pub enum I2CErr {
     /// Address was never acknolwedged by slave
     GotNACK,
     /// Device lost arbitration
     ArbitrationLost,
+    // Other errors such as the 'clock low timeout' UCCLTOIFG may appear here in future.
 }
 
 impl<USCI: I2cUsci> I2cBus<USCI> {

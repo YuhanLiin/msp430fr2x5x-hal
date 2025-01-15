@@ -291,6 +291,7 @@ impl<USCI: SpiUsci> SpiBus<USCI> {
 
 /// SPI transmit/receive errors
 #[derive(Clone, Copy, Debug)]
+#[non_exhaustive]
 pub enum SPIErr {
     /// Data in the recieve buffer was overwritten before it was read. The contained data is the new contents of the recieve buffer.
     OverrunError(u8),
