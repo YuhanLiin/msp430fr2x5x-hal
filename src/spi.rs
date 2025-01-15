@@ -287,6 +287,15 @@ impl<USCI: SpiUsci> SpiBus<USCI> {
         let usci = unsafe { USCI::steal() };
         usci.rxbuf_rd()
     }
+
+    #[inline(always)]
+    /// Change the SPI mode
+    pub fn change_mode(&mut self, mode: Mode) {
+        let usci = unsafe { USCI::steal() };
+        usci.ctw0_set_rst();
+        usci.set_spi_mode(mode);
+        usci.ctw0_clear_rst();
+    }
 }
 
 /// SPI transmit/receive errors

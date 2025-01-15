@@ -1,4 +1,5 @@
 use super::Steal;
+use embedded_hal::spi::{Mode, Phase, Polarity};
 use msp430fr2355 as pac;
 
 /// Defines macros for a register associated struct to make reading/writing to this struct's
@@ -311,6 +312,8 @@ pub trait EusciSPI: Steal {
 
     fn ctw0_wr(&self, reg: &UcxSpiCtw0);
 
+    fn set_spi_mode(&self, mode: Mode);
+
     fn brw_wr(&self, val: u16);
 
     fn uclisten_set(&self);
@@ -440,6 +443,22 @@ macro_rules! eusci_impl {
             #[inline(always)]
             fn clear_receive_interrupt(&self) {
                 unsafe { self.$ucxie().clear_bits(|w| w.ucrxie().clear_bit()) }
+            }
+
+            #[inline(always)]
+            // Set the SPI mode without disturbing the rest of the register.
+            fn set_spi_mode(&self, mode: Mode) {
+                let ucckph = match mode.phase {
+                    Phase::CaptureOnFirstTransition => true,
+                    Phase::CaptureOnSecondTransition => false,
+                };
+                let ucckpl = match mode.polarity {
+                    Polarity::IdleLow => false,
+                    Polarity::IdleHigh => true,
+                };
+                self.$ucxctlw0().modify(|_, w| w
+                    .ucckph().bit(ucckph)
+                    .ucckpl().bit(ucckpl));
             }
 
             #[inline(always)]
