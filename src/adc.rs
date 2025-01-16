@@ -374,9 +374,8 @@ fn disable_adc_reg(adc: &mut ADC) {
     }
 }
 
-impl<WORD, PIN> OneShot<Adc, WORD, PIN> for Adc
+impl<PIN> OneShot<Adc, u16, PIN> for Adc
 where
-    WORD: From<u16>,
     PIN: Channel<Self, ID = u8>,
 {
     type Error = Infallible; // Only returns WouldBlock
@@ -384,13 +383,13 @@ where
     /// Begins a single ADC conversion if one is not already underway.
     ///
     /// If the result is ready it is returned, otherwise returns `WouldBlock`
-    fn read(&mut self, pin: &mut PIN) -> nb::Result<WORD, Self::Error> {
+    fn read(&mut self, pin: &mut PIN) -> nb::Result<u16, Self::Error> {
         if self.is_waiting {
             if self.adc_is_busy() {
                 return Err(nb::Error::WouldBlock);
             } else {
                 self.is_waiting = false;
-                return Ok(self.adc_get_result().into());
+                return Ok(self.adc_get_result());
             }
         }
         self.disable();
