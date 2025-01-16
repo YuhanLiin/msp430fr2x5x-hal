@@ -39,25 +39,19 @@ fn main() -> ! {
 
     loop {
         // Non-blocking send. Sending is infallible, besides `nb::WouldBlock` when the bus is busy.
-        // In this particular case we know the SPI bus isn't busy, so we unwrap here
+        // In this particular case we know the SPI bus isn't busy, so unwrapping is safe here.
         spi.send(0b10101010).unwrap();
 
         // Wait for the above send to complete. Wrap the non-blocking `.read()` with `block!()` to make it blocking. 
         // Note `.read()` only checks the recieve buffer, it does not send any SPI packets,
         // so if you haven't previously used `.send()` there will be nothing to read.
-        let _data = match block!(spi.read()) {
-            Ok(d) => d,
-            // You should handle any errors
-            Err(_e) => todo!(), 
-        };
+        // You should handle errors here rather than unwrapping
+        let _data = block!(spi.read()).unwrap();
 
         // Multi-byte blocking send + recieve example
         let mut send_recv_buf = [0b11001100; 10];
-        match spi.transfer(&mut send_recv_buf) {
-            Ok(_) => (),
-            // You should handle any errors
-            Err(_e) => todo!(),
-        }; 
+        // You should handle errors here rather than unwrapping
+        spi.transfer(&mut send_recv_buf).unwrap();
 
         delay.delay_ms(1000);
     }

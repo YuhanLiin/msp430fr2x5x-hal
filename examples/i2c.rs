@@ -35,27 +35,18 @@ fn main() -> ! {
         // Blocking read. Read 10 bytes (length of buffer) from address 0x12.
         // Pass a u8 address for 7-bit addressing mode, pass a u16 for 10-bit addressing mode.
         let mut buf = [0; 10];
-        match i2c.read(0x12_u8, &mut buf) {
-            Ok(_) => (),
-            // You should handle any errors
-            Err(_e) => todo!(),
-        };
+        // You should handle errors here rather than unwrapping
+        i2c.read(0x12_u8, &mut buf).unwrap();
 
         // Blocking write. Write one byte to address 0x12.
-        match i2c.write(0x12_u8, &[0b10101010]) {
-            Ok(_) => (),
-            // You should handle any errors
-            Err(_e) => todo!(),
-        };
+        // You should handle errors here rather than unwrapping
+        i2c.write(0x12_u8, &[0b10101010]).unwrap();
 
         // Blocking send + recieve. Write 10 bytes to 0x12, then read 20 bytes
         let send_buf = [0b11001100; 10];
         let mut recv_buf = [0; 20];
-        match i2c.write_read(0x12_u8, &send_buf, &mut recv_buf) {
-            Ok(_) => (),
-            // You should handle any errors
-            Err(_e) => todo!(),
-        }; 
+        // You should handle errors here rather than unwrapping
+        i2c.write_read(0x12_u8, &send_buf, &mut recv_buf).unwrap();
 
         delay.delay_ms(1000);
     }
