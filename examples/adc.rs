@@ -1,7 +1,7 @@
 #![no_main]
 #![no_std]
 
-use embedded_hal::{adc::OneShot, digital::v2::*};
+use embedded_hal::digital::v2::*;
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
     adc::{AdcConfig, ClockDivider, Predivider, Resolution, SampleTime, SamplingRate},
@@ -37,10 +37,10 @@ fn main() -> ! {
     .configure(periph.ADC);
 
     loop {
-        // Get ADC count
-        // .read() is infallible besides nb::WouldBlock, so it's safe to unwrap after block!()
-        let count = block!( adc.read(&mut adc_pin) ).unwrap();
-        let reading_mv = count_to_mv_8bit(count);
+        // Get ADC voltage, assuming the ADC reference voltage is 3300mV
+        // It's infallible besides nb::WouldBlock, so it's safe to unwrap after block!()
+        // If you want a raw count use adc.read() instead.
+        let reading_mv = block!( adc.read_voltage_mv(&mut adc_pin, 3300) ).unwrap();
 
         // Turn on LED if voltage between 1000 and 2000mV
         if (1000..=2000).contains(&reading_mv) {
@@ -49,12 +49,6 @@ fn main() -> ! {
             led.set_low().ok();
         }
     }
-}
-
-fn count_to_mv_8bit(count: u16) -> u16 {
-    const REF_MV: u32 = 3300;
-    const RESOLUTION: u32 = 256;
-    ((count as u32 * REF_MV) / RESOLUTION) as u16
 }
 
 // The compiler will emit calls to the abort() compiler intrinsic if debug assertions are

@@ -364,6 +364,26 @@ impl Adc {
         }
     }
 
+    /// Convert an ADC count to a voltage value in millivolts.
+    pub fn count_to_mv(&self, count: u16, ref_voltage_mv: u16) -> u16 {
+        use crate::pac::adc::adcctl2::ADCRES_A;
+        let resolution = match self.adc_reg.adcctl2.read().adcres().variant() {
+            ADCRES_A::ADCRES_0 => 256, // 8-bit
+            ADCRES_A::ADCRES_1 => 1024, // 10-bit
+            ADCRES_A::ADCRES_2 => 4096, // 12-bit
+            ADCRES_A::ADCRES_3 => 4096, // Reserved, unreachable
+        };
+        ((count as u32 * ref_voltage_mv as u32) / resolution) as u16
+    }
+
+    /// Begins a single ADC conversion if one isn't already underway, enabling the ADC in the process.
+    ///
+    /// If the result is ready it is returned as a voltage in millivolts, otherwise returns `WouldBlock`.
+    /// 
+    /// If you instead want a raw count you should use the `.read()` method from the `OneShot` trait implementation.
+    pub fn read_voltage_mv<PIN: Channel<Self, ID = u8>>(&mut self, pin: &mut PIN, ref_voltage_mv: u16) -> nb::Result<u16, Infallible> {
+        self.read(pin).map(|count| self.count_to_mv(count, ref_voltage_mv))
+    }
 }
 
 fn disable_adc_reg(adc: &mut ADC) {
@@ -382,7 +402,7 @@ where
 
     /// Begins a single ADC conversion if one isn't already underway, enabling the ADC in the process.
     ///
-    /// If the result is ready it is returned, otherwise returns `WouldBlock`
+    /// If the result is ready it is returned as an ADC count, otherwise returns `WouldBlock`
     fn read(&mut self, pin: &mut PIN) -> nb::Result<u16, Self::Error> {
         if self.is_waiting {
             if self.adc_is_busy() {
