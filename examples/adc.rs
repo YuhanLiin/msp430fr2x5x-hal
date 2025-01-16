@@ -36,8 +36,6 @@ fn main() -> ! {
     .use_modclk()
     .configure(periph.ADC);
 
-    adc.enable();
-
     loop {
         // Get ADC count
         // .read() is infallible besides nb::WouldBlock, so it's safe to unwrap after block!()

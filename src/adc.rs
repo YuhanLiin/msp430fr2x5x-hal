@@ -380,7 +380,7 @@ where
 {
     type Error = Infallible; // Only returns WouldBlock
 
-    /// Begins a single ADC conversion if one is not already underway.
+    /// Begins a single ADC conversion if one isn't already underway, enabling the ADC in the process.
     ///
     /// If the result is ready it is returned, otherwise returns `WouldBlock`
     fn read(&mut self, pin: &mut PIN) -> nb::Result<u16, Self::Error> {
