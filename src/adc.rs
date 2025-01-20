@@ -8,6 +8,8 @@
 //! 
 //! As a convenience, `.read_voltage_mv()` combines `.read()` and `.count_to_mv()`.
 //! 
+//! Currently the only supported ADC voltage reference is `AVCC`, the operating voltage of the MSP430.
+//! 
 //! The ADC may read from any of the following pins:
 //!
 //! P1.0 - P1.7 (channels 0 to 7), P5.0 - P5.3 (channels 8 to 11).
@@ -245,6 +247,8 @@ pub struct ClockSet(ClockSource);
 
 /// Configuration object for an ADC.
 /// 
+/// Currently the only supported voltage reference is AVCC.
+/// 
 /// The default configuration is based on the default register values:
 /// - Predivider = 1 and clock divider = 1
 /// - 10-bit resolution
@@ -413,6 +417,8 @@ impl Adc {
     }
 
     /// Convert an ADC count to a voltage value in millivolts.
+    /// 
+    /// `ref_voltage_mv` is the reference voltage of the ADC in millivolts.
     pub fn count_to_mv(&self, count: u16, ref_voltage_mv: u16) -> u16 {
         use crate::pac::adc::adcctl2::ADCRES_A;
         let resolution = match self.adc_reg.adcctl2.read().adcres().variant() {
