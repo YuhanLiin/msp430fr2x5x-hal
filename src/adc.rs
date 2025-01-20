@@ -1,5 +1,13 @@
 //! Analog to Digital Converter (ADC)
 //!
+//! Begin configuration by calling `AdcConfig::new()` or `::default()`. Once fully configured an `Adc` will be returned.
+//! 
+//! `Adc` can read from a channel by calling `.read()` (an implementation of the embedded_hal `OneShot` trait) to return an ADC count. 
+//! 
+//! The `.count_to_mv()` method is available to convert an ADC count to a voltage in millivolts, given a reference voltage. 
+//! 
+//! As a convenience, `.read_voltage_mv()` combines `.read()` and `.count_to_mv()`.
+//! 
 //! The ADC may read from any of the following pins:
 //!
 //! P1.0 - P1.7 (channels 0 to 7), P5.0 - P5.3 (channels 8 to 11).
@@ -356,7 +364,7 @@ impl AdcConfig<ClockSet> {
     }
 }
 
-/// Controls the onboard ADC
+/// Controls the onboard ADC. The `read()` method is available through the embedded_hal `OneShot` trait.
 pub struct Adc {
     adc_reg: ADC,
     is_waiting: bool,
@@ -418,7 +426,7 @@ impl Adc {
 
     /// Begins a single ADC conversion if one isn't already underway, enabling the ADC in the process.
     ///
-    /// If the result is ready it is returned as a voltage in millivolts, otherwise returns `WouldBlock`.
+    /// If the result is ready it is returned as a voltage in millivolts based on `ref_voltage_mv`, otherwise returns `WouldBlock`.
     /// 
     /// If you instead want a raw count you should use the `.read()` method from the `OneShot` trait implementation.
     pub fn read_voltage_mv<PIN: Channel<Self, ID = u8>>(&mut self, pin: &mut PIN, ref_voltage_mv: u16) -> nb::Result<u16, Infallible> {

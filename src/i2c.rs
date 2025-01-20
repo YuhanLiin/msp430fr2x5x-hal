@@ -2,11 +2,16 @@
 //!
 //! Peripherals eUSCI_B0 and eUSCI_B1 can be used for I2C communication.
 //!
+//! Begin by calling `I2cBusConfig::new()`. Once configured an `I2cBus` will be returned.
+//! 
+//! `I2cBus` implements the blocking embedded_hal `Read`, `Write` and `WriteRead` traits. 
+//! Passing a `u8` address to these methods uses 7-bit addressing, passing a `u16` uses 10-bit addressing.
+//! 
 //! Pins used:
 //!
-//! eUSCI_B0: {SCL:P1.3, SDA:P1.2}
+//! eUSCI_B0: {SCL: `P1.3`, SDA: `P1.2`}. `P1.1` can optionally be used as an external clock source.
 //!
-//! eUSCI_B1: {SCL:P4.7, SDA:P4.6}
+//! eUSCI_B1: {SCL: `P4.7`, SDA: `P4.6`}. `P4.5` can optionally be used as an external clock source.
 //!
 
 use crate::clock::{Aclk, Smclk};

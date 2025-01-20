@@ -1,4 +1,21 @@
-//! embedded_hal SPI implmentation
+//! SPI
+//! 
+//! Peripherals eUSCI_A0, eUSCI_A1, eUSCI_B0 and eUSCI_B1 can be used for SPI communication.
+//! 
+//! Begin by calling `SpiBusConfig::new()`. Once configured an `SpiBus` will be returned.
+//! 
+//! `SpiBus` implements the embedded_hal `FullDuplex` trait with non-blocking `.read()` and `.send()` methods, 
+//! and the blocking embedded_hal `Transfer` and `Write` traits, with `.transfer()`  and `.write()` methods respectively.
+//!
+//! Pins used:
+//!
+//! eUSCI_A0: {MISO: `P1.7`, MOSI: `P1.6`, SCLK: `P1.5`}. `P1.4` can optionally used as a hardware-controlled chip select pin.
+//!
+//! eUSCI_A1: {MISO: `P4.3`, MOSI: `P4.2`, SCLK: `P4.1`}. `P4.0` can optionally used as a hardware-controlled chip select pin.
+//!
+//! eUSCI_B0: {MISO: `P1.3`, MOSI: `P1.2`, SCLK: `P1.1`}. `P1.0` can optionally used as a hardware-controlled chip select pin.
+//!
+//! eUSCI_B1: {MISO: `P4.7`, MOSI: `P4.6`, SCLK: `P4.5`}. `P4.4` can optionally used as a hardware-controlled chip select pin.
 use crate::hal::spi::{Mode, Phase, Polarity};
 use crate::{
     clock::{Aclk, Smclk},
