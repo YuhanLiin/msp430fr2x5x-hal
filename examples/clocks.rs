@@ -29,7 +29,7 @@ fn main() -> ! {
         .split(&pmm);
     let mut p1_0 = p1.pin0;
 
-    let (smclk, _aclk) = ClockConfig::new(periph.CS)
+    let (smclk, _aclk, _delay) = ClockConfig::new(periph.CS)
         .mclk_dcoclk(DcoclkFreqSel::_8MHz, MclkDiv::_1)
         .smclk_on(SmclkDiv::_1)
         .aclk_vloclk()

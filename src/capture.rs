@@ -31,10 +31,10 @@ pub enum CapTrigger {
     BothEdges,
 }
 
-impl Into<Cm> for CapTrigger {
+impl From<CapTrigger> for Cm {
     #[inline]
-    fn into(self) -> Cm {
-        match self {
+    fn from(val: CapTrigger) -> Self {
+        match val {
             CapTrigger::RisingEdge => Cm::RisingEdge,
             CapTrigger::FallingEdge => Cm::FallingEdge,
             CapTrigger::BothEdges => Cm::BothEdges,
@@ -206,9 +206,9 @@ impl<T: CapturePeriph + CapCmpTimer3> CaptureConfig3<T> {
     pub fn commit(self) -> CaptureParts3<T> {
         let timer = self.timer;
         self.config.write_regs(&timer);
-        CCRn::<CCR0>::config_cap_mode(&timer, self.cap0.trigger.into(), self.cap0.select.into());
-        CCRn::<CCR1>::config_cap_mode(&timer, self.cap1.trigger.into(), self.cap1.select.into());
-        CCRn::<CCR2>::config_cap_mode(&timer, self.cap2.trigger.into(), self.cap2.select.into());
+        CCRn::<CCR0>::config_cap_mode(&timer, self.cap0.trigger.into(), self.cap0.select);
+        CCRn::<CCR1>::config_cap_mode(&timer, self.cap1.trigger.into(), self.cap1.select);
+        CCRn::<CCR2>::config_cap_mode(&timer, self.cap2.trigger.into(), self.cap2.select);
         timer.continuous();
 
         CaptureParts3 {
@@ -313,13 +313,13 @@ impl<T: CapturePeriph + CapCmpTimer7> CaptureConfig7<T> {
     pub fn commit(self) -> CaptureParts7<T> {
         let timer = self.timer;
         self.config.write_regs(&timer);
-        CCRn::<CCR0>::config_cap_mode(&timer, self.cap0.trigger.into(), self.cap0.select.into());
-        CCRn::<CCR1>::config_cap_mode(&timer, self.cap1.trigger.into(), self.cap1.select.into());
-        CCRn::<CCR2>::config_cap_mode(&timer, self.cap2.trigger.into(), self.cap2.select.into());
-        CCRn::<CCR3>::config_cap_mode(&timer, self.cap3.trigger.into(), self.cap3.select.into());
-        CCRn::<CCR4>::config_cap_mode(&timer, self.cap4.trigger.into(), self.cap4.select.into());
-        CCRn::<CCR5>::config_cap_mode(&timer, self.cap5.trigger.into(), self.cap5.select.into());
-        CCRn::<CCR6>::config_cap_mode(&timer, self.cap6.trigger.into(), self.cap6.select.into());
+        CCRn::<CCR0>::config_cap_mode(&timer, self.cap0.trigger.into(), self.cap0.select);
+        CCRn::<CCR1>::config_cap_mode(&timer, self.cap1.trigger.into(), self.cap1.select);
+        CCRn::<CCR2>::config_cap_mode(&timer, self.cap2.trigger.into(), self.cap2.select);
+        CCRn::<CCR3>::config_cap_mode(&timer, self.cap3.trigger.into(), self.cap3.select);
+        CCRn::<CCR4>::config_cap_mode(&timer, self.cap4.trigger.into(), self.cap4.select);
+        CCRn::<CCR5>::config_cap_mode(&timer, self.cap5.trigger.into(), self.cap5.select);
+        CCRn::<CCR6>::config_cap_mode(&timer, self.cap6.trigger.into(), self.cap6.select);
         timer.continuous();
 
         CaptureParts7 {

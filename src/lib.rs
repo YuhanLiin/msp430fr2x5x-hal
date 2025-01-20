@@ -26,7 +26,9 @@
 #![feature(specialization)]
 #![feature(asm_experimental_arch)]
 #![deny(missing_docs)]
+#![feature(asm_const)]
 
+pub mod adc;
 pub mod batch_gpio;
 pub mod capture;
 pub mod clock;
@@ -43,4 +45,9 @@ pub mod watchdog;
 mod hw_traits;
 mod util;
 
+pub mod delay;
+pub mod i2c;
+pub mod spi;
+
+pub use embedded_hal as hal;
 pub use msp430fr2355 as pac;

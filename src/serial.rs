@@ -8,8 +8,9 @@
 
 use crate::clock::{Aclk, Clock, Smclk};
 use crate::gpio::{Alternate1, Pin, Pin1, Pin2, Pin3, Pin5, Pin6, Pin7, P1, P4};
-use crate::hw_traits::eusci::{EUsciUart, UcaxStatw, Ucssel, UcxCtl0};
+use crate::hw_traits::eusci::{EUsciUart, UartUcxStatw, UcaCtlw0, Ucssel};
 use core::marker::PhantomData;
+use core::num::NonZeroU32;
 use embedded_hal::serial::{Read, Write};
 use msp430fr2355 as pac;
 
@@ -135,32 +136,28 @@ impl SerialUsci for pac::E_USCI_A0 {
     type RxPin = UsciA0RxPin;
 }
 
+macro_rules! impl_serial_pin {
+    ($struct_name: ident, $port: ty, $pin: ty) => {
+        impl<DIR> From<Pin<$port, $pin, Alternate1<DIR>>> for $struct_name {
+            #[inline(always)]
+            fn from(_val: Pin<$port, $pin, Alternate1<DIR>>) -> Self {
+                $struct_name
+            }
+        }
+    };
+}
+
 /// UCLK pin for E_USCI_A0
 pub struct UsciA0ClockPin;
-impl<DIR> Into<UsciA0ClockPin> for Pin<P1, Pin5, Alternate1<DIR>> {
-    #[inline(always)]
-    fn into(self) -> UsciA0ClockPin {
-        UsciA0ClockPin
-    }
-}
+impl_serial_pin!(UsciA0ClockPin, P1, Pin5);
 
 /// Tx pin for E_USCI_A0
 pub struct UsciA0TxPin;
-impl<DIR> Into<UsciA0TxPin> for Pin<P1, Pin7, Alternate1<DIR>> {
-    #[inline(always)]
-    fn into(self) -> UsciA0TxPin {
-        UsciA0TxPin
-    }
-}
+impl_serial_pin!(UsciA0TxPin, P1, Pin7);
 
 /// Rx pin for E_USCI_A0
 pub struct UsciA0RxPin;
-impl<DIR> Into<UsciA0RxPin> for Pin<P1, Pin6, Alternate1<DIR>> {
-    #[inline(always)]
-    fn into(self) -> UsciA0RxPin {
-        UsciA0RxPin
-    }
-}
+impl_serial_pin!(UsciA0RxPin, P1, Pin6);
 
 impl SerialUsci for pac::E_USCI_A1 {
     type ClockPin = UsciA1ClockPin;
@@ -170,34 +167,19 @@ impl SerialUsci for pac::E_USCI_A1 {
 
 /// UCLK pin for E_USCI_A1
 pub struct UsciA1ClockPin;
-impl<DIR> Into<UsciA1ClockPin> for Pin<P4, Pin1, Alternate1<DIR>> {
-    #[inline(always)]
-    fn into(self) -> UsciA1ClockPin {
-        UsciA1ClockPin
-    }
-}
+impl_serial_pin!(UsciA1ClockPin, P4, Pin1);
 
 /// Tx pin for E_USCI_A1
 pub struct UsciA1TxPin;
-impl<DIR> Into<UsciA1TxPin> for Pin<P4, Pin3, Alternate1<DIR>> {
-    #[inline(always)]
-    fn into(self) -> UsciA1TxPin {
-        UsciA1TxPin
-    }
-}
+impl_serial_pin!(UsciA1TxPin, P4, Pin3);
 
 /// Rx pin for E_USCI_A1
 pub struct UsciA1RxPin;
-impl<DIR> Into<UsciA1RxPin> for Pin<P4, Pin2, Alternate1<DIR>> {
-    #[inline(always)]
-    fn into(self) -> UsciA1RxPin {
-        UsciA1RxPin
-    }
-}
+impl_serial_pin!(UsciA1RxPin, P4, Pin2);
 
 /// Typestate for a serial interface with an unspecified clock source
 pub struct NoClockSet {
-    baudrate: u32,
+    baudrate: NonZeroU32,
 }
 
 /// Typestate for a serial interface with a specified clock source
@@ -246,6 +228,7 @@ impl<USCI: SerialUsci> SerialConfig<USCI, NoClockSet> {
         loopback: Loopback,
         baudrate: u32,
     ) -> Self {
+        const ONE: NonZeroU32 = NonZeroU32::new(1).unwrap();
         SerialConfig {
             order,
             cnt,
@@ -253,7 +236,9 @@ impl<USCI: SerialUsci> SerialConfig<USCI, NoClockSet> {
             parity,
             loopback,
             usci,
-            state: NoClockSet { baudrate },
+            state: NoClockSet {
+                baudrate: NonZeroU32::new(baudrate).unwrap_or(ONE),
+            },
         }
     }
 
@@ -307,18 +292,20 @@ struct BaudConfig {
 }
 
 #[inline]
-fn calculate_baud_config(clk_freq: u32, bps: u32) -> BaudConfig {
-    // Prevent division by 0
-    let bps = bps.max(1);
+fn calculate_baud_config(clk_freq: u32, bps: NonZeroU32) -> BaudConfig {
     // Ensure n stays within the 16 bit boundary
-    let n = (clk_freq / bps).max(1).min(0xFFFF);
+    let n = (clk_freq / bps).clamp(1, 0xFFFF);
 
     let brs = lookup_brs(clk_freq, bps);
 
-    if n >= 16 {
-        let div = bps * 16;
+    if (n >= 16) && (bps.get() < u32::MAX / 16) {
+        //  div = bps * 16
+        const SIXTEEN: NonZeroU32 = NonZeroU32::new(16).unwrap();
+        let div = bps.saturating_mul(SIXTEEN);
+
         // n / 16, but more precise
         let br = (clk_freq / div) as u16;
+
         // same as n % 16, but more precise
         let brf = ((clk_freq % div) / bps) as u8;
         BaudConfig {
@@ -338,54 +325,64 @@ fn calculate_baud_config(clk_freq: u32, bps: u32) -> BaudConfig {
 }
 
 #[inline(always)]
-fn lookup_brs(clk_freq: u32, bps: u32) -> u8 {
+fn lookup_brs(clk_freq: u32, bps: NonZeroU32) -> u8 {
+    // bps is between [1, 5_000_000] (datasheet max)
+    // clk_freq is between [0, 24_000_000] (datasheet max)
+
+    // modulo = clk_freq % bps => modulo is between [0, 4_999_999]
     let modulo = clk_freq % bps;
 
-    // Fractional part lookup for the baud rate. Not extremely precise
-    if modulo * 19 < bps {
-        0x0
-    } else if modulo * 14 < bps {
-        0x1
-    } else if modulo * 12 < bps {
-        0x2
-    } else if modulo * 10 < bps {
-        0x4
-    } else if modulo * 8 < bps {
-        0x8
-    } else if modulo * 7 < bps {
-        0x10
-    } else if modulo * 6 < bps {
-        0x20
-    } else if modulo * 5 < bps {
-        0x11
-    } else if modulo * 4 < bps {
-        0x22
-    } else if modulo * 3 < bps {
-        0x44
-    } else if modulo * 11 < bps * 4 {
-        0x49
-    } else if modulo * 5 < bps * 2 {
-        0x4A
-    } else if modulo * 7 < bps * 3 {
-        0x92
-    } else if modulo * 2 < bps {
-        0x53
-    } else if modulo * 7 < bps * 4 {
-        0xAA
-    } else if modulo * 13 < bps * 8 {
-        0x6B
-    } else if modulo * 3 < bps * 2 {
-        0xAD
-    } else if modulo * 11 < bps * 8 {
-        0xD6
-    } else if modulo * 4 < bps * 3 {
-        0xBB
-    } else if modulo * 5 < bps * 4 {
-        0xDD
-    } else if modulo * 9 < bps * 8 {
-        0xEF
-    } else {
-        0xFD
+    // fraction = modulo * 10_000 / (bps), so within [0, ((bps-1) * 10_000) / bps].
+    // To prove upper bound we note `(bps-1)/bps` is largest when bps == 5_000_000:
+    // (4_999_999 * 10_000) / 5_000_000 = 49_999_990_000 (watch out for overflow!) / 5_000_000 = 9999.99... truncated to 9_999 because integer division
+    // So fraction is within [0, 9999]
+    let fraction_as_ten_thousandths = if modulo < u32::MAX/10_000 {
+        // Most accurate
+        ((modulo * 10_000) / bps) as u16
+    }
+    else { 
+        // Avoid overflow if modulo is large. Assume modulo < 5_000_000 from datasheet max
+        (((modulo * 500) / bps) * 20) as u16
+    };
+    
+    // See Table 22-4 from MSP430FR4xx and MSP430FR2xx family user's guide (Rev. I)
+    match fraction_as_ten_thousandths {
+        0..529     => 0x00,
+        529..715   => 0x01,
+        715..835   => 0x02,
+        835..1001  => 0x04,
+        1001..1252 => 0x08,
+        1252..1430 => 0x10,
+        1430..1670 => 0x20,
+        1670..2147 => 0x11,
+        2147..2224 => 0x21,
+        2224..2503 => 0x22,
+        2503..3000 => 0x44,
+        3000..3335 => 0x25,
+        3335..3575 => 0x49,
+        3575..3753 => 0x4A,
+        3753..4003 => 0x52,
+        4003..4286 => 0x92,
+        4286..4378 => 0x53,
+        4378..5002 => 0x55,
+        5002..5715 => 0xAA,
+        5715..6003 => 0x6B,
+        6003..6254 => 0xAD,
+        6254..6432 => 0xB5,
+        6432..6667 => 0xB6,
+        6667..7001 => 0xD6,
+        7001..7147 => 0xB7,
+        7147..7503 => 0xBB,
+        7503..7861 => 0xDD,
+        7861..8004 => 0xED,
+        8004..8333 => 0xEE,
+        8333..8464 => 0xBF,
+        8464..8572 => 0xDF,
+        8572..8751 => 0xEF,
+        8751..9004 => 0xF7,
+        9004..9170 => 0xFB,
+        9170..9288 => 0xFD,
+        9288..     => 0xFE,
     }
 }
 
@@ -402,7 +399,7 @@ impl<USCI: SerialUsci> SerialConfig<USCI, ClockSet> {
         usci.brw_settings(baud_config.br);
         usci.mctlw_settings(baud_config.ucos16, baud_config.brs, baud_config.brf);
         usci.loopback(self.loopback.to_bool());
-        usci.ctl0_settings(UcxCtl0 {
+        usci.ctl0_settings(UcaCtlw0 {
             ucpen: self.parity.ucpen(),
             ucpar: self.parity.ucpar(),
             ucmsb: self.order.to_bool(),
@@ -507,6 +504,24 @@ impl<USCI: SerialUsci> Rx<USCI> {
     pub fn disable_rx_interrupts(&mut self) {
         let usci = unsafe { USCI::steal() };
         usci.rxie_clear();
+    }
+
+    /// Reads raw value from Rx buffer with no checks for validity
+    /// # Safety
+    /// May read duplicate data
+    #[inline(always)]
+    pub unsafe fn read_no_check(&mut self) -> u8 {
+        let usci = unsafe { USCI::steal() };
+        usci.rx_rd()
+    }
+
+    #[inline(always)]
+    /// Writes a byte into the Tx buffer with no checks for validity
+    /// # Safety
+    /// May clobber unsent data still in the buffer
+    pub unsafe fn write_no_check(&mut self, data: u8) {
+        let usci = unsafe { USCI::steal() };
+        usci.tx_wr(data);
     }
 }
 

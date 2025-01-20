@@ -24,7 +24,7 @@ fn main() -> ! {
     let pmm = Pmm::new(periph.PMM);
     let p6 = Batch::new(periph.P6).split(&pmm);
 
-    let (smclk, _aclk) = ClockConfig::new(periph.CS)
+    let (smclk, _aclk, _delay) = ClockConfig::new(periph.CS)
         .mclk_dcoclk(DcoclkFreqSel::_1MHz, MclkDiv::_1)
         .smclk_on(SmclkDiv::_1)
         .aclk_vloclk()

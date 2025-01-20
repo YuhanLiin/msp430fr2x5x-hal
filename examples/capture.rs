@@ -33,7 +33,7 @@ fn main() -> ! {
         .config_pin0(|p| p.to_output())
         .split(&pmm);
 
-    let (smclk, aclk) = ClockConfig::new(periph.CS)
+    let (smclk, aclk, _delay) = ClockConfig::new(periph.CS)
         .mclk_dcoclk(DcoclkFreqSel::_1MHz, MclkDiv::_1)
         .smclk_on(SmclkDiv::_1)
         .aclk_vloclk()

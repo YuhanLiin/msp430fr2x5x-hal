@@ -28,7 +28,7 @@ static P2IV: Mutex<RefCell<Option<PxIV<P2>>>> = Mutex::new(RefCell::new(None));
 #[entry]
 fn main() -> ! {
     let periph = msp430fr2355::Peripherals::take().unwrap();
-    let (_smclk, aclk) = ClockConfig::new(periph.CS)
+    let (_smclk, aclk, _delay) = ClockConfig::new(periph.CS)
         .mclk_refoclk(MclkDiv::_1)
         // 32 KHz SMCLK
         .smclk_on(SmclkDiv::_2)
@@ -53,8 +53,8 @@ fn main() -> ! {
     let mut green_led = p6.pin6;
     let p2iv = p2.pxiv;
 
-    with(|cs| *RED_LED.borrow(cs).borrow_mut() = Some(red_led));
-    with(|cs| *P2IV.borrow(cs).borrow_mut() = Some(p2iv));
+    with(|cs| RED_LED.borrow_ref_mut(cs).replace(red_led));
+    with(|cs| P2IV.borrow_ref_mut(cs).replace(p2iv));
 
     wdt.set_aclk(&aclk)
         .enable_interrupts()
@@ -74,25 +74,19 @@ fn main() -> ! {
 #[interrupt]
 fn PORT2() {
     with(|cs| {
-        RED_LED.borrow(cs).borrow_mut().as_mut().map(|red_led| {
-            match P2IV
-                .borrow(cs)
-                .borrow_mut()
-                .as_mut()
-                .unwrap()
-                .get_interrupt_vector()
-            {
-                GpioVector::Pin7Isr => red_led.toggle().ok(),
-                _ => panic!(),
-            }
-        })
+        let Some(ref mut red_led) = *RED_LED.borrow_ref_mut(cs) else { return; };
+        let Some(ref mut p2iv) = *P2IV.borrow_ref_mut(cs) else { return; };
+
+        if let GpioVector::Pin7Isr = p2iv.get_interrupt_vector() {
+            red_led.toggle().ok();
+        }
     });
 }
 
 #[interrupt]
 fn WDT() {
     with(|cs| {
-        RED_LED.borrow(cs).borrow_mut().as_mut().map(|red_led| {
+        RED_LED.borrow_ref_mut(cs).as_mut().map(|red_led| {
             red_led.toggle().ok();
         })
     });
