@@ -2,7 +2,9 @@
 //!
 //! The ADC may read from any of the following pins:
 //!
-//! P1.0 - P1.7 (channels 0 to 7), P5.0 - P5.3 (channels 8 to 11)
+//! P1.0 - P1.7 (channels 0 to 7), P5.0 - P5.3 (channels 8 to 11).
+//! 
+//! ADC channels 12 to 15 are not associated with external pins, so in lieu of a pin use the `static`s below.
 //!
 
 use crate::{clock::{Aclk, Smclk}, gpio::*};
@@ -165,7 +167,7 @@ impl SamplingRate {
 }
 
 // Pins corresponding to an ADC channel. Pin types can have `::channel()` called on them to get their ADC channel index.
-macro_rules! impl_adc_channel {
+macro_rules! impl_adc_channel_pin {
     ($port: ty, $pin: ty, $channel: literal ) => {
         impl Channel<Adc> for Pin<$port, $pin, Alternate3<Input<Floating>>> {
             type ID = u8;
@@ -177,18 +179,56 @@ macro_rules! impl_adc_channel {
     };
 }
 
-impl_adc_channel!(P1, Pin0, 0);
-impl_adc_channel!(P1, Pin1, 1);
-impl_adc_channel!(P1, Pin2, 2);
-impl_adc_channel!(P1, Pin3, 3);
-impl_adc_channel!(P1, Pin4, 4);
-impl_adc_channel!(P1, Pin5, 5);
-impl_adc_channel!(P1, Pin6, 6);
-impl_adc_channel!(P1, Pin7, 7);
-impl_adc_channel!(P5, Pin0, 8);
-impl_adc_channel!(P5, Pin1, 9);
-impl_adc_channel!(P5, Pin2, 10);
-impl_adc_channel!(P5, Pin3, 11);
+impl_adc_channel_pin!(P1, Pin0, 0);
+impl_adc_channel_pin!(P1, Pin1, 1);
+impl_adc_channel_pin!(P1, Pin2, 2);
+impl_adc_channel_pin!(P1, Pin3, 3);
+impl_adc_channel_pin!(P1, Pin4, 4);
+impl_adc_channel_pin!(P1, Pin5, 5);
+impl_adc_channel_pin!(P1, Pin6, 6);
+impl_adc_channel_pin!(P1, Pin7, 7);
+impl_adc_channel_pin!(P5, Pin0, 8);
+impl_adc_channel_pin!(P5, Pin1, 9);
+impl_adc_channel_pin!(P5, Pin2, 10);
+impl_adc_channel_pin!(P5, Pin3, 11);
+
+// A few ADC channels don't correspond to pins. 
+macro_rules! impl_adc_channel_extra {
+    ($type: ty, $channel: literal ) => {
+        impl Channel<Adc> for $type {
+            type ID = u8;
+
+            fn channel() -> Self::ID {
+                $channel
+            }
+        }
+    };
+}
+
+// We instead document the statics below. Users needn't deal with the structs themselves so it just adds noise to the docs.
+#[doc(hidden)]
+pub struct AdcTempSenseChannel;
+impl_adc_channel_extra!(AdcTempSenseChannel, 12);
+/// ADC channel 12, tied to the internal temperature sensor. Pass this to `adc.read()` to read this channel.
+pub static ADC_CH12_TEMP_SENSE: AdcTempSenseChannel = AdcTempSenseChannel;
+
+#[doc(hidden)]
+pub struct AdcVrefChannel;
+impl_adc_channel_extra!(AdcVrefChannel, 13);
+/// ADC channel 13, tied to the internal reference voltage. Pass this to `adc.read()` to read this channel.
+pub static ADC_CH13_VREF: AdcVrefChannel = AdcVrefChannel;
+
+#[doc(hidden)]
+pub struct AdcVssChannel;
+impl_adc_channel_extra!(AdcVssChannel, 14);
+/// ADC channel 14, tied to VSS. Pass this to `adc.read()` to read this channel.
+pub static ADC_CH14_VSS: AdcVssChannel = AdcVssChannel;
+
+#[doc(hidden)]
+pub struct AdcVccChannel;
+impl_adc_channel_extra!(AdcVccChannel, 15);
+/// ADC channel 15, tied to VCC. Pass this to `adc.read()` to read this channel.
+pub static ADC_CH15_VCC: AdcVccChannel = AdcVccChannel;
 
 /// Typestate for an ADC configuration with no clock source selected
 pub struct NoClockSet;
