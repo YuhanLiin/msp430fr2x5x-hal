@@ -1,6 +1,7 @@
 #![no_main]
 #![no_std]
 #![feature(abi_msp430_interrupt)]
+#![feature(let_else)]
 
 use critical_section::with;
 use msp430fr2355::interrupt;

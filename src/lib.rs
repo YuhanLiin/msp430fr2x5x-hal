@@ -25,8 +25,15 @@
 #![allow(incomplete_features)] // Enable specialization without warnings
 #![feature(specialization)]
 #![feature(asm_experimental_arch)]
-#![deny(missing_docs)]
+
+#![allow(stable_features)] // Feature flags used on older compiler versions
+#![feature(derive_default_enum)]
+#![feature(exclusive_range_pattern)]
+#![feature(const_option)]
+#![feature(nonzero_ops)]
 #![feature(asm_const)]
+
+#![deny(missing_docs)]
 
 pub mod adc;
 pub mod batch_gpio;
