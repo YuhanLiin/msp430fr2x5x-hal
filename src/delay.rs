@@ -19,13 +19,25 @@ impl Delay {
     }
 }
 
-impl DelayMs<u16> for Delay {
-    #[inline]
-    fn delay_ms(&mut self, ms: u16) {
-        for _ in 0..ms {
-            for _ in 0..self.nops_per_ms {
-                asm::nop();
+macro_rules! impl_delay {
+    ($typ: ty) => {
+        impl DelayMs<$typ> for Delay {
+            #[inline]
+            fn delay_ms(&mut self, ms: $typ) {
+                for _ in 0..ms {
+                    for _ in 0..self.nops_per_ms {
+                        asm::nop();
+                    }
+                }
             }
         }
-    }
+    };
 }
+
+impl_delay!(u8);
+impl_delay!(u16);
+impl_delay!(u32);
+
+// A delay implementation for the default literal type to allow calls like `delay_ms(100)`
+// Negative durations are treated as zero.
+impl_delay!(i32);
