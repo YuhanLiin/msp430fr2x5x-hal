@@ -1,6 +1,7 @@
 #![no_main]
 #![no_std]
 #![feature(abi_msp430_interrupt)]
+#![feature(let_else)]
 
 // This example also demonstrates how to write panic-free code using panic_never.
 

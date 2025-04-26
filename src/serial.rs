@@ -526,6 +526,7 @@ impl<USCI: SerialUsci> Rx<USCI> {
 }
 
 /// Serial receive errors
+#[derive(Clone, Copy, Debug)]
 pub enum RecvError {
     /// Framing error
     Framing,
