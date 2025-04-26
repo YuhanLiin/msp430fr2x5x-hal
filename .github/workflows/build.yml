@@ -9,6 +9,9 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust_toolchain: [nightly, nightly-2022-03-01]
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
@@ -24,11 +27,11 @@ jobs:
         shell: bash
         run: msp430-elf-gcc --version
 
-      - name: Install nightly toolchain
+      - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly
+          toolchain: ${{ matrix.rust_toolchain }}
           override: true
           components: rust-src
 
