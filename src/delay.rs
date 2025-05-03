@@ -3,16 +3,16 @@ use msp430::asm;
 
 /// Delay provider struct
 #[derive(Copy, Clone)]
-pub struct Delay {
+pub struct SysDelay {
     nops_per_ms: u16,
 }
 
-impl Delay {
+impl SysDelay {
     /// Create a new delay object
     pub(crate) fn new(freq: u32) -> Self {
         // ~21 nops needed per 2^20 Hz to delay 1 ms
         let nops: u32 = 210 * (freq >> 20);
-        Delay {
+        SysDelay {
             nops_per_ms: (nops as u16),
         }
     }
@@ -25,7 +25,7 @@ mod ehal02 {
 
     macro_rules! impl_delay {
         ($typ: ty) => {
-            impl DelayMs<$typ> for Delay {
+            impl DelayMs<$typ> for SysDelay {
                 #[inline]
                 fn delay_ms(&mut self, ms: $typ) {
                     for _ in 0..ms {

@@ -10,7 +10,7 @@
 
 use core::arch::asm;
 
-use crate::delay::Delay;
+use crate::delay::SysDelay;
 use crate::fram::{Fram, WaitStates};
 use msp430fr2355 as pac;
 use pac::cs::csctl1::DCORSEL_A;
@@ -342,7 +342,7 @@ impl ClockConfig<MclkDefined, SmclkDefined> {
     /// Apply clock configuration to hardware and return SMCLK and ACLK clock objects.
     /// Also returns delay provider
     #[inline]
-    pub fn freeze(self, fram: &mut Fram) -> (Smclk, Aclk, Delay) {
+    pub fn freeze(self, fram: &mut Fram) -> (Smclk, Aclk, SysDelay) {
         let mclk_freq = self.mclk.0.freq() >> (self.mclk_div as u32);
         unsafe { Self::configure_fram(fram, mclk_freq) };
         self.configure_dco_fll();
@@ -350,7 +350,7 @@ impl ClockConfig<MclkDefined, SmclkDefined> {
         (
             Smclk(mclk_freq >> (self.smclk.0 as u32)),
             Aclk(self.aclk_sel.freq()),
-            Delay::new(mclk_freq),
+            SysDelay::new(mclk_freq),
         )
     }
 }
@@ -359,12 +359,12 @@ impl ClockConfig<MclkDefined, SmclkDisabled> {
     /// Apply clock configuration to hardware and return ACLK clock object, as SMCLK is disabled.
     /// Also returns delay provider.
     #[inline]
-    pub fn freeze(self, fram: &mut Fram) -> (Aclk, Delay) {
+    pub fn freeze(self, fram: &mut Fram) -> (Aclk, SysDelay) {
         let mclk_freq = self.mclk.0.freq() >> (self.mclk_div as u32);
         self.configure_dco_fll();
         unsafe { Self::configure_fram(fram, mclk_freq) };
         self.configure_cs();
-        (Aclk(self.aclk_sel.freq()), Delay::new(mclk_freq))
+        (Aclk(self.aclk_sel.freq()), SysDelay::new(mclk_freq))
     }
 }
 

@@ -90,7 +90,7 @@ impl From<GlitchFilter> for Ucglit {
 }
 
 ///Struct used to configure a I2C bus
-pub struct I2CBusConfig<USCI: I2cUsci, STATE> {
+pub struct I2cConfig<USCI: I2cUsci, STATE> {
     usci: USCI,
     divisor: u16,
 
@@ -169,9 +169,9 @@ pub struct NoClockSet;
 /// Typestate for an I2C bus configuration with a clock source selected
 pub struct ClockSet;
 
-impl<USCI: I2cUsci> I2CBusConfig<USCI, NoClockSet> {
+impl<USCI: I2cUsci> I2cConfig<USCI, NoClockSet> {
     /// Create a new configuration for setting up a EUSCI peripheral in I2C master mode
-    pub fn new(usci: USCI, deglitch_time: GlitchFilter) -> I2CBusConfig<USCI, NoClockSet> {
+    pub fn new(usci: USCI, deglitch_time: GlitchFilter) -> I2cConfig<USCI, NoClockSet> {
         let ctlw0 = UcbCtlw0 {
             uca10: false,
             ucsla10: false,
@@ -257,7 +257,7 @@ impl<USCI: I2cUsci> I2CBusConfig<USCI, NoClockSet> {
             ucrxifg0: false,
         };
 
-        I2CBusConfig {
+        I2cConfig {
             usci,
             divisor: 1,
             ctlw0,
@@ -274,10 +274,10 @@ impl<USCI: I2cUsci> I2CBusConfig<USCI, NoClockSet> {
 
     /// Configures this peripheral to use SMCLK
     #[inline]
-    pub fn use_smclk(mut self, _smclk: &Smclk, clk_divisor: u16) -> I2CBusConfig<USCI, ClockSet> {
+    pub fn use_smclk(mut self, _smclk: &Smclk, clk_divisor: u16) -> I2cConfig<USCI, ClockSet> {
         self.ctlw0.ucssel = Ucssel::Smclk;
         self.divisor = clk_divisor;
-        I2CBusConfig{ 
+        I2cConfig{ 
             usci: self.usci, 
             divisor: self.divisor, 
             ctlw0: self.ctlw0, 
@@ -293,10 +293,10 @@ impl<USCI: I2cUsci> I2CBusConfig<USCI, NoClockSet> {
 
     /// Configures this peripheral to use ACLK
     #[inline]
-    pub fn use_aclk(mut self, _aclk: &Aclk, clk_divisor: u16) -> I2CBusConfig<USCI, ClockSet> {
+    pub fn use_aclk(mut self, _aclk: &Aclk, clk_divisor: u16) -> I2cConfig<USCI, ClockSet> {
         self.ctlw0.ucssel = Ucssel::Aclk;
         self.divisor = clk_divisor;
-        I2CBusConfig{ 
+        I2cConfig{ 
             usci: self.usci, 
             divisor: self.divisor, 
             ctlw0: self.ctlw0, 
@@ -311,10 +311,10 @@ impl<USCI: I2cUsci> I2CBusConfig<USCI, NoClockSet> {
     }
     /// Configures this peripheral to use UCLK
     #[inline]
-    pub fn use_uclk<Pin: Into<USCI::ExternalClockPin> >(mut self, _uclk: Pin, clk_divisor: u16) -> I2CBusConfig<USCI, ClockSet> {
+    pub fn use_uclk<Pin: Into<USCI::ExternalClockPin> >(mut self, _uclk: Pin, clk_divisor: u16) -> I2cConfig<USCI, ClockSet> {
         self.ctlw0.ucssel = Ucssel::Uclk;
         self.divisor = clk_divisor;
-        I2CBusConfig{ 
+        I2cConfig{ 
             usci: self.usci, 
             divisor: self.divisor, 
             ctlw0: self.ctlw0, 
@@ -330,15 +330,15 @@ impl<USCI: I2cUsci> I2CBusConfig<USCI, NoClockSet> {
 }
 
 #[allow(private_bounds)]
-impl<USCI: I2cUsci> I2CBusConfig<USCI, ClockSet> {
+impl<USCI: I2cUsci> I2cConfig<USCI, ClockSet> {
     /// Performs hardware configuration and creates the I2C bus
     pub fn configure<C: Into<USCI::ClockPin>, D: Into<USCI::DataPin>>(
         &self,
         _scl: C,
         _sda: D,
-    ) -> I2cBus<USCI> {
+    ) -> I2cPeriph<USCI> {
         self.configure_regs();
-        I2cBus(PhantomData)
+        I2cPeriph(PhantomData)
     }
 
     /// Performs hardware configuration
@@ -363,7 +363,7 @@ impl<USCI: I2cUsci> I2CBusConfig<USCI, ClockSet> {
 }
 
 /// I2C data bus
-pub struct I2cBus<USCI: I2cUsci>(PhantomData<USCI>);
+pub struct I2cPeriph<USCI: I2cUsci>(PhantomData<USCI>);
 
 /// I2C transmit/receive errors
 #[derive(Clone, Copy, Debug)]
@@ -376,7 +376,7 @@ pub enum I2CErr {
     // Other errors such as the 'clock low timeout' UCCLTOIFG may appear here in future.
 }
 
-impl<USCI: I2cUsci> I2cBus<USCI> {
+impl<USCI: I2cUsci> I2cPeriph<USCI> {
     #[inline(always)]
     fn set_addressing_mode(&mut self, mode: AddressingMode) {
         let usci = unsafe { USCI::steal() };
@@ -505,7 +505,7 @@ mod ehal02 {
     use embedded_hal_02::blocking::i2c::{AddressMode, Read, Write, WriteRead};
     use super::*;
 
-    impl<USCI: I2cUsci, SevenOrTenBit> Read<SevenOrTenBit> for I2cBus<USCI>
+    impl<USCI: I2cUsci, SevenOrTenBit> Read<SevenOrTenBit> for I2cPeriph<USCI>
     where SevenOrTenBit: AddressMode + AddressType + Into<u16> {
         type Error = I2CErr;
         fn read(&mut self, address: SevenOrTenBit, buffer: &mut [u8]) -> Result<(), Self::Error> {
@@ -515,7 +515,7 @@ mod ehal02 {
         }
     }
 
-    impl<USCI: I2cUsci, SevenOrTenBit> Write<SevenOrTenBit> for I2cBus<USCI> 
+    impl<USCI: I2cUsci, SevenOrTenBit> Write<SevenOrTenBit> for I2cPeriph<USCI> 
     where SevenOrTenBit: AddressMode + AddressType + Into<u16> {
         type Error = I2CErr;
         fn write(&mut self, address: SevenOrTenBit, bytes: &[u8]) -> Result<(), Self::Error> {
@@ -525,7 +525,7 @@ mod ehal02 {
         }
     }
 
-    impl<USCI: I2cUsci, SevenOrTenBit> WriteRead<SevenOrTenBit> for I2cBus<USCI>  
+    impl<USCI: I2cUsci, SevenOrTenBit> WriteRead<SevenOrTenBit> for I2cPeriph<USCI>  
     where SevenOrTenBit: AddressMode + AddressType + Into<u16> {
         type Error = I2CErr;
         fn write_read(
