@@ -6,7 +6,6 @@ use crate::clock::Smclk;
 use core::marker::PhantomData;
 use msp430fr2355 as pac;
 use pac::{rtc::rtcctl::RTCSS_A, RTC};
-use void::Void;
 
 mod sealed {
     use super::*;
@@ -112,6 +111,7 @@ impl<SRC: RtcClockSrc> Rtc<SRC> {
 #[cfg(feature = "embedded-hal-02")]
 mod ehal02 {
     use embedded_hal_02::timer::{Cancel, CountDown, Periodic};
+    use void::Void;
     use super::*;
 
     impl<SRC: RtcClockSrc> CountDown for Rtc<SRC> {

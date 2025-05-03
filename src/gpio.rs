@@ -16,6 +16,7 @@
 pub use crate::batch_gpio::*;
 use crate::hw_traits::gpio::{GpioPeriph, IntrPeriph};
 use crate::util::BitsExt;
+use core::convert::Infallible;
 use core::marker::PhantomData;
 use msp430fr2355 as pac;
 pub use pac::{P1, P2, P3, P4, P5, P6};
@@ -244,7 +245,7 @@ impl<PORT: IntrPortNum, PIN: PinNum, PULL> Pin<PORT, PIN, Input<PULL>> {
 
     /// Wait for interrupt flag to go high nonblockingly. Clear the flag if high.
     #[inline]
-    pub fn wait_for_ifg(&mut self) -> nb::Result<(), void::Void> {
+    pub fn wait_for_ifg(&mut self) -> nb::Result<(), Infallible> {
         let p = unsafe { PORT::steal() };
         if p.pxifg_rd().check(PIN::NUM) != 0 {
             p.pxifg_clear(PIN::CLR_MASK);

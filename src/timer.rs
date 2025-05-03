@@ -10,6 +10,7 @@
 use crate::clock::{Aclk, Smclk};
 use crate::gpio::{Alternate1, Floating, Input, Pin, Pin2, Pin6, Pin7, P2, P5, P6};
 use crate::hw_traits::timerb::{CCRn, Tbssel, TimerB};
+use core::convert::Infallible;
 use core::marker::PhantomData;
 use msp430fr2355 as pac;
 
@@ -289,7 +290,7 @@ impl<T: CapCmp<C>, C> SubTimer<T, C> {
 
     #[inline]
     /// Wait for the sub-timer to fire
-    pub fn wait(&mut self) -> nb::Result<(), void::Void> {
+    pub fn wait(&mut self) -> nb::Result<(), Infallible> {
         let timer = unsafe { T::steal() };
         if timer.ccifg_rd() {
             timer.ccifg_clr();
