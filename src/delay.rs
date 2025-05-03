@@ -18,6 +18,33 @@ impl SysDelay {
     }
 }
 
+mod ehal1 {
+    use embedded_hal::delay::DelayNs;
+    use super::*;
+
+    impl DelayNs for SysDelay {
+        #[inline]
+        /// Pauses execution for approximately `ns / 1_000_000` milliseconds (but always at least 1 ms). Recommend using delay_ms instead.
+        fn delay_ns(&mut self, ns: u32) {
+            let ms = (ns >> 20).min(1);
+            self.delay_ms(ms)
+        }
+        /// Pauses execution for approximately `us / 1_000` milliseconds (but always at least 1 ms). Recommend using delay_ms instead.
+        fn delay_us(&mut self, us: u32) {
+            let ms = (us >> 10).min(1);
+            self.delay_ms(ms)
+        }
+        /// Pauses execution for approximately `ms` milliseconds.
+        fn delay_ms(&mut self, ms: u32) {
+            for _ in 0..ms {
+                for _ in 0..self.nops_per_ms {
+                    asm::nop();
+                }
+            }
+        }
+    }
+}
+
 #[cfg(feature = "embedded-hal-02")]
 mod ehal02 {
     use embedded_hal_02::blocking::delay::DelayMs;

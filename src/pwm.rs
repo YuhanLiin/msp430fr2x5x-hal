@@ -177,7 +177,7 @@ impl<T: CapCmpTimer7> PwmParts7<T> {
 pub struct PwmUninit<T, C>(PhantomData<T>, PhantomData<C>);
 
 impl<T: PwmPeriph<C>, C> PwmUninit<T, C> {
-    /// Initialized the PWM pin by passing in the appropriately configured GPIO pin
+    /// Initializes the PWM pin by passing in the appropriately configured GPIO pin.
     pub fn init(self, pin: T::Gpio) -> Pwm<T, C> {
         Pwm {
             _timer: PhantomData,
@@ -198,6 +198,35 @@ pub struct Pwm<T: PwmPeriph<C>, C> {
     _timer: PhantomData<T>,
     _ccrn: PhantomData<C>,
     pin: T::Gpio,
+}
+
+mod ehal1 {
+    use core::convert::Infallible;
+    use embedded_hal::pwm::{ErrorType, SetDutyCycle};
+    use super::*;
+
+    impl<T: PwmPeriph<C>, C> ErrorType for Pwm<T, C> {
+        type Error = Infallible;
+    }
+
+    impl<T: PwmPeriph<C>, C> SetDutyCycle for Pwm<T, C> {
+        fn max_duty_cycle(&self) -> u16 {
+            let timer = unsafe { T::steal() };
+            CCRn::<CCR0>::get_ccrn(&timer)
+        }
+    
+        /// Set the duty cycle to `duty / max_duty`.
+        ///
+        /// The caller is responsible for ensuring that the duty cycle value is less than or equal to the maximum duty cycle value,
+        /// as reported by `max_duty_cycle`.
+        ///
+        /// As the error type is `Infallible` this can be safely unwrapped.
+        fn set_duty_cycle(&mut self, duty: u16) -> Result<(), Self::Error> {
+            let timer = unsafe { T::steal() };
+            CCRn::<C>::set_ccrn(&timer, duty);
+            Ok(())
+        }
+    }
 }
 
 #[cfg(feature = "embedded-hal-02")]

@@ -648,6 +648,58 @@ impl<DIR> ToAlternate3 for Pin<P5, Pin3, DIR> {}
 // P6 alternate 1
 impl<PIN: PinNum, DIR> ToAlternate1 for Pin<P6, PIN, DIR> {}
 
+mod ehal1 {
+    use core::convert::Infallible;
+    use embedded_hal::digital::{ErrorType, InputPin, OutputPin, StatefulOutputPin};
+    use super::*;
+
+    impl<PORT: PortNum, PIN: PinNum, DIR> ErrorType for Pin<PORT, PIN, DIR> {
+        type Error = Infallible;
+    }
+    
+    impl<PORT: PortNum, PIN: PinNum, PULL> InputPin for Pin<PORT, PIN, Input<PULL>> {
+        #[inline]
+        fn is_high(&mut self) -> Result<bool, Self::Error> {
+            let p = unsafe { PORT::steal() };
+            Ok(p.pxin_rd().check(PIN::NUM) != 0)
+        }
+
+        #[inline]
+        fn is_low(&mut self) -> Result<bool, Self::Error> {
+            self.is_high().map(|r| !r)
+        }
+    }
+
+    impl<PORT: PortNum, PIN: PinNum> OutputPin for Pin<PORT, PIN, Output> {
+        #[inline]
+        fn set_low(&mut self) -> Result<(), Self::Error> {
+            let p = unsafe { PORT::steal() };
+            p.pxout_clear(PIN::CLR_MASK);
+            Ok(())
+        }
+
+        #[inline]
+        fn set_high(&mut self) -> Result<(), Self::Error> {
+            let p = unsafe { PORT::steal() };
+            p.pxout_set(PIN::SET_MASK);
+            Ok(())
+        }
+    }
+
+    impl<PORT: PortNum, PIN: PinNum> StatefulOutputPin for Pin<PORT, PIN, Output> {
+        #[inline]
+        fn is_set_high(&mut self) -> Result<bool, Self::Error> {
+            let p = unsafe { PORT::steal() };
+            Ok(p.pxout_rd().check(PIN::NUM) != 0)
+        }
+
+        #[inline]
+        fn is_set_low(&mut self) -> Result<bool, Self::Error> {
+            self.is_set_high().map(|r| !r)
+        }
+    }
+}
+
 #[cfg(feature = "embedded-hal-02")]
 mod ehal02 {
     use embedded_hal_02::digital::v2::{InputPin, OutputPin, StatefulOutputPin, ToggleableOutputPin};

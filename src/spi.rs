@@ -324,10 +324,10 @@ impl<USCI: SpiUsci> SpiPeriph<USCI> {
             }
             else {
                 Ok(usci.rxbuf_rd())
-        }
+            }
         } else {
             Err(WouldBlock)
-    }
+        }
     }
 
     fn send_byte(&mut self, word: u8) -> nb::Result<(), SpiErr> {
@@ -337,8 +337,8 @@ impl<USCI: SpiUsci> SpiPeriph<USCI> {
             Ok(())
         } else {
             Err(WouldBlock)
-}
-}
+        }
+    }
 }
 
 /// SPI transmit/receive errors
@@ -348,6 +348,92 @@ pub enum SpiErr {
     /// Data in the recieve buffer was overwritten before it was read. The contained data is the new contents of the recieve buffer.
     OverrunError(u8),
     // In future the framing error bit UCFE may appear here. Right now it's unimplemented.
+}
+
+mod ehal1 {
+    use embedded_hal::spi::{Error, ErrorType, SpiBus};
+    use nb::block;
+    use super::*;
+
+    impl Error for SpiErr {
+        fn kind(&self) -> embedded_hal::spi::ErrorKind {
+            match self {
+                SpiErr::OverrunError(_) => embedded_hal::spi::ErrorKind::Overrun,
+            }
+        }
+    }
+
+    impl<USCI: SpiUsci> ErrorType for SpiPeriph<USCI> {
+        type Error = SpiErr;
+    }
+
+    impl<USCI: SpiUsci> SpiBus for SpiPeriph<USCI> {
+        /// Send dummy packets (`0x00`) on MOSI so the slave can respond on MISO. Store the response in `words`.
+        fn read(&mut self, words: &mut [u8]) -> Result<(), Self::Error> {
+            for word in words {
+                block!(self.send_byte(0x00))?;
+                *word = block!(self.recv_byte())?;
+            }
+            Ok(())
+        }
+    
+        /// Write `words` to the slave, ignoring all the incoming words.
+        ///
+        /// Returns as soon as the last word is placed in the hardware buffer.
+        fn write(&mut self, words: &[u8]) -> Result<(), Self::Error> {
+            for word in words {
+                block!(self.send_byte(*word))?;
+                let _ = block!(self.recv_byte());
+            }
+            Ok(())
+        }
+    
+        /// Write and read simultaneously. `write` is written to the slave on MOSI and
+        /// words received on MISO are stored in `read`.
+        ///
+        /// If `write` is longer than `read`, then after `read` is full any subsequent incoming words will be discarded. 
+        /// If `read` is longer than `write`, then dummy packets of `0x00` are sent until `read` is full.
+        fn transfer(&mut self, read: &mut [u8], write: &[u8]) -> Result<(), Self::Error> {
+            let mut read_bytes = read.iter_mut();
+            let mut write_bytes = write.iter();
+            const DUMMY_WRITE: u8 = 0x00;
+            let dummy_read = &mut 0;
+
+            // Pair up read and write bytes (inserting dummy values as necessary) until everything's sent
+            loop {
+                let rd_byte = read_bytes.next();
+                let wr_byte = write_bytes.next();
+                
+                if rd_byte.is_none() && wr_byte.is_none() { break; }
+
+                let wr = wr_byte.unwrap_or(&DUMMY_WRITE);
+                let rd = rd_byte.unwrap_or(dummy_read);
+
+                block!(self.send_byte(*wr))?;
+                *rd = block!(self.recv_byte())?;
+            }
+            Ok(())
+        }
+    
+        /// Write and read simultaneously. The contents of `words` are
+        /// written to the slave, and the received words are stored into the same
+        /// `words` buffer, overwriting it.
+        fn transfer_in_place(&mut self, words: &mut [u8]) -> Result<(), Self::Error> {
+            for word in words {
+                block!(self.send_byte(*word))?;
+                *word = block!(self.recv_byte())?;
+            }
+            Ok(())
+        }
+    
+        fn flush(&mut self) -> Result<(), Self::Error> {
+            // I would usually do this by checking the UCBUSY bit, but 
+            // it seems to be missing from the (SPI version of the) PAC...
+            let usci = unsafe { USCI::steal() };
+            while !usci.transmit_flag() {}
+            Ok(())
+        }
+    }
 }
 
 #[cfg(feature = "embedded-hal-02")]

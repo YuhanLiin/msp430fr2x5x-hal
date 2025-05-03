@@ -26,7 +26,7 @@ use crate::{
     pac,
 };
 use core::marker::PhantomData;
-use embedded_hal_1::i2c::{SevenBitAddress, TenBitAddress};
+use embedded_hal::i2c::{SevenBitAddress, TenBitAddress};
 use msp430::asm;
 
 /// Configure bus to use 7bit or 10bit I2C slave addressing mode
@@ -498,6 +498,44 @@ impl AddressType for SevenBitAddress {
 }
 impl AddressType for TenBitAddress {
     fn addr_type() -> AddressingMode {AddressingMode::TenBit}
+}
+
+mod ehal1 {
+    use embedded_hal::i2c::{AddressMode, Error, ErrorKind, ErrorType, I2c, Operation, NoAcknowledgeSource};
+    use super::*;
+
+    impl Error for I2CErr {
+        fn kind(&self) -> ErrorKind {
+            match self {
+                I2CErr::GotNACK => ErrorKind::NoAcknowledge(NoAcknowledgeSource::Unknown),
+                I2CErr::ArbitrationLost => ErrorKind::ArbitrationLoss,
+            }
+        }
+    }
+
+    impl<USCI: I2cUsci> ErrorType for I2cPeriph<USCI> {
+        type Error = I2CErr;
+    }
+
+    impl<USCI: I2cUsci, TenOrSevenBit> I2c<TenOrSevenBit> for I2cPeriph<USCI> 
+    where TenOrSevenBit: AddressMode + AddressType + Into<u16> + Copy {
+        fn transaction(&mut self, address: TenOrSevenBit, ops: &mut [Operation<'_>]) -> Result<(), Self::Error> {
+            self.set_addressing_mode(TenOrSevenBit::addr_type());
+            for op in ops {
+                match op {
+                    Operation::Read(items) => {
+                        self.set_transmission_mode(TransmissionMode::Receive);
+                        self.read(address.into(), items)?;
+                    }
+                    Operation::Write(items) => {
+                        self.set_transmission_mode(TransmissionMode::Transmit);
+                        self.write(address.into(), items)?;
+                    }
+                }
+            }
+            Ok(())
+        }
+    }
 }
 
 #[cfg(feature = "embedded-hal-02")]
