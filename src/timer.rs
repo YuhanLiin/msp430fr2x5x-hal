@@ -11,7 +11,6 @@ use crate::clock::{Aclk, Smclk};
 use crate::gpio::{Alternate1, Floating, Input, Pin, Pin2, Pin6, Pin7, P2, P5, P6};
 use crate::hw_traits::timerb::{CCRn, Tbssel, TimerB};
 use core::marker::PhantomData;
-use embedded_hal::timer::{Cancel, CountDown, Periodic};
 use msp430fr2355 as pac;
 
 pub use crate::hw_traits::timerb::{
@@ -315,38 +314,44 @@ impl<T: CapCmp<C>, C> SubTimer<T, C> {
     }
 }
 
-impl<T: TimerPeriph + CapCmp<CCR0>> CountDown for Timer<T> {
-    type Time = u16;
+#[cfg(feature = "embedded-hal-02")]
+mod ehal02 {
+    use embedded_hal_02::timer::{Cancel, CountDown, Periodic};
+    use super::*;
 
-    #[inline]
-    fn start<U: Into<Self::Time>>(&mut self, count: U) {
-        let timer = unsafe { T::steal() };
-        timer.stop();
-        timer.set_ccrn(count.into());
-        timer.upmode();
-    }
-
-    #[inline]
-    fn wait(&mut self) -> nb::Result<(), void::Void> {
-        let timer = unsafe { T::steal() };
-        if timer.tbifg_rd() {
-            timer.tbifg_clr();
-            Ok(())
-        } else {
-            Err(nb::Error::WouldBlock)
+    impl<T: TimerPeriph + CapCmp<CCR0>> CountDown for Timer<T> {
+        type Time = u16;
+    
+        #[inline]
+        fn start<U: Into<Self::Time>>(&mut self, count: U) {
+            let timer = unsafe { T::steal() };
+            timer.stop();
+            timer.set_ccrn(count.into());
+            timer.upmode();
+        }
+    
+        #[inline]
+        fn wait(&mut self) -> nb::Result<(), void::Void> {
+            let timer = unsafe { T::steal() };
+            if timer.tbifg_rd() {
+                timer.tbifg_clr();
+                Ok(())
+            } else {
+                Err(nb::Error::WouldBlock)
+            }
         }
     }
-}
-
-impl<T: TimerPeriph + CapCmp<CCR0>> Cancel for Timer<T> {
-    type Error = void::Void;
-
-    #[inline(always)]
-    fn cancel(&mut self) -> Result<(), Self::Error> {
-        let timer = unsafe { T::steal() };
-        timer.stop();
-        Ok(())
+    
+    impl<T: TimerPeriph + CapCmp<CCR0>> Cancel for Timer<T> {
+        type Error = void::Void;
+    
+        #[inline(always)]
+        fn cancel(&mut self) -> Result<(), Self::Error> {
+            let timer = unsafe { T::steal() };
+            timer.stop();
+            Ok(())
+        }
     }
+    
+    impl<T: TimerPeriph> Periodic for Timer<T> {}
 }
-
-impl<T: TimerPeriph> Periodic for Timer<T> {}

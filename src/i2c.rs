@@ -19,9 +19,6 @@ use crate::gpio::{Pin1, Pin5};
 use crate::hw_traits::eusci::I2CUcbIfgOut;
 use crate::{
     gpio::{Alternate1, Pin, Pin2, Pin3, Pin6, Pin7, P1, P4},
-    hal::blocking::i2c::{
-        Read, SevenBitAddress, TenBitAddress, Write, WriteRead,
-    },
     hw_traits::eusci::{
         EUsciI2C, Ucastp, UcbCtlw0, UcbCtlw1, UcbI2coa, UcbIFG, UcbIe, Ucclto, Ucglit, Ucmode,
         Ucssel,
@@ -489,64 +486,70 @@ impl<USCI: I2cUsci> I2cBus<USCI> {
     }
 }
 
-impl<USCI: I2cUsci> Read<SevenBitAddress> for I2cBus<USCI> {
-    type Error = I2CErr;
-    fn read(&mut self, address: u8, buffer: &mut [u8]) -> Result<(), Self::Error> {
-        self.set_addressing_mode(AddressingMode::SevenBit);
-        self.set_transmission_mode(TransmissionMode::Receive);
-        I2cBus::read(self, address as u16, buffer)
-    }
-}
+#[cfg(feature = "embedded-hal-02")]
+mod ehal02 {
+    use embedded_hal_02::blocking::i2c::{Read, SevenBitAddress, TenBitAddress, Write, WriteRead};
+    use super::*;
 
-impl<USCI: I2cUsci> Read<TenBitAddress> for I2cBus<USCI> {
-    type Error = I2CErr;
-    fn read(&mut self, address: u16, buffer: &mut [u8]) -> Result<(), Self::Error> {
-        self.set_addressing_mode(AddressingMode::TenBit);
-        self.set_transmission_mode(TransmissionMode::Receive);
-        I2cBus::read(self, address, buffer)
+    impl<USCI: I2cUsci> Read<SevenBitAddress> for I2cBus<USCI> {
+        type Error = I2CErr;
+        fn read(&mut self, address: u8, buffer: &mut [u8]) -> Result<(), Self::Error> {
+            self.set_addressing_mode(AddressingMode::SevenBit);
+            self.set_transmission_mode(TransmissionMode::Receive);
+            I2cBus::read(self, address as u16, buffer)
+        }
     }
-}
-
-impl<USCI: I2cUsci> Write<SevenBitAddress> for I2cBus<USCI> {
-    type Error = I2CErr;
-    fn write(&mut self, address: u8, bytes: &[u8]) -> Result<(), Self::Error> {
-        self.set_addressing_mode(AddressingMode::SevenBit);
-        self.set_transmission_mode(TransmissionMode::Transmit);
-        I2cBus::write(self, address as u16, bytes)
+    
+    impl<USCI: I2cUsci> Read<TenBitAddress> for I2cBus<USCI> {
+        type Error = I2CErr;
+        fn read(&mut self, address: u16, buffer: &mut [u8]) -> Result<(), Self::Error> {
+            self.set_addressing_mode(AddressingMode::TenBit);
+            self.set_transmission_mode(TransmissionMode::Receive);
+            I2cBus::read(self, address, buffer)
+        }
     }
-}
-
-impl<USCI: I2cUsci> Write<TenBitAddress> for I2cBus<USCI> {
-    type Error = I2CErr;
-    fn write(&mut self, address: u16, bytes: &[u8]) -> Result<(), Self::Error> {
-        self.set_addressing_mode(AddressingMode::TenBit);
-        self.set_transmission_mode(TransmissionMode::Transmit);
-        I2cBus::write(self, address, bytes)
+    
+    impl<USCI: I2cUsci> Write<SevenBitAddress> for I2cBus<USCI> {
+        type Error = I2CErr;
+        fn write(&mut self, address: u8, bytes: &[u8]) -> Result<(), Self::Error> {
+            self.set_addressing_mode(AddressingMode::SevenBit);
+            self.set_transmission_mode(TransmissionMode::Transmit);
+            I2cBus::write(self, address as u16, bytes)
+        }
     }
-}
-
-impl<USCI: I2cUsci> WriteRead<SevenBitAddress> for I2cBus<USCI> {
-    type Error = I2CErr;
-    fn write_read(
-        &mut self,
-        address: u8,
-        bytes: &[u8],
-        buffer: &mut [u8],
-    ) -> Result<(), Self::Error> {
-        self.set_addressing_mode(AddressingMode::SevenBit);
-        I2cBus::write_read(self, address as u16, bytes, buffer)
+    
+    impl<USCI: I2cUsci> Write<TenBitAddress> for I2cBus<USCI> {
+        type Error = I2CErr;
+        fn write(&mut self, address: u16, bytes: &[u8]) -> Result<(), Self::Error> {
+            self.set_addressing_mode(AddressingMode::TenBit);
+            self.set_transmission_mode(TransmissionMode::Transmit);
+            I2cBus::write(self, address, bytes)
+        }
     }
-}
-
-impl<USCI: I2cUsci> WriteRead<TenBitAddress> for I2cBus<USCI> {
-    type Error = I2CErr;
-    fn write_read(
-        &mut self,
-        address: u16,
-        bytes: &[u8],
-        buffer: &mut [u8],
-    ) -> Result<(), Self::Error> {
-        self.set_addressing_mode(AddressingMode::TenBit);
-        I2cBus::write_read(self, address, bytes, buffer)
+    
+    impl<USCI: I2cUsci> WriteRead<SevenBitAddress> for I2cBus<USCI> {
+        type Error = I2CErr;
+        fn write_read(
+            &mut self,
+            address: u8,
+            bytes: &[u8],
+            buffer: &mut [u8],
+        ) -> Result<(), Self::Error> {
+            self.set_addressing_mode(AddressingMode::SevenBit);
+            I2cBus::write_read(self, address as u16, bytes, buffer)
+        }
+    }
+    
+    impl<USCI: I2cUsci> WriteRead<TenBitAddress> for I2cBus<USCI> {
+        type Error = I2CErr;
+        fn write_read(
+            &mut self,
+            address: u16,
+            bytes: &[u8],
+            buffer: &mut [u8],
+        ) -> Result<(), Self::Error> {
+            self.set_addressing_mode(AddressingMode::TenBit);
+            I2cBus::write_read(self, address, bytes, buffer)
+        }
     }
 }

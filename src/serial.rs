@@ -11,7 +11,6 @@ use crate::gpio::{Alternate1, Pin, Pin1, Pin2, Pin3, Pin5, Pin6, Pin7, P1, P4};
 use crate::hw_traits::eusci::{EUsciUart, UartUcxStatw, UcaCtlw0, Ucssel};
 use core::marker::PhantomData;
 use core::num::NonZeroU32;
-use embedded_hal::serial::{Read, Write};
 use msp430fr2355 as pac;
 
 /// Bit order of transmit and receive
@@ -504,63 +503,69 @@ pub enum RecvError {
     Overrun(u8),
 }
 
-impl<USCI: SerialUsci> Read<u8> for Rx<USCI> {
-    type Error = RecvError;
+#[cfg(feature = "embedded-hal-02")]
+mod ehal02 {
+    use embedded_hal_02::serial::{Read, Write};
+    use super::*;
 
-    #[inline]
-    /// Check if Rx interrupt flag is set. If so, try reading the received byte and clear the flag.
-    /// Otherwise block on the Rx interrupt flag. May return errors caused by data corruption or
-    /// buffer overruns.
-    fn read(&mut self) -> nb::Result<u8, Self::Error> {
-        let usci = unsafe { USCI::steal() };
-
-        if usci.rxifg_rd() {
-            let statw = usci.statw_rd();
-            let data = usci.rx_rd();
-
-            if statw.ucfe() {
-                Err(nb::Error::Other(RecvError::Framing))
-            } else if statw.ucpe() {
-                Err(nb::Error::Other(RecvError::Parity))
-            } else if statw.ucoe() {
-                Err(nb::Error::Other(RecvError::Overrun(data)))
+    impl<USCI: SerialUsci> Read<u8> for Rx<USCI> {
+        type Error = RecvError;
+    
+        #[inline]
+        /// Check if Rx interrupt flag is set. If so, try reading the received byte and clear the flag.
+        /// Otherwise block on the Rx interrupt flag. May return errors caused by data corruption or
+        /// buffer overruns.
+        fn read(&mut self) -> nb::Result<u8, Self::Error> {
+            let usci = unsafe { USCI::steal() };
+    
+            if usci.rxifg_rd() {
+                let statw = usci.statw_rd();
+                let data = usci.rx_rd();
+    
+                if statw.ucfe() {
+                    Err(nb::Error::Other(RecvError::Framing))
+                } else if statw.ucpe() {
+                    Err(nb::Error::Other(RecvError::Parity))
+                } else if statw.ucoe() {
+                    Err(nb::Error::Other(RecvError::Overrun(data)))
+                } else {
+                    Ok(data)
+                }
             } else {
-                Ok(data)
+                Err(nb::Error::WouldBlock)
             }
-        } else {
-            Err(nb::Error::WouldBlock)
         }
     }
+
+    impl<USCI: SerialUsci> Write<u8> for Tx<USCI> {
+        type Error = void::Void;
+
+        /// Due to errata USCI42, UCTXCPTIFG will fire every time a byte is done transmitting,
+        /// even if there's still more buffered. Thus, the implementation uses UCTXIFG instead. When
+        /// `flush()` completes, the Tx buffer will be empty but the FIFO may still be sending.
+        #[inline]
+        fn flush(&mut self) -> nb::Result<(), Self::Error> {
+            let usci = unsafe { USCI::steal() };
+            if usci.txifg_rd() {
+                Ok(())
+            } else {
+                Err(nb::Error::WouldBlock)
+            }
+        }
+
+        #[inline]
+        /// Check if Tx interrupt flag is set. If so, write a byte into the Tx buffer. Otherwise block
+        /// on the Tx flag.
+        fn write(&mut self, data: u8) -> nb::Result<(), Self::Error> {
+            let usci = unsafe { USCI::steal() };
+            if usci.txifg_rd() {
+                usci.tx_wr(data);
+                Ok(())
+            } else {
+                Err(nb::Error::WouldBlock)
+            }
+        }
+    }
+
+    impl<USCI: SerialUsci> embedded_hal_02::blocking::serial::write::Default<u8> for Tx<USCI> {}
 }
-
-impl<USCI: SerialUsci> Write<u8> for Tx<USCI> {
-    type Error = void::Void;
-
-    /// Due to errata USCI42, UCTXCPTIFG will fire every time a byte is done transmitting,
-    /// even if there's still more buffered. Thus, the implementation uses UCTXIFG instead. When
-    /// `flush()` completes, the Tx buffer will be empty but the FIFO may still be sending.
-    #[inline]
-    fn flush(&mut self) -> nb::Result<(), Self::Error> {
-        let usci = unsafe { USCI::steal() };
-        if usci.txifg_rd() {
-            Ok(())
-        } else {
-            Err(nb::Error::WouldBlock)
-        }
-    }
-
-    #[inline]
-    /// Check if Tx interrupt flag is set. If so, write a byte into the Tx buffer. Otherwise block
-    /// on the Tx flag.
-    fn write(&mut self, data: u8) -> nb::Result<(), Self::Error> {
-        let usci = unsafe { USCI::steal() };
-        if usci.txifg_rd() {
-            usci.tx_wr(data);
-            Ok(())
-        } else {
-            Err(nb::Error::WouldBlock)
-        }
-    }
-}
-
-impl<USCI: SerialUsci> embedded_hal::blocking::serial::write::Default<u8> for Tx<USCI> {}

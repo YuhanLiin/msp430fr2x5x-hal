@@ -56,5 +56,9 @@ pub mod delay;
 pub mod i2c;
 pub mod spi;
 
-pub use embedded_hal as hal;
 pub use msp430fr2355 as pac;
+
+#[cfg(feature = "embedded-hal-02")]
+pub use embedded_hal_02 as ehal_02;
+
+pub use embedded_hal as ehal;

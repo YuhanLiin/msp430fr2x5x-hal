@@ -13,7 +13,6 @@ use crate::gpio::{
 use crate::hw_traits::timerb::{CCRn, Outmod};
 use crate::timer::{CapCmpTimer3, CapCmpTimer7};
 use core::marker::PhantomData;
-use embedded_hal::PwmPin;
 use msp430fr2355 as pac;
 
 pub use crate::timer::{
@@ -201,37 +200,43 @@ pub struct Pwm<T: PwmPeriph<C>, C> {
     pin: T::Gpio,
 }
 
-impl<T: PwmPeriph<C>, C> PwmPin for Pwm<T, C> {
-    /// Number of cycles
-    type Duty = u16;
+#[cfg(feature = "embedded-hal-02")]
+mod ehal02 {
+    use embedded_hal_02::PwmPin;
+    use super::*;
 
-    #[inline]
-    fn set_duty(&mut self, duty: Self::Duty) {
-        let timer = unsafe { T::steal() };
-        CCRn::<C>::set_ccrn(&timer, duty);
-    }
-
-    #[inline]
-    fn get_duty(&self) -> Self::Duty {
-        let timer = unsafe { T::steal() };
-        CCRn::<C>::get_ccrn(&timer)
-    }
-
-    /// Maximum valid duty is equal to the period. If number of duty cycles exceeds number of
-    /// period cycles, then signal stays high (equivalent to 100% duty cycle).
-    #[inline]
-    fn get_max_duty(&self) -> Self::Duty {
-        let timer = unsafe { T::steal() };
-        CCRn::<CCR0>::get_ccrn(&timer)
-    }
-
-    #[inline]
-    fn disable(&mut self) {
-        T::to_gpio(&mut self.pin);
-    }
-
-    #[inline]
-    fn enable(&mut self) {
-        T::to_alt(&mut self.pin);
+    impl<T: PwmPeriph<C>, C> PwmPin for Pwm<T, C> {
+        /// Number of cycles
+        type Duty = u16;
+    
+        #[inline]
+        fn set_duty(&mut self, duty: Self::Duty) {
+            let timer = unsafe { T::steal() };
+            CCRn::<C>::set_ccrn(&timer, duty);
+        }
+    
+        #[inline]
+        fn get_duty(&self) -> Self::Duty {
+            let timer = unsafe { T::steal() };
+            CCRn::<C>::get_ccrn(&timer)
+        }
+    
+        /// Maximum valid duty is equal to the period. If number of duty cycles exceeds number of
+        /// period cycles, then signal stays high (equivalent to 100% duty cycle).
+        #[inline]
+        fn get_max_duty(&self) -> Self::Duty {
+            let timer = unsafe { T::steal() };
+            CCRn::<CCR0>::get_ccrn(&timer)
+        }
+    
+        #[inline]
+        fn disable(&mut self) {
+            T::to_gpio(&mut self.pin);
+        }
+    
+        #[inline]
+        fn enable(&mut self) {
+            T::to_alt(&mut self.pin);
+        }
     }
 }

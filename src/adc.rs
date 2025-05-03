@@ -19,8 +19,43 @@
 
 use crate::{clock::{Aclk, Smclk}, gpio::*};
 use core::convert::Infallible;
-use embedded_hal::adc::{Channel, OneShot};
 use msp430fr2355::ADC;
+
+#[cfg(feature = "embedded-hal-02")]
+use embedded_hal_02::adc::Channel;
+
+#[cfg(not(feature = "embedded-hal-02"))]
+/// A marker trait to identify MCU pins that can be used as inputs to an ADC channel.
+///
+/// This marker trait denotes an object, i.e. a GPIO pin, that is ready for use as an input to the
+/// ADC. As ADCs channels can be supplied by multiple pins, this trait defines the relationship
+/// between the physical interface and the ADC sampling buffer.
+///
+/// ```
+/// # use std::marker::PhantomData;
+/// # use embedded_hal::adc::Channel;
+///
+/// struct Adc1; // Example ADC with single bank of 8 channels
+/// struct Gpio1Pin1<MODE>(PhantomData<MODE>);
+/// struct Analog(()); // marker type to denote a pin in "analog" mode
+///
+/// // GPIO 1 pin 1 can supply an ADC channel when it is configured in Analog mode
+/// impl Channel<Adc1> for Gpio1Pin1<Analog> {
+///     fn channel() -> u8 { 7 } // GPIO pin 1 is connected to ADC channel 7
+/// }
+/// ```
+pub trait Channel<ADC> {
+    /// Type denoting the method used to identify ADC channels. This may be an integer (e.g. single ADC bank), or a tuple (multiple ADC banks), etc.
+    /// On the MSP430 this is a `u8`, but this type remains generic for compatibility reasons with embedded-hal v0.2.7.
+    type ID;
+    /// Channel ID type
+    ///
+    /// A type used to identify this ADC channel. For example, if the ADC has eight channels, this
+    /// might be a `u8`. If the ADC has multiple banks of channels, it could be a tuple, like
+    /// `(u8: bank_id, u8: channel_id)`.
+    /// Get the specific ID that identifies this channel, for example `0_u8` for the first ADC channel
+    fn channel() -> u8;
+}
 
 /// How many ADCCLK cycles the ADC's sample-and-hold stage will last for.
 /// 
@@ -416,6 +451,30 @@ impl Adc {
         }
     }
 
+    /// Begins a single ADC conversion if one isn't already underway, enabling the ADC in the process.
+    ///
+    /// If the result is ready it is returned as an ADC count, otherwise returns `WouldBlock`
+    pub fn read_count<PIN>(&mut self, pin: &mut PIN) -> nb::Result<u16, Infallible>
+    where
+        PIN: Channel<Self, ID = u8>,
+    {
+        if self.is_waiting {
+            if self.adc_is_busy() {
+                return Err(nb::Error::WouldBlock);
+            } else {
+                self.is_waiting = false;
+                return Ok(self.adc_get_result());
+            }
+        }
+        self.disable();
+        self.set_pin(pin);
+        self.enable();
+
+        self.start_conversion();
+        self.is_waiting = true;
+        Err(nb::Error::WouldBlock)
+    }
+
     /// Convert an ADC count to a voltage value in millivolts.
     /// 
     /// `ref_voltage_mv` is the reference voltage of the ADC in millivolts.
@@ -436,7 +495,7 @@ impl Adc {
     /// 
     /// If you instead want a raw count you should use the `.read()` method from the `OneShot` trait implementation.
     pub fn read_voltage_mv<PIN: Channel<Self, ID = u8>>(&mut self, pin: &mut PIN, ref_voltage_mv: u16) -> nb::Result<u16, Infallible> {
-        self.read(pin).map(|count| self.count_to_mv(count, ref_voltage_mv))
+        self.read_count(pin).map(|count| self.count_to_mv(count, ref_voltage_mv))
     }
 }
 
@@ -448,30 +507,23 @@ fn disable_adc_reg(adc: &mut ADC) {
     }
 }
 
-impl<PIN> OneShot<Adc, u16, PIN> for Adc
-where
-    PIN: Channel<Self, ID = u8>,
-{
-    type Error = Infallible; // Only returns WouldBlock
+#[cfg(feature = "embedded-hal-02")]
+mod ehal02 {
+    use embedded_hal_02::adc::{Channel, OneShot};
+    use super::*;
 
-    /// Begins a single ADC conversion if one isn't already underway, enabling the ADC in the process.
-    ///
-    /// If the result is ready it is returned as an ADC count, otherwise returns `WouldBlock`
-    fn read(&mut self, pin: &mut PIN) -> nb::Result<u16, Self::Error> {
-        if self.is_waiting {
-            if self.adc_is_busy() {
-                return Err(nb::Error::WouldBlock);
-            } else {
-                self.is_waiting = false;
-                return Ok(self.adc_get_result());
-            }
+    impl<PIN> OneShot<Adc, u16, PIN> for Adc
+    where
+        PIN: Channel<Self, ID = u8>,
+    {
+        type Error = Infallible; // Only returns WouldBlock
+
+        /// Begins a single ADC conversion if one isn't already underway, enabling the ADC in the process.
+        ///
+        /// If the result is ready it is returned as an ADC count, otherwise returns `WouldBlock`
+        #[inline(always)]
+        fn read(&mut self, pin: &mut PIN) -> nb::Result<u16, Self::Error> {
+            self.read_count(pin)
         }
-        self.disable();
-        self.set_pin(pin);
-        self.enable();
-
-        self.start_conversion();
-        self.is_waiting = true;
-        Err(nb::Error::WouldBlock)
     }
 }

@@ -16,16 +16,16 @@
 //! eUSCI_B0: {MISO: `P1.3`, MOSI: `P1.2`, SCLK: `P1.1`}. `P1.0` can optionally used as a hardware-controlled chip select pin.
 //!
 //! eUSCI_B1: {MISO: `P4.7`, MOSI: `P4.6`, SCLK: `P4.5`}. `P4.4` can optionally used as a hardware-controlled chip select pin.
-use crate::hal::spi::{Mode, Phase, Polarity};
 use crate::{
     clock::{Aclk, Smclk},
     gpio::{Alternate1, Pin, Pin0, Pin1, Pin2, Pin3, Pin4, Pin5, Pin6, Pin7, P1, P4},
     hw_traits::eusci::{EusciSPI, Ucmode, Ucssel, UcxSpiCtw0},
 };
 use core::marker::PhantomData;
-use embedded_hal::spi::FullDuplex;
 use msp430fr2355 as pac;
 use nb::Error::WouldBlock;
+
+use embedded_hal::spi::{Mode, Phase, Polarity};
 
 /// Marks a eUSCI capable of SPI communication (in this case, all euscis do)
 pub trait SpiUsci: EusciSPI {
@@ -324,34 +324,40 @@ pub enum SPIErr {
     // In future the framing error bit UCFE may appear here. Right now it's unimplemented.
 }
 
-impl<USCI: SpiUsci> FullDuplex<u8> for SpiBus<USCI> {
-    type Error = SPIErr;
-    fn read(&mut self) -> nb::Result<u8, Self::Error> {
-        let usci = unsafe { USCI::steal() };
-        
-        if usci.receive_flag() {
-            if usci.overrun_flag() {
-                Err(nb::Error::Other(SPIErr::OverrunError(usci.rxbuf_rd())))
+#[cfg(feature = "embedded-hal-02")]
+mod ehal02 {
+    use embedded_hal_02::spi::FullDuplex;
+    use super::*;
+
+    impl<USCI: SpiUsci> FullDuplex<u8> for SpiBus<USCI> {
+        type Error = SPIErr;
+        fn read(&mut self) -> nb::Result<u8, Self::Error> {
+            let usci = unsafe { USCI::steal() };
+            
+            if usci.receive_flag() {
+                if usci.overrun_flag() {
+                    Err(nb::Error::Other(SPIErr::OverrunError(usci.rxbuf_rd())))
+                }
+                else {
+                    Ok(usci.rxbuf_rd())
+                }
+            } else {
+                Err(WouldBlock)
             }
-            else {
-                Ok(usci.rxbuf_rd())
+        }
+
+        fn send(&mut self, word: u8) -> nb::Result<(), Self::Error> {
+            let usci = unsafe { USCI::steal() };
+            if usci.transmit_flag() {
+                usci.txbuf_wr(word);
+                Ok(())
+            } else {
+                Err(WouldBlock)
             }
-        } else {
-            Err(WouldBlock)
         }
     }
 
-    fn send(&mut self, word: u8) -> nb::Result<(), Self::Error> {
-        let usci = unsafe { USCI::steal() };
-        if usci.transmit_flag() {
-            usci.txbuf_wr(word);
-            Ok(())
-        } else {
-            Err(WouldBlock)
-        }
-    }
+    // Implementing FullDuplex above gets us a blocking write and transfer implementation for free
+    impl<USCI: SpiUsci> embedded_hal_02::blocking::spi::write::Default<u8> for SpiBus<USCI> {}
+    impl<USCI: SpiUsci> embedded_hal_02::blocking::spi::transfer::Default<u8> for SpiBus<USCI> {}
 }
-
-// Implementing FullDuplex above gets us a blocking write and transfer implementation for free
-impl<USCI: SpiUsci> embedded_hal::blocking::spi::write::Default<u8> for SpiBus<USCI> {}
-impl<USCI: SpiUsci> embedded_hal::blocking::spi::transfer::Default<u8> for SpiBus<USCI> {}

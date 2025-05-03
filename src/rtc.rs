@@ -4,7 +4,6 @@
 
 use crate::clock::Smclk;
 use core::marker::PhantomData;
-use embedded_hal::timer::{Cancel, CountDown, Periodic};
 use msp430fr2355 as pac;
 use pac::{rtc::rtcctl::RTCSS_A, RTC};
 use void::Void;
@@ -110,49 +109,55 @@ impl<SRC: RtcClockSrc> Rtc<SRC> {
     }
 }
 
-impl<SRC: RtcClockSrc> CountDown for Rtc<SRC> {
-    type Time = u16;
+#[cfg(feature = "embedded-hal-02")]
+mod ehal02 {
+    use embedded_hal_02::timer::{Cancel, CountDown, Periodic};
+    use super::*;
 
-    #[inline]
-    fn start<T: Into<Self::Time>>(&mut self, count: T) {
-        self.periph
-            .rtcmod
-            .write(|w| unsafe { w.bits(count.into()) });
-        // Need to clear interrupt flag from last timer run
-        self.periph.rtciv.read();
-        self.periph.rtcctl.modify(|r, w| {
-            unsafe { w.bits(r.bits()) }
-                .rtcss()
-                .variant(SRC::CLK_SRC)
-                .rtcsr()
-                .set_bit()
-        });
-    }
+    impl<SRC: RtcClockSrc> CountDown for Rtc<SRC> {
+        type Time = u16;
 
-    #[inline]
-    fn wait(&mut self) -> nb::Result<(), Void> {
-        if self.periph.rtcctl.read().rtcifg().bit() {
+        #[inline]
+        fn start<T: Into<Self::Time>>(&mut self, count: T) {
+            self.periph
+                .rtcmod
+                .write(|w| unsafe { w.bits(count.into()) });
+            // Need to clear interrupt flag from last timer run
             self.periph.rtciv.read();
-            Ok(())
-        } else {
-            Err(nb::Error::WouldBlock)
+            self.periph.rtcctl.modify(|r, w| {
+                unsafe { w.bits(r.bits()) }
+                    .rtcss()
+                    .variant(SRC::CLK_SRC)
+                    .rtcsr()
+                    .set_bit()
+            });
+        }
+
+        #[inline]
+        fn wait(&mut self) -> nb::Result<(), Void> {
+            if self.periph.rtcctl.read().rtcifg().bit() {
+                self.periph.rtciv.read();
+                Ok(())
+            } else {
+                Err(nb::Error::WouldBlock)
+            }
         }
     }
-}
 
-impl<SRC: RtcClockSrc> Cancel for Rtc<SRC> {
-    type Error = Void;
+    impl<SRC: RtcClockSrc> Cancel for Rtc<SRC> {
+        type Error = Void;
 
-    #[inline]
-    fn cancel(&mut self) -> Result<(), Self::Error> {
-        unsafe {
-            self.periph
-                .rtcctl
-                // Bit pattern is all 0s, so we can use clear instead of modify
-                .clear_bits(|w| w.rtcss().variant(RTCSS_A::DISABLED))
-        };
-        Ok(())
+        #[inline]
+        fn cancel(&mut self) -> Result<(), Self::Error> {
+            unsafe {
+                self.periph
+                    .rtcctl
+                    // Bit pattern is all 0s, so we can use clear instead of modify
+                    .clear_bits(|w| w.rtcss().variant(RTCSS_A::DISABLED))
+            };
+            Ok(())
+        }
     }
-}
 
-impl<SRC: RtcClockSrc> Periodic for Rtc<SRC> {}
+    impl<SRC: RtcClockSrc> Periodic for Rtc<SRC> {}
+}
