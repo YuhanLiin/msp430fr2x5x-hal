@@ -260,42 +260,6 @@ impl<T: TimerB> TBxIV<T> {
     }
 }
 
-impl<T: TimerPeriph + CapCmp<CCR0>> CountDown for Timer<T> {
-    type Time = u16;
-
-    #[inline]
-    fn start<U: Into<Self::Time>>(&mut self, count: U) {
-        let timer = unsafe { T::steal() };
-        timer.stop();
-        timer.set_ccrn(count.into());
-        timer.upmode();
-    }
-
-    #[inline]
-    fn wait(&mut self) -> nb::Result<(), void::Void> {
-        let timer = unsafe { T::steal() };
-        if timer.tbifg_rd() {
-            timer.tbifg_clr();
-            Ok(())
-        } else {
-            Err(nb::Error::WouldBlock)
-        }
-    }
-}
-
-impl<T: TimerPeriph + CapCmp<CCR0>> Cancel for Timer<T> {
-    type Error = void::Void;
-
-    #[inline(always)]
-    fn cancel(&mut self) -> Result<(), Self::Error> {
-        let timer = unsafe { T::steal() };
-        timer.stop();
-        Ok(())
-    }
-}
-
-impl<T: TimerPeriph> Periodic for Timer<T> {}
-
 impl<T: TimerPeriph> Timer<T> {
     /// Enable timer countdown expiration interrupts
     #[inline(always)]
@@ -350,3 +314,39 @@ impl<T: CapCmp<C>, C> SubTimer<T, C> {
         timer.ccie_clr();
     }
 }
+
+impl<T: TimerPeriph + CapCmp<CCR0>> CountDown for Timer<T> {
+    type Time = u16;
+
+    #[inline]
+    fn start<U: Into<Self::Time>>(&mut self, count: U) {
+        let timer = unsafe { T::steal() };
+        timer.stop();
+        timer.set_ccrn(count.into());
+        timer.upmode();
+    }
+
+    #[inline]
+    fn wait(&mut self) -> nb::Result<(), void::Void> {
+        let timer = unsafe { T::steal() };
+        if timer.tbifg_rd() {
+            timer.tbifg_clr();
+            Ok(())
+        } else {
+            Err(nb::Error::WouldBlock)
+        }
+    }
+}
+
+impl<T: TimerPeriph + CapCmp<CCR0>> Cancel for Timer<T> {
+    type Error = void::Void;
+
+    #[inline(always)]
+    fn cancel(&mut self) -> Result<(), Self::Error> {
+        let timer = unsafe { T::steal() };
+        timer.stop();
+        Ok(())
+    }
+}
+
+impl<T: TimerPeriph> Periodic for Timer<T> {}

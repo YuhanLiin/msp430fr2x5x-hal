@@ -339,63 +339,6 @@ impl<PORT: PortNum, PIN: PinNum> Pin<PORT, PIN, Output> {
     }
 }
 
-impl<PORT: PortNum, PIN: PinNum, PULL> InputPin for Pin<PORT, PIN, Input<PULL>> {
-    type Error = void::Void;
-
-    #[inline]
-    fn is_high(&self) -> Result<bool, Self::Error> {
-        let p = unsafe { PORT::steal() };
-        Ok(p.pxin_rd().check(PIN::NUM) != 0)
-    }
-
-    #[inline]
-    fn is_low(&self) -> Result<bool, Self::Error> {
-        self.is_high().map(|r| !r)
-    }
-}
-
-impl<PORT: PortNum, PIN: PinNum> OutputPin for Pin<PORT, PIN, Output> {
-    type Error = void::Void;
-
-    #[inline]
-    fn set_low(&mut self) -> Result<(), Self::Error> {
-        let p = unsafe { PORT::steal() };
-        p.pxout_clear(PIN::CLR_MASK);
-        Ok(())
-    }
-
-    #[inline]
-    fn set_high(&mut self) -> Result<(), Self::Error> {
-        let p = unsafe { PORT::steal() };
-        p.pxout_set(PIN::SET_MASK);
-        Ok(())
-    }
-}
-
-impl<PORT: PortNum, PIN: PinNum> StatefulOutputPin for Pin<PORT, PIN, Output> {
-    #[inline]
-    fn is_set_high(&self) -> Result<bool, Self::Error> {
-        let p = unsafe { PORT::steal() };
-        Ok(p.pxout_rd().check(PIN::NUM) != 0)
-    }
-
-    #[inline]
-    fn is_set_low(&self) -> Result<bool, Self::Error> {
-        self.is_set_high().map(|r| !r)
-    }
-}
-
-impl<PORT: PortNum, PIN: PinNum> ToggleableOutputPin for Pin<PORT, PIN, Output> {
-    type Error = void::Void;
-
-    #[inline]
-    fn toggle(&mut self) -> Result<(), Self::Error> {
-        let p = unsafe { PORT::steal() };
-        p.pxout_toggle(PIN::SET_MASK);
-        Ok(())
-    }
-}
-
 /// GPIO parts for a specific port, including all 8 pins.
 pub struct Parts<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7> {
     /// Pin0
@@ -705,3 +648,60 @@ impl<DIR> ToAlternate3 for Pin<P5, Pin3, DIR> {}
 
 // P6 alternate 1
 impl<PIN: PinNum, DIR> ToAlternate1 for Pin<P6, PIN, DIR> {}
+
+impl<PORT: PortNum, PIN: PinNum, PULL> InputPin for Pin<PORT, PIN, Input<PULL>> {
+    type Error = void::Void;
+
+    #[inline]
+    fn is_high(&self) -> Result<bool, Self::Error> {
+        let p = unsafe { PORT::steal() };
+        Ok(p.pxin_rd().check(PIN::NUM) != 0)
+    }
+
+    #[inline]
+    fn is_low(&self) -> Result<bool, Self::Error> {
+        self.is_high().map(|r| !r)
+    }
+}
+
+impl<PORT: PortNum, PIN: PinNum> OutputPin for Pin<PORT, PIN, Output> {
+    type Error = void::Void;
+
+    #[inline]
+    fn set_low(&mut self) -> Result<(), Self::Error> {
+        let p = unsafe { PORT::steal() };
+        p.pxout_clear(PIN::CLR_MASK);
+        Ok(())
+    }
+
+    #[inline]
+    fn set_high(&mut self) -> Result<(), Self::Error> {
+        let p = unsafe { PORT::steal() };
+        p.pxout_set(PIN::SET_MASK);
+        Ok(())
+    }
+}
+
+impl<PORT: PortNum, PIN: PinNum> StatefulOutputPin for Pin<PORT, PIN, Output> {
+    #[inline]
+    fn is_set_high(&self) -> Result<bool, Self::Error> {
+        let p = unsafe { PORT::steal() };
+        Ok(p.pxout_rd().check(PIN::NUM) != 0)
+    }
+
+    #[inline]
+    fn is_set_low(&self) -> Result<bool, Self::Error> {
+        self.is_set_high().map(|r| !r)
+    }
+}
+
+impl<PORT: PortNum, PIN: PinNum> ToggleableOutputPin for Pin<PORT, PIN, Output> {
+    type Error = void::Void;
+
+    #[inline]
+    fn toggle(&mut self) -> Result<(), Self::Error> {
+        let p = unsafe { PORT::steal() };
+        p.pxout_toggle(PIN::SET_MASK);
+        Ok(())
+    }
+}

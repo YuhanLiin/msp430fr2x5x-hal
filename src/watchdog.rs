@@ -146,6 +146,55 @@ impl<MODE: WatchdogSelect> Wdt<MODE> {
     }
 }
 
+impl Wdt<WatchdogMode> {
+    /// Convert to interval mode and pause timer
+    #[inline]
+    pub fn to_interval(self) -> Wdt<IntervalMode> {
+        let mut wdt = Wdt {
+            _mode: PhantomData,
+            periph: self.periph,
+        };
+        // Change mode bit and pause timer
+        wdt.pause();
+        wdt
+    }
+}
+
+impl Wdt<IntervalMode> {
+    /// Convert to watchdog mode and pause timer
+    #[inline]
+    pub fn to_watchdog(self) -> Wdt<WatchdogMode> {
+        let mut wdt = Wdt {
+            _mode: PhantomData,
+            periph: self.periph,
+        };
+        // Change mode bit and pause timer
+        wdt.pause();
+        // Wipe out old interrupt flag, which may cause a watchdog reset
+        let sfr = unsafe { &*pac::SFR::ptr() };
+        unsafe { sfr.sfrifg1.clear_bits(|w| w.wdtifg().clear_bit()) };
+        wdt
+    }
+
+    /// Enable interrupts for watchdog, which fires when the watchdog interrupt flag is set in
+    /// interval mode. This setting does nothing in watchdog mode, but will carry over when
+    /// switching to interval mode.
+    #[inline]
+    pub fn enable_interrupts(&mut self) -> &mut Self {
+        let sfr = unsafe { &*pac::SFR::ptr() };
+        unsafe { sfr.sfrie1.set_bits(|w| w.wdtie().set_bit()) };
+        self
+    }
+
+    /// Disable interrupts for watchdog.
+    #[inline]
+    pub fn disable_interrupts(&mut self) -> &mut Self {
+        let sfr = unsafe { &*pac::SFR::ptr() };
+        unsafe { sfr.sfrie1.clear_bits(|w| w.wdtie().clear_bit()) };
+        self
+    }
+}
+
 impl Watchdog for Wdt<WatchdogMode> {
     #[inline]
     fn feed(&mut self) {
@@ -211,52 +260,3 @@ impl Cancel for Wdt<IntervalMode> {
 }
 
 impl Periodic for Wdt<IntervalMode> {}
-
-impl Wdt<WatchdogMode> {
-    /// Convert to interval mode and pause timer
-    #[inline]
-    pub fn to_interval(self) -> Wdt<IntervalMode> {
-        let mut wdt = Wdt {
-            _mode: PhantomData,
-            periph: self.periph,
-        };
-        // Change mode bit and pause timer
-        wdt.pause();
-        wdt
-    }
-}
-
-impl Wdt<IntervalMode> {
-    /// Convert to watchdog mode and pause timer
-    #[inline]
-    pub fn to_watchdog(self) -> Wdt<WatchdogMode> {
-        let mut wdt = Wdt {
-            _mode: PhantomData,
-            periph: self.periph,
-        };
-        // Change mode bit and pause timer
-        wdt.pause();
-        // Wipe out old interrupt flag, which may cause a watchdog reset
-        let sfr = unsafe { &*pac::SFR::ptr() };
-        unsafe { sfr.sfrifg1.clear_bits(|w| w.wdtifg().clear_bit()) };
-        wdt
-    }
-
-    /// Enable interrupts for watchdog, which fires when the watchdog interrupt flag is set in
-    /// interval mode. This setting does nothing in watchdog mode, but will carry over when
-    /// switching to interval mode.
-    #[inline]
-    pub fn enable_interrupts(&mut self) -> &mut Self {
-        let sfr = unsafe { &*pac::SFR::ptr() };
-        unsafe { sfr.sfrie1.set_bits(|w| w.wdtie().set_bit()) };
-        self
-    }
-
-    /// Disable interrupts for watchdog.
-    #[inline]
-    pub fn disable_interrupts(&mut self) -> &mut Self {
-        let sfr = unsafe { &*pac::SFR::ptr() };
-        unsafe { sfr.sfrie1.clear_bits(|w| w.wdtie().clear_bit()) };
-        self
-    }
-}

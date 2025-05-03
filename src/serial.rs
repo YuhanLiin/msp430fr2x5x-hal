@@ -456,38 +456,6 @@ impl<USCI: SerialUsci> Tx<USCI> {
     }
 }
 
-impl<USCI: SerialUsci> Write<u8> for Tx<USCI> {
-    type Error = void::Void;
-
-    /// Due to errata USCI42, UCTXCPTIFG will fire every time a byte is done transmitting,
-    /// even if there's still more buffered. Thus, the implementation uses UCTXIFG instead. When
-    /// `flush()` completes, the Tx buffer will be empty but the FIFO may still be sending.
-    #[inline]
-    fn flush(&mut self) -> nb::Result<(), Self::Error> {
-        let usci = unsafe { USCI::steal() };
-        if usci.txifg_rd() {
-            Ok(())
-        } else {
-            Err(nb::Error::WouldBlock)
-        }
-    }
-
-    #[inline]
-    /// Check if Tx interrupt flag is set. If so, write a byte into the Tx buffer. Otherwise block
-    /// on the Tx flag.
-    fn write(&mut self, data: u8) -> nb::Result<(), Self::Error> {
-        let usci = unsafe { USCI::steal() };
-        if usci.txifg_rd() {
-            usci.tx_wr(data);
-            Ok(())
-        } else {
-            Err(nb::Error::WouldBlock)
-        }
-    }
-}
-
-impl<USCI: SerialUsci> embedded_hal::blocking::serial::write::Default<u8> for Tx<USCI> {}
-
 /// Serial receiver pin
 pub struct Rx<USCI: SerialUsci>(PhantomData<USCI>);
 
@@ -564,3 +532,35 @@ impl<USCI: SerialUsci> Read<u8> for Rx<USCI> {
         }
     }
 }
+
+impl<USCI: SerialUsci> Write<u8> for Tx<USCI> {
+    type Error = void::Void;
+
+    /// Due to errata USCI42, UCTXCPTIFG will fire every time a byte is done transmitting,
+    /// even if there's still more buffered. Thus, the implementation uses UCTXIFG instead. When
+    /// `flush()` completes, the Tx buffer will be empty but the FIFO may still be sending.
+    #[inline]
+    fn flush(&mut self) -> nb::Result<(), Self::Error> {
+        let usci = unsafe { USCI::steal() };
+        if usci.txifg_rd() {
+            Ok(())
+        } else {
+            Err(nb::Error::WouldBlock)
+        }
+    }
+
+    #[inline]
+    /// Check if Tx interrupt flag is set. If so, write a byte into the Tx buffer. Otherwise block
+    /// on the Tx flag.
+    fn write(&mut self, data: u8) -> nb::Result<(), Self::Error> {
+        let usci = unsafe { USCI::steal() };
+        if usci.txifg_rd() {
+            usci.tx_wr(data);
+            Ok(())
+        } else {
+            Err(nb::Error::WouldBlock)
+        }
+    }
+}
+
+impl<USCI: SerialUsci> embedded_hal::blocking::serial::write::Default<u8> for Tx<USCI> {}
