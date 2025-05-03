@@ -9,6 +9,7 @@
 use crate::clock::{Aclk, Clock, Smclk};
 use crate::gpio::{Alternate1, Pin, Pin1, Pin2, Pin3, Pin5, Pin6, Pin7, P1, P4};
 use crate::hw_traits::eusci::{EUsciUart, UartUcxStatw, UcaCtlw0, Ucssel};
+use core::convert::Infallible;
 use core::marker::PhantomData;
 use core::num::NonZeroU32;
 use msp430fr2355 as pac;
@@ -453,6 +454,38 @@ impl<USCI: SerialUsci> Tx<USCI> {
         let usci = unsafe { USCI::steal() };
         usci.txie_clear();
     }
+
+    // Internal flush function
+    #[inline]
+    fn flush(&mut self) -> nb::Result<(), Infallible> {
+        let usci = unsafe { USCI::steal() };
+        if usci.txifg_rd() {
+            Ok(())
+        } else {
+            Err(nb::Error::WouldBlock)
+        }
+    }
+
+    #[inline(always)]
+    /// Writes a byte into the Tx buffer with no checks for validity
+    /// # Safety
+    /// May clobber unsent data still in the buffer
+    pub unsafe fn write_no_check(&mut self, data: u8) {
+        let usci = unsafe { USCI::steal() };
+        usci.tx_wr(data);
+    }
+
+    // Internal send function
+    #[inline]
+    fn send(&mut self, data: u8) -> nb::Result<(), Infallible> {
+        let usci = unsafe { USCI::steal() };
+        if usci.txifg_rd() {
+            usci.tx_wr(data);
+            Ok(())
+        } else {
+            Err(nb::Error::WouldBlock)
+        }
+    }
 }
 
 /// Serial receiver pin
@@ -482,13 +515,26 @@ impl<USCI: SerialUsci> Rx<USCI> {
         usci.rx_rd()
     }
 
-    #[inline(always)]
-    /// Writes a byte into the Tx buffer with no checks for validity
-    /// # Safety
-    /// May clobber unsent data still in the buffer
-    pub unsafe fn write_no_check(&mut self, data: u8) {
+    // Internal recieve function
+    fn recv(&mut self) -> nb::Result<u8, RecvError> {
         let usci = unsafe { USCI::steal() };
-        usci.tx_wr(data);
+
+        if usci.rxifg_rd() {
+            let statw = usci.statw_rd();
+            let data = usci.rx_rd();
+
+            if statw.ucfe() {
+                Err(nb::Error::Other(RecvError::Framing))
+            } else if statw.ucpe() {
+                Err(nb::Error::Other(RecvError::Parity))
+            } else if statw.ucoe() {
+                Err(nb::Error::Other(RecvError::Overrun(data)))
+            } else {
+                Ok(data)
+            }
+        } else {
+            Err(nb::Error::WouldBlock)
+        }
     }
 }
 
@@ -516,24 +562,7 @@ mod ehal02 {
         /// Otherwise block on the Rx interrupt flag. May return errors caused by data corruption or
         /// buffer overruns.
         fn read(&mut self) -> nb::Result<u8, Self::Error> {
-            let usci = unsafe { USCI::steal() };
-    
-            if usci.rxifg_rd() {
-                let statw = usci.statw_rd();
-                let data = usci.rx_rd();
-    
-                if statw.ucfe() {
-                    Err(nb::Error::Other(RecvError::Framing))
-                } else if statw.ucpe() {
-                    Err(nb::Error::Other(RecvError::Parity))
-                } else if statw.ucoe() {
-                    Err(nb::Error::Other(RecvError::Overrun(data)))
-                } else {
-                    Ok(data)
-                }
-            } else {
-                Err(nb::Error::WouldBlock)
-            }
+            self.recv()
         }
     }
 
@@ -545,25 +574,14 @@ mod ehal02 {
         /// `flush()` completes, the Tx buffer will be empty but the FIFO may still be sending.
         #[inline]
         fn flush(&mut self) -> nb::Result<(), Self::Error> {
-            let usci = unsafe { USCI::steal() };
-            if usci.txifg_rd() {
-                Ok(())
-            } else {
-                Err(nb::Error::WouldBlock)
-            }
+            self.flush().map_err(|_| nb::Error::WouldBlock)
         }
 
         #[inline]
         /// Check if Tx interrupt flag is set. If so, write a byte into the Tx buffer. Otherwise block
         /// on the Tx flag.
         fn write(&mut self, data: u8) -> nb::Result<(), Self::Error> {
-            let usci = unsafe { USCI::steal() };
-            if usci.txifg_rd() {
-                usci.tx_wr(data);
-                Ok(())
-            } else {
-                Err(nb::Error::WouldBlock)
-            }
+            self.send(data).map_err(|_| nb::Error::WouldBlock)
         }
     }
 

@@ -314,12 +314,37 @@ impl<USCI: SpiUsci> SpiPeriph<USCI> {
         usci.set_spi_mode(mode);
         usci.ctw0_clear_rst();
     }
+
+    fn recv_byte(&mut self) -> nb::Result<u8, SpiErr> {
+        let usci = unsafe { USCI::steal() };
+        
+        if usci.receive_flag() {
+            if usci.overrun_flag() {
+                Err(nb::Error::Other(SpiErr::OverrunError(usci.rxbuf_rd())))
+            }
+            else {
+                Ok(usci.rxbuf_rd())
+        }
+        } else {
+            Err(WouldBlock)
+    }
+    }
+
+    fn send_byte(&mut self, word: u8) -> nb::Result<(), SpiErr> {
+        let usci = unsafe { USCI::steal() };
+        if usci.transmit_flag() {
+            usci.txbuf_wr(word);
+            Ok(())
+        } else {
+            Err(WouldBlock)
+}
+}
 }
 
 /// SPI transmit/receive errors
 #[derive(Clone, Copy, Debug)]
 #[non_exhaustive]
-pub enum SPIErr {
+pub enum SpiErr {
     /// Data in the recieve buffer was overwritten before it was read. The contained data is the new contents of the recieve buffer.
     OverrunError(u8),
     // In future the framing error bit UCFE may appear here. Right now it's unimplemented.
@@ -331,30 +356,13 @@ mod ehal02 {
     use super::*;
 
     impl<USCI: SpiUsci> FullDuplex<u8> for SpiPeriph<USCI> {
-        type Error = SPIErr;
+        type Error = SpiErr;
         fn read(&mut self) -> nb::Result<u8, Self::Error> {
-            let usci = unsafe { USCI::steal() };
-            
-            if usci.receive_flag() {
-                if usci.overrun_flag() {
-                    Err(nb::Error::Other(SPIErr::OverrunError(usci.rxbuf_rd())))
-                }
-                else {
-                    Ok(usci.rxbuf_rd())
-                }
-            } else {
-                Err(WouldBlock)
-            }
+            self.recv_byte()
         }
 
         fn send(&mut self, word: u8) -> nb::Result<(), Self::Error> {
-            let usci = unsafe { USCI::steal() };
-            if usci.transmit_flag() {
-                usci.txbuf_wr(word);
-                Ok(())
-            } else {
-                Err(WouldBlock)
-            }
+            self.send_byte(word)
         }
     }
 
