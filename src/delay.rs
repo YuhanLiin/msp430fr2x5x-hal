@@ -10,11 +10,12 @@ pub struct SysDelay {
 impl SysDelay {
     /// Create a new delay object
     pub(crate) fn new(freq: u32) -> Self {
-        // ~21 nops needed per 2^20 Hz to delay 1 ms
-        let nops: u32 = 210 * (freq >> 20);
-        SysDelay {
-            nops_per_ms: (nops as u16),
-        }
+        // ~210 nops needed per 2^20 Hz to delay 1 ms
+        // The clock could be REFOCLK or VLOCLK, so be careful of small frequencies
+        // => 1 nop per 2^20 / 210 = 4993.21.. = ~4993 Hz
+        let nops_per_ms: u16 = (freq / 4993).max(1) as u16;
+
+        SysDelay { nops_per_ms }
     }
 }
 
