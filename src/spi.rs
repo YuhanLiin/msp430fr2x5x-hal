@@ -17,8 +17,9 @@
 //!
 //! eUSCI_B1: {MISO: `P4.7`, MOSI: `P4.6`, SCLK: `P4.5`}. `P4.4` can optionally used as a hardware-controlled chip select pin.
 use crate::{
-    clock::{Aclk, Smclk},
-    gpio::{Alternate1, Pin, Pin0, Pin1, Pin2, Pin3, Pin4, Pin5, Pin6, Pin7, P1, P4},
+    clock::{Aclk, Smclk}, 
+    delay::SysDelay, 
+    gpio::{Alternate1, Pin, Pin0, Pin1, Pin2, Pin3, Pin4, Pin5, Pin6, Pin7, P1, P4}, 
     hw_traits::eusci::{EusciSPI, Ucmode, Ucssel, UcxSpiCtw0},
 };
 use core::marker::PhantomData;
@@ -218,13 +219,15 @@ impl<USCI: SpiUsci> SpiConfig<USCI, ClockSet> {
         _miso: SO,
         _mosi: SI,
         _sclk: CLK,
-        _cs: STE,
-    ) -> SpiPeriph<USCI> {
+        cs: STE,
+        delay: SysDelay,
+    ) -> SpiPeriphHwCs<USCI> {
         self.configure_hw();
-        SpiPeriph(PhantomData)
+        SpiPeriphHwCs(SpiPeriph(PhantomData), cs.into(), delay)
     }
 
-    /// Performs hardware configuration and creates an SPI bus. You must configure and control any chip select pins yourself. Suitable for systems with multiple slave devices. 
+    /// Performs hardware configuration and creates an [SPI *bus*](embedded_hal::spi::SpiBus).
+    /// Suitable for systems with multiple slave devices. You must configure and control any chip select pins yourself. 
     #[inline(always)]
     pub fn configure_with_software_cs<
         SO: Into<USCI::MISO>,
@@ -258,6 +261,9 @@ impl<USCI: SpiUsci> SpiConfig<USCI, ClockSet> {
 
 /// Represents a group of pins configured for SPI communication
 pub struct SpiPeriph<USCI: SpiUsci>(PhantomData<USCI>);
+
+/// Represents an SPI peripheral plus a hardware-controlled chip select pin and a delay mechanism.
+pub struct SpiPeriphHwCs<USCI: SpiUsci>(SpiPeriph<USCI>, USCI::STE, SysDelay);
 
 impl<USCI: SpiUsci> SpiPeriph<USCI> {
     /// Enable Rx interrupts, which fire when a byte is ready to be read
@@ -351,7 +357,7 @@ pub enum SpiErr {
 }
 
 mod ehal1 {
-    use embedded_hal::spi::{Error, ErrorType, SpiBus};
+    use embedded_hal::{delay::DelayNs, spi::{Error, ErrorType, Operation, SpiBus, SpiDevice}};
     use nb::block;
     use super::*;
 
@@ -434,6 +440,25 @@ mod ehal1 {
             Ok(())
         }
     }
+
+    // SpiDevice impl when CS is hardware controlled.
+    impl<USCI: SpiUsci> ErrorType for SpiPeriphHwCs<USCI> {
+        type Error = SpiErr;
+    }
+    impl<USCI: SpiUsci> SpiDevice for SpiPeriphHwCs<USCI> {
+        fn transaction(&mut self, operations: &mut [Operation<'_, u8>]) -> Result<(), Self::Error> {
+            for op in operations {
+                match op {
+                    Operation::Read(recv_buf)                   => self.0.read(recv_buf)?,
+                    Operation::Write(send_buf)                  => self.0.write(send_buf)?,
+                    Operation::Transfer(recv_buf, send_buf)     => self.0.transfer(recv_buf, send_buf)?,
+                    Operation::TransferInPlace(send_recv_buf)   => self.0.transfer_in_place(send_recv_buf)?,
+                    Operation::DelayNs(n)                       => self.2.delay_ns(*n),
+                }
+            }
+            Ok(())
+        }
+    } 
 }
 
 #[cfg(feature = "embedded-hal-02")]
@@ -452,7 +477,21 @@ mod ehal02 {
         }
     }
 
+    impl<USCI: SpiUsci> FullDuplex<u8> for SpiPeriphHwCs<USCI> {
+        type Error = SpiErr;
+        fn read(&mut self) -> nb::Result<u8, Self::Error> {
+            self.0.recv_byte()
+        }
+
+        fn send(&mut self, word: u8) -> nb::Result<(), Self::Error> {
+            self.0.send_byte(word)
+        }
+    }
+
     // Implementing FullDuplex above gets us a blocking write and transfer implementation for free
     impl<USCI: SpiUsci> embedded_hal_02::blocking::spi::write::Default<u8> for SpiPeriph<USCI> {}
     impl<USCI: SpiUsci> embedded_hal_02::blocking::spi::transfer::Default<u8> for SpiPeriph<USCI> {}
+
+    impl<USCI: SpiUsci> embedded_hal_02::blocking::spi::write::Default<u8> for SpiPeriphHwCs<USCI> {}
+    impl<USCI: SpiUsci> embedded_hal_02::blocking::spi::transfer::Default<u8> for SpiPeriphHwCs<USCI> {}
 }
