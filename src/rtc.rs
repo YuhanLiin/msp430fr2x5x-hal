@@ -3,7 +3,7 @@
 //! Can be used as a periodic 16-bit timer
 
 use crate::clock::Smclk;
-use core::marker::PhantomData;
+use core::{convert::Infallible, marker::PhantomData};
 use msp430fr2355 as pac;
 use pac::{rtc::rtcctl::RTCSS_A, RTC};
 
@@ -106,6 +106,55 @@ impl<SRC: RtcClockSrc> Rtc<SRC> {
     pub fn get_count(&self) -> u16 {
         self.periph.rtccnt.read().bits()
     }
+
+    #[inline]
+    /// Clear the timer contents and start the timer counting up to `count`.
+    pub fn start(&mut self, count: u16) {
+        self.periph
+            .rtcmod
+            .write(|w| unsafe { w.bits(count) });
+        // Need to clear interrupt flag from last timer run
+        self.periph.rtciv.read();
+        self.periph.rtcctl.modify(|r, w| {
+            unsafe { w.bits(r.bits()) }
+                .rtcss()
+                .variant(SRC::CLK_SRC)
+                .rtcsr()
+                .set_bit()
+        });
+    }
+
+    #[inline]
+    /// Checks if the timer has reached the target value, returns `Ok(())` if so, otherwise `WouldBlock`.
+    pub fn wait(&mut self) -> nb::Result<(), Infallible> {
+        if self.periph.rtcctl.read().rtcifg().bit() {
+            self.periph.rtciv.read();
+            Ok(())
+        } else {
+            Err(nb::Error::WouldBlock)
+        }
+    }
+
+    #[inline]
+    /// Pauses the timer.
+    pub fn pause(&mut self) {
+        unsafe {
+            self.periph
+                .rtcctl
+                // Bit pattern is all 0s, so we can use clear instead of modify
+                .clear_bits(|w| w.rtcss().variant(RTCSS_A::DISABLED))
+        };
+    }
+
+    #[inline]
+    /// Resumes counting from the previous value.
+    pub fn resume(&mut self) {
+        unsafe{
+            self.periph
+                .rtcctl
+                .set_bits(|w| w.rtcss().variant(SRC::CLK_SRC))
+        }
+    }
 }
 
 #[cfg(feature = "embedded-hal-02")]
@@ -119,28 +168,12 @@ mod ehal02 {
 
         #[inline]
         fn start<T: Into<Self::Time>>(&mut self, count: T) {
-            self.periph
-                .rtcmod
-                .write(|w| unsafe { w.bits(count.into()) });
-            // Need to clear interrupt flag from last timer run
-            self.periph.rtciv.read();
-            self.periph.rtcctl.modify(|r, w| {
-                unsafe { w.bits(r.bits()) }
-                    .rtcss()
-                    .variant(SRC::CLK_SRC)
-                    .rtcsr()
-                    .set_bit()
-            });
+            self.start(count.into())
         }
 
         #[inline]
         fn wait(&mut self) -> nb::Result<(), Void> {
-            if self.periph.rtcctl.read().rtcifg().bit() {
-                self.periph.rtciv.read();
-                Ok(())
-            } else {
-                Err(nb::Error::WouldBlock)
-            }
+            self.wait().map_err(|_| nb::Error::WouldBlock)
         }
     }
 
@@ -149,12 +182,7 @@ mod ehal02 {
 
         #[inline]
         fn cancel(&mut self) -> Result<(), Self::Error> {
-            unsafe {
-                self.periph
-                    .rtcctl
-                    // Bit pattern is all 0s, so we can use clear instead of modify
-                    .clear_bits(|w| w.rtcss().variant(RTCSS_A::DISABLED))
-            };
+            self.pause();
             Ok(())
         }
     }

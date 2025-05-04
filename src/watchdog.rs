@@ -5,7 +5,7 @@
 //! application as possible to stop the watchdog.
 
 use crate::clock::{Aclk, Smclk};
-use core::marker::PhantomData;
+use core::{convert::Infallible, marker::PhantomData};
 use msp430fr2355 as pac;
 use pac::wdt_a::wdtctl::WDTSSEL_A;
 
@@ -121,9 +121,9 @@ impl<MODE: WatchdogSelect> Wdt<MODE> {
         self.set_clk(WDTSSEL_A::SMCLK)
     }
 
-    // Reset countdown, unpause timer, and set timeout in a single write
+    /// Reset countdown, unpause timer, and set timeout in a single write
     #[inline]
-    fn unpause_and_set_time(&mut self, periods: WdtClkPeriods) {
+    pub fn set_interval_and_start(&mut self, periods: WdtClkPeriods) {
         self.periph.wdtctl.modify(|r, w| {
             Self::prewrite(w, r.bits())
                 .wdtcntcl()
@@ -135,12 +135,33 @@ impl<MODE: WatchdogSelect> Wdt<MODE> {
         });
     }
 
-    // Pause timer
+    /// Pause the timer.
     #[inline]
-    fn pause(&mut self) {
+    pub fn pause(&mut self) {
         self.periph
             .wdtctl
             .modify(|r, w| Self::prewrite(w, r.bits()).wdthold().hold());
+    }
+
+    /// Resumes the timer, counting from the previously stored value.
+    #[inline]
+    pub fn resume(&mut self) {
+        self.periph
+            .wdtctl
+            .modify(|r, w| Self::prewrite(w, r.bits()).wdthold().unhold());
+    }
+
+    /// Checks if the timer has expired, returning `Ok(())` if it has, otherwise `WouldBlock`.
+    /// If called while the timer is not running, this will always return `WouldBlock`.
+    #[inline]
+    pub fn wait(&mut self) -> nb::Result<(), Infallible> {
+        let sfr = unsafe { &*pac::SFR::ptr() };
+        if sfr.sfrifg1.read().wdtifg().is_wdtifg_1() {
+            unsafe { sfr.sfrifg1.clear_bits(|w| w.wdtifg().clear_bit()) };
+            Ok(())
+        } else {
+            Err(nb::Error::WouldBlock)
+        }
     }
 }
 
@@ -155,6 +176,13 @@ impl Wdt<WatchdogMode> {
         // Change mode bit and pause timer
         wdt.pause();
         wdt
+    }
+
+    /// Refreshes the watchdog timer, preventing the processor from being reset.
+    pub fn feed(&mut self) {
+        self.periph
+            .wdtctl
+            .modify(|r, w| Self::prewrite(w, r.bits()).wdtcntcl().set_bit());
     }
 }
 
@@ -202,9 +230,7 @@ mod ehal02 {
     impl Watchdog for Wdt<WatchdogMode> {
         #[inline]
         fn feed(&mut self) {
-            self.periph
-                .wdtctl
-                .modify(|r, w| Self::prewrite(w, r.bits()).wdtcntcl().set_bit());
+            self.feed()
         }
     }
 
@@ -216,7 +242,7 @@ mod ehal02 {
         where
             T: Into<Self::Time>,
         {
-            self.unpause_and_set_time(period.into());
+            self.set_interval_and_start(period.into());
         }
     }
 
@@ -235,19 +261,13 @@ mod ehal02 {
         where
             T: Into<Self::Time>,
         {
-            self.unpause_and_set_time(count.into());
+            self.set_interval_and_start(count.into());
         }
 
         /// If called while timer is not running, this will always return WouldBlock.
         #[inline]
         fn wait(&mut self) -> nb::Result<(), void::Void> {
-            let sfr = unsafe { &*pac::SFR::ptr() };
-            if sfr.sfrifg1.read().wdtifg().is_wdtifg_1() {
-                unsafe { sfr.sfrifg1.clear_bits(|w| w.wdtifg().clear_bit()) };
-                Ok(())
-            } else {
-                Err(nb::Error::WouldBlock)
-            }
+            self.wait().map_err(|_| nb::Error::WouldBlock)
         }
     }
 

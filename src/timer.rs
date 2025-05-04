@@ -274,6 +274,41 @@ impl<T: TimerPeriph> Timer<T> {
         let timer = unsafe { T::steal() };
         timer.tbie_clr();
     }
+
+    #[inline]
+    /// Clears the timer, sets the count, and starts the timer in upcounting mode. 
+    pub fn start(&mut self, count: u16) {
+        let timer = unsafe { T::steal() };
+        timer.stop();
+        timer.set_ccrn(count);
+        timer.upmode();
+    }
+
+    #[inline]
+    /// Checks if the timer has reached the target value. Returns `Ok(())` if so, otherwise `WouldBlock`.
+    pub fn wait(&mut self) -> nb::Result<(), Infallible> {
+        let timer = unsafe { T::steal() };
+        if timer.tbifg_rd() {
+            timer.tbifg_clr();
+            Ok(())
+        } else {
+            Err(nb::Error::WouldBlock)
+        }
+    }
+
+    #[inline]
+    /// Pause the timer at the current value
+    pub fn pause(&mut self) {
+        let timer = unsafe { T::steal() };
+        timer.stop();
+    }
+
+    #[inline]
+    /// Resume counting from the current value
+    pub fn resume(&mut self) {
+        let timer = unsafe { T::steal() };
+        timer.resume();
+    }
 }
 
 impl<T: CapCmp<C>, C> SubTimer<T, C> {
@@ -325,21 +360,12 @@ mod ehal02 {
     
         #[inline]
         fn start<U: Into<Self::Time>>(&mut self, count: U) {
-            let timer = unsafe { T::steal() };
-            timer.stop();
-            timer.set_ccrn(count.into());
-            timer.upmode();
+            self.start(count.into())
         }
     
         #[inline]
         fn wait(&mut self) -> nb::Result<(), void::Void> {
-            let timer = unsafe { T::steal() };
-            if timer.tbifg_rd() {
-                timer.tbifg_clr();
-                Ok(())
-            } else {
-                Err(nb::Error::WouldBlock)
-            }
+            self.wait().map_err(|_| nb::Error::WouldBlock)
         }
     }
     

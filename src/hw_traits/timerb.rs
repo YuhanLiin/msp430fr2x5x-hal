@@ -83,6 +83,9 @@ pub trait TimerB: Steal {
     /// Stop timer
     fn stop(&self);
 
+    /// Resume counting
+    fn resume(&self);
+
     /// Set expansion register clock divider settings
     fn set_tbidex(&self, tbidex: TimerExDiv);
 
@@ -251,6 +254,11 @@ macro_rules! timerb_impl {
             #[inline(always)]
             fn stop(&self) {
                 unsafe { self.$tbxctl.clear_bits(|w| w.mc().stop()) };
+            }
+
+            #[inline(always)]
+            fn resume(&self) {
+                unsafe { self.$tbxctl.modify(|r, w| w.mc().up()) };
             }
 
             #[inline(always)]
