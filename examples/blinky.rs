@@ -1,13 +1,12 @@
 #![no_main]
 #![no_std]
 
-use embedded_hal::digital::v2::*;
+use embedded_hal::{digital::*, delay::DelayNs};
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
     clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv},
     fram::Fram,
     gpio::Batch,
-    hal::blocking::delay::DelayMs,
     pmm::Pmm,
     watchdog::Wdt,
 };

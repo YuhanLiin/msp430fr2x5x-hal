@@ -7,7 +7,7 @@
 
 use core::cell::UnsafeCell;
 use critical_section::with;
-use embedded_hal::digital::v2::ToggleableOutputPin;
+use embedded_hal::digital::StatefulOutputPin;
 use msp430::interrupt::{enable, Mutex};
 use msp430_rt::entry;
 use msp430fr2355::interrupt;
@@ -22,7 +22,6 @@ use msp430fr2x5x_hal::{
     pmm::Pmm,
     watchdog::Wdt,
 };
-use void::ResultVoidExt;
 
 #[cfg(debug_assertions)]
 use panic_msp430 as _;
@@ -90,7 +89,7 @@ fn TIMER0_B1() {
 
         if let CaptureVector::Capture1(cap) = vector.interrupt_vector() {
             if cap.interrupt_capture(capture).is_ok() {
-                led.toggle().void_unwrap();
+                led.toggle().unwrap();
             }
         };
     });

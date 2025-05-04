@@ -1,8 +1,8 @@
 #![no_main]
 #![no_std]
 
-use embedded_hal::digital::v2::*;
-use embedded_hal::prelude::*;
+use embedded_hal::digital::*;
+use embedded_hal_nb::serial::Write;
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
     capture::{CapTrigger, CaptureParts3, OverCapture, TimerConfig},
@@ -16,7 +16,6 @@ use msp430fr2x5x_hal::{
 };
 use nb::block;
 use panic_msp430 as _;
-use void::ResultVoidExt;
 
 // Connect push button input to P1.6. When button is pressed, putty should print the # of cycles
 // since the last press. Sometimes we get 2 consecutive readings due to lack of debouncing.
@@ -63,11 +62,11 @@ fn main() -> ! {
             Ok(cap) => {
                 let diff = cap.wrapping_sub(last_cap);
                 last_cap = cap;
-                p1.pin0.set_high().void_unwrap();
+                p1.pin0.set_high().unwrap();
                 print_num(&mut tx, diff);
             }
             Err(OverCapture(_)) => {
-                p1.pin0.set_high().void_unwrap();
+                p1.pin0.set_high().unwrap();
                 write(&mut tx, '!');
                 write(&mut tx, '\n');
             }
@@ -109,7 +108,7 @@ fn print_hex<U: SerialUsci>(tx: &mut Tx<U>, h: u16) {
 }
 
 fn write<U: SerialUsci>(tx: &mut Tx<U>, ch: char) {
-    block!(tx.write(ch as u8)).void_unwrap();
+    nb::block!(tx.write(ch as u8)).unwrap();
 }
 
 // The compiler will emit calls to the abort() compiler intrinsic if debug assertions are
