@@ -549,6 +549,76 @@ pub enum RecvError {
     Overrun(u8),
 }
 
+mod emb_io {
+    use embedded_io::{Error, ErrorType, Read, ReadReady, Write, WriteReady};
+    use nb::block;
+    use super::*;
+    
+    impl<USCI: SerialUsci> ErrorType for Rx<USCI> { type Error = RecvError; }
+    impl Error for RecvError {
+        fn kind(&self) -> embedded_io::ErrorKind {
+            match self {
+                RecvError::Framing      => embedded_io::ErrorKind::Other,
+                RecvError::Parity       => embedded_io::ErrorKind::Other,
+                RecvError::Overrun(_)   => embedded_io::ErrorKind::Other,
+            }
+        }
+    }
+    impl<USCI: SerialUsci> Read for Rx<USCI> {
+        #[inline]
+        /// Read one byte into the specified buffer, then returns the number of bytes sent (1).
+        /// If a byte isn't currently available to read, this function blocks until one is available.
+        ///
+        /// If `buf` is length zero, `write` returns `Ok(0)` without blocking.
+        fn read(&mut self, buf: &mut [u8]) -> Result<usize, Self::Error> {
+            if buf.is_empty() { return Ok(0) }
+            buf[0] = block!(self.recv())?;
+            Ok(1)
+        }
+    }
+    impl<USCI: SerialUsci> ReadReady for Rx<USCI> {
+        fn read_ready(&mut self) -> Result<bool, Self::Error> {
+            let usci = unsafe { USCI::steal() };
+            Ok(usci.rxifg_rd())
+        }
+    }
+
+    impl<USCI: SerialUsci> ErrorType for Tx<USCI> { type Error = Infallible; }
+    impl<USCI: SerialUsci> Write for Tx<USCI> {
+        /// Due to errata USCI42, UCTXCPTIFG will fire every time a byte is done transmitting,
+        /// even if there's still more buffered. Thus, the implementation uses UCTXIFG instead. When
+        /// `flush()` completes, the Tx buffer will be empty but the FIFO may still be sending.
+        /// 
+        /// As the error type is `Infallible`, this can be safely unwrapped.
+        #[inline]
+        fn flush(&mut self) -> Result<(), Self::Error> {
+            block!(self.flush())
+        }
+    
+        #[inline]
+        /// This function sends only **THE FIRST** byte in the buffer, blocking until the writer is ready to accept, then returns `Ok(1)`.
+        /// If you want to send the entire buffer use `write_all()` instead.
+        ///
+        /// If `buf` is length zero, `write` returns `Ok(0)` without blocking.
+        /// 
+        /// As the error type is `Infallible`, this can be safely unwrapped.
+        fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error> {
+            if buf.is_empty() { return Ok(0) }
+            block!(self.send(buf[0]))?;
+            Ok(1)
+        }
+    }
+    impl<USCI: SerialUsci> WriteReady for Tx<USCI> {
+        /// Whether the writer is ready for immediate writing. If this returns `true`, the next call to [`Write::write`] will not block.
+        ///
+        /// As the error type is `Infallible`, this can be safely unwrapped.
+        fn write_ready(&mut self) -> Result<bool, Self::Error> {
+            let usci = unsafe { USCI::steal() };
+            Ok(usci.txifg_rd())
+        }
+    }
+}
+
 #[cfg(feature = "embedded-hal-02")]
 mod ehal02 {
     use embedded_hal_02::serial::{Read, Write};
