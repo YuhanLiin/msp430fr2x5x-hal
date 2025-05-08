@@ -461,6 +461,21 @@ mod ehal1 {
     } 
 }
 
+mod ehal_nb1 {
+    use embedded_hal_nb::{nb, spi::FullDuplex};
+    use super::*;
+
+    impl<USCI: SpiUsci> FullDuplex<u8> for SpiPeriph<USCI> {
+        fn read(&mut self) -> nb::Result<u8, Self::Error> {
+            self.recv_byte()
+        }
+    
+        fn write(&mut self, word: u8) -> nb::Result<(), Self::Error> {
+            self.send_byte(word)
+        }
+    }
+}
+
 #[cfg(feature = "embedded-hal-02")]
 mod ehal02 {
     use embedded_hal_02::spi::FullDuplex;

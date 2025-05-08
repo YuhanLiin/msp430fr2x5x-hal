@@ -619,6 +619,48 @@ mod emb_io {
     }
 }
 
+mod ehal_nb1 {
+    use embedded_hal_nb::serial::{Error, ErrorType, ErrorKind, Read, Write};
+    use super::*;
+
+    impl Error for RecvError {
+        fn kind(&self) -> ErrorKind {
+            match self {
+                RecvError::Framing      => ErrorKind::FrameFormat,
+                RecvError::Parity       => ErrorKind::Parity,
+                RecvError::Overrun(_)   => ErrorKind::Overrun,
+            }
+        }
+    }
+    impl<USCI: SerialUsci> ErrorType for Rx<USCI> { type Error = RecvError; }
+    impl<USCI: SerialUsci> Read<u8> for Rx<USCI> {
+        #[inline]
+        /// Check if Rx interrupt flag is set. If so, try reading the received byte and clear the flag.
+        /// Otherwise return `WouldBlock`. May return errors caused by data corruption or
+        /// buffer overruns.
+        fn read(&mut self) -> nb::Result<u8, Self::Error> {
+            self.recv()
+        }
+    }
+
+    impl<USCI: SerialUsci> ErrorType for Tx<USCI> { type Error = Infallible; }
+    impl<USCI: SerialUsci> Write<u8> for Tx<USCI> {
+        /// Due to errata USCI42, UCTXCPTIFG will fire every time a byte is done transmitting,
+        /// even if there's still more buffered. Thus, the implementation uses UCTXIFG instead. When
+        /// `flush()` completes, the Tx buffer will be empty but the FIFO may still be sending.
+        #[inline]
+        fn flush(&mut self) -> nb::Result<(), Self::Error> {
+            self.flush()
+        }
+
+        #[inline]
+        /// Check if Tx interrupt flag is set. If so, write a byte into the Tx buffer. Otherwise return `WouldBlock`
+        fn write(&mut self, data: u8) -> nb::Result<(), Self::Error> {
+            self.send(data)
+        }
+    }
+}
+
 #[cfg(feature = "embedded-hal-02")]
 mod ehal02 {
     use embedded_hal_02::serial::{Read, Write};
@@ -629,7 +671,7 @@ mod ehal02 {
     
         #[inline]
         /// Check if Rx interrupt flag is set. If so, try reading the received byte and clear the flag.
-        /// Otherwise block on the Rx interrupt flag. May return errors caused by data corruption or
+        /// Otherwise return `WouldBlock`. May return errors caused by data corruption or
         /// buffer overruns.
         fn read(&mut self) -> nb::Result<u8, Self::Error> {
             self.recv()
@@ -648,8 +690,7 @@ mod ehal02 {
         }
 
         #[inline]
-        /// Check if Tx interrupt flag is set. If so, write a byte into the Tx buffer. Otherwise block
-        /// on the Tx flag.
+        /// Check if Tx interrupt flag is set. If so, write a byte into the Tx buffer. Otherwise return `WouldBlock`
         fn write(&mut self, data: u8) -> nb::Result<(), Self::Error> {
             self.send(data).map_err(|_| nb::Error::WouldBlock)
         }
