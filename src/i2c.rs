@@ -483,9 +483,9 @@ impl<USCI: I2cUsci> I2cBus<USCI> {
     /// blocking write then blocking read
     fn write_read(&mut self, address: u16, bytes: &[u8], buffer: &mut [u8]) -> Result<(), I2CErr> {
         self.set_transmission_mode(TransmissionMode::Transmit);
-        self.read(address, buffer)?;
+        self.write(address, bytes)?;
         self.set_transmission_mode(TransmissionMode::Receive);
-        self.write(address, bytes)
+        self.read(address, buffer)
     }
 }
 
