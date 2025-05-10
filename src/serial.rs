@@ -1,10 +1,24 @@
 //! Serial UART
 //!
-//! The peripherals E_USCI_0 and E_USCI_1 can be used as serial UARTs.
-//! After configuring the E_USCI peripherals, serial Rx and/or Tx pins can be obtained by
-//! converting the appropriate GPIO pins to the alternate function corresponding to UART.
+//! The peripherals E_USCI_A0 and E_USCI_A1 can be used as serial UARTs.
+//! 
+//! Begin configuration by calling [`SerialConfig::new()`]. After configuration, [`Rx`] and/or [`Tx`] structs are produced by
+//! providing the corresponding GPIO pins.
 //!
-//! The Tx and Rx pins are used to send and receive bytes via serial connection.
+//! The [`Tx`] and [`Rx`] structs are used to send and receive bytes via serial. They implement both [`embedded-io`](embedded_io)'s 
+//! serial traits (which are buffer-based, blocking), and the single-byte-based non-blocking [`embedded-hal-nb`](embedded_hal_nb::serial) version.
+//! 
+//! As the MSP430 has only a single byte buffer, `embedded-io`'s buffer-based traits can be a bit unwieldy - 
+//! [`emb_io::Write::write`](embedded_io::Write::write) and [`emb_io::Read::read`](embedded_io::Read::read) will 
+//! always only send or recieve a single byte, despite taking slices as inputs. 
+//! 
+//! For reading or writing single bytes it is recommended to use `embedded-hal-nb`'s 
+//! [`emb_hal_nb::Read::read`](embedded_hal_nb::serial::Read::read) and 
+//! [`emb_hal_nb::Write::write`](embedded_hal_nb::serial::Write::write) ([`nb::block`] can be used to make them blocking).
+//! 
+//! For writing multiple bytes, embedded_io's [`Write::write_all`](embedded_io::Write::write_all) and 
+//! [`Read::read_exact`](embedded_io::Read::read_exact) methods are useful.
+//! 
 
 use crate::clock::{Aclk, Clock, Smclk};
 use crate::gpio::{Alternate1, Pin, Pin1, Pin2, Pin3, Pin5, Pin6, Pin7, P1, P4};

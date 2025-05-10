@@ -2,9 +2,9 @@
 //!
 //! Peripherals eUSCI_B0 and eUSCI_B1 can be used for I2C communication.
 //!
-//! Begin by calling `I2cBusConfig::new()`. Once configured an `I2cBus` will be returned.
+//! Begin by calling [`I2cConfig::new()`]. Once configured an [`I2cPeriph`] will be returned.
 //! 
-//! `I2cBus` implements the blocking embedded_hal `Read`, `Write` and `WriteRead` traits. 
+//! [`I2cPeriph`] implements the blocking embedded_hal [`I2c`](embedded_hal::i2c::I2c) trait. 
 //! Passing a `u8` address to these methods uses 7-bit addressing, passing a `u16` uses 10-bit addressing.
 //! 
 //! Pins used:

@@ -18,8 +18,17 @@
 //!
 //! The `examples/` directory contains binary code examples using the HAL abstractions.
 //! To flash the examples, make sure you have `mspdebug` with `tilib` support installed and in
-//! $PATH. Invoke `xargo run --example whatever` with the board plugged and the scripts should do
+//! $PATH. Invoke `cargo run --example whatever` with the board plugged and the scripts should do
 //! the trick, assuming your host is Linux and you are connected via Launchpad.
+//! 
+//! # Features
+//!
+//! An implementation of the pre-1.0 version of embedded-hal (e.g. 0.2.7 at time of writing) is 
+//! available behind the `embedded-hal-02` feature flag. These traits are implemented on the same 
+//! structs as the current embedded-hal implementation, so with this feature enabled you may mix and 
+//! match crates that require the pre-1.0 version with those that require the latest version. It isn't enabled by 
+//! default, as many of the trait names are similar (or identical) to their counterparts in the current 
+//! version, which can be confusing.
 
 #![no_std]
 #![allow(incomplete_features)] // Enable specialization without warnings
@@ -48,13 +57,12 @@ pub mod rtc;
 pub mod serial;
 pub mod timer;
 pub mod watchdog;
-
-mod hw_traits;
-mod util;
-
 pub mod delay;
 pub mod i2c;
 pub mod spi;
+
+mod hw_traits;
+mod util;
 
 pub use msp430fr2355 as pac;
 

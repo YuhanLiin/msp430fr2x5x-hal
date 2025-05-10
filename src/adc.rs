@@ -1,12 +1,15 @@
 //! Analog to Digital Converter (ADC)
 //!
-//! Begin configuration by calling `AdcConfig::new()` or `::default()`. Once fully configured an `Adc` will be returned.
+//! Begin configuration by calling [`AdcConfig::new()`] or [`::default()`](AdcConfig::default()). 
+//! Once fully configured an [`Adc`] will be returned.
 //! 
-//! `Adc` can read from a channel by calling `.read()` (an implementation of the embedded_hal `OneShot` trait) to return an ADC count. 
+//! [`Adc`] can read from a channel by calling [`read_count()`](Adc::read_count()) to return an ADC count. 
 //! 
-//! The `.count_to_mv()` method is available to convert an ADC count to a voltage in millivolts, given a reference voltage. 
+//! The [`count_to_mv()`](Adc::count_to_mv()) method is available to convert an ADC count to a voltage in millivolts, 
+//! given a reference voltage. 
 //! 
-//! As a convenience, `.read_voltage_mv()` combines `.read()` and `.count_to_mv()`.
+//! As a convenience, [`read_voltage_mv()`](Adc::read_voltage_mv()) combines [`read_count()`](Adc::read_count()) and 
+//! [`count_to_mv()`](Adc::count_to_mv()).
 //! 
 //! Currently the only supported ADC voltage reference is `AVCC`, the operating voltage of the MSP430.
 //! 
@@ -477,7 +480,7 @@ impl Adc {
     pub fn count_to_mv(&self, count: u16, ref_voltage_mv: u16) -> u16 {
         use crate::pac::adc::adcctl2::ADCRES_A;
         let resolution = match self.adc_reg.adcctl2.read().adcres().variant() {
-            ADCRES_A::ADCRES_0 => 256, // 8-bit
+            ADCRES_A::ADCRES_0 => 256,  //  8-bit
             ADCRES_A::ADCRES_1 => 1024, // 10-bit
             ADCRES_A::ADCRES_2 => 4096, // 12-bit
             ADCRES_A::ADCRES_3 => 4096, // Reserved, unreachable
@@ -489,7 +492,7 @@ impl Adc {
     ///
     /// If the result is ready it is returned as a voltage in millivolts based on `ref_voltage_mv`, otherwise returns `WouldBlock`.
     /// 
-    /// If you instead want a raw count you should use the `.read()` method from the `OneShot` trait implementation.
+    /// If you instead want a raw count you should use the `.read_count()` method.
     pub fn read_voltage_mv<PIN: Channel<Self, ID = u8>>(&mut self, pin: &mut PIN, ref_voltage_mv: u16) -> nb::Result<u16, Infallible> {
         self.read_count(pin).map(|count| self.count_to_mv(count, ref_voltage_mv))
     }

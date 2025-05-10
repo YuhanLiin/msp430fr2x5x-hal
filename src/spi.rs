@@ -2,10 +2,14 @@
 //! 
 //! Peripherals eUSCI_A0, eUSCI_A1, eUSCI_B0 and eUSCI_B1 can be used for SPI communication.
 //! 
-//! Begin by calling `SpiBusConfig::new()`. Once configured an `SpiBus` will be returned.
+//! Begin by calling [`SpiConfig::new()`]. Once configured an [`SpiPeriph`] or [`SpiPeriphHwCs`] will be returned, based on 
+//! whether hardware or software chip select control is selected.
 //! 
-//! `SpiBus` implements the embedded_hal `FullDuplex` trait with non-blocking `.read()` and `.send()` methods, 
-//! and the blocking embedded_hal `Transfer` and `Write` traits, with `.transfer()`  and `.write()` methods respectively.
+//! [`SpiPeriph`] implements the embedded-hal [`SpiBus`](embedded_hal::spi::SpiBus) trait. 
+//! [`SpiPeriphHwCs`] implements [`SpiDevice`](embedded_hal::spi::SpiDevice).
+//! 
+//! [`SpiPeriph`] also provides a non-blocking implementation through [`embedded-hal-nb`](embedded_hal_nb)'s 
+//! [`FullDuplex`](embedded_hal_nb::spi::FullDuplex) trait.
 //!
 //! Pins used:
 //!
@@ -489,8 +493,8 @@ mod ehal02 {
 
         fn send(&mut self, word: u8) -> nb::Result<(), Self::Error> {
             self.send_byte(word)
-        }
     }
+        }
 
     impl<USCI: SpiUsci> FullDuplex<u8> for SpiPeriphHwCs<USCI> {
         type Error = SpiErr;
