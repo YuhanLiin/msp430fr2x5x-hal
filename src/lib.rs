@@ -60,6 +60,7 @@ pub mod watchdog;
 pub mod delay;
 pub mod i2c;
 pub mod spi;
+pub mod sac;
 
 mod hw_traits;
 mod util;
