@@ -10,14 +10,16 @@
 //! 
 //! Currently the only supported ADC voltage reference is `AVCC`, the operating voltage of the MSP430.
 //! 
-//! The ADC may read from any of the following pins:
+//! [`read_count()`](Adc::read_count()) takes a reference to the GPIO pin corresponding to the relevant ADC channel 
+//! to ensure it's been correctly configured. The ADC may read from any of the following pins:
 //!
 //! P1.0 - P1.7 (channels 0 to 7), P5.0 - P5.3 (channels 8 to 11).
 //! 
-//! ADC channels 12 to 15 are not associated with external pins, so in lieu of a pin use the `static`s below.
-//!
+//! ADC channels 12 to 15 are not associated with external pins, so instead channels 12 and 13 can be read by passing a 
+//! reference to [`InternalVRef`] or [`InternalTempSensor`] respectively. Channels 14 and 15 require no prior 
+//! configuration, so the two functions below provide a reference that can be used to read from these channels.
 
-use crate::{clock::{Aclk, Smclk}, gpio::*};
+use crate::{clock::{Aclk, Smclk}, gpio::*, pmm::{InternalTempSensor, InternalVRef}};
 use core::convert::Infallible;
 use msp430fr2355::ADC;
 
@@ -250,30 +252,24 @@ macro_rules! impl_adc_channel_extra {
     };
 }
 
-// We instead document the statics below. Users needn't deal with the structs themselves so it just adds noise to the docs.
-#[doc(hidden)]
-pub struct AdcTempSenseChannel;
-impl_adc_channel_extra!(AdcTempSenseChannel, 12);
-/// ADC channel 12, tied to the internal temperature sensor. Pass this to `adc.read()` to read this channel.
-pub static ADC_CH12_TEMP_SENSE: AdcTempSenseChannel = AdcTempSenseChannel;
 
-#[doc(hidden)]
-pub struct AdcVrefChannel;
-impl_adc_channel_extra!(AdcVrefChannel, 13);
-/// ADC channel 13, tied to the internal reference voltage. Pass this to `adc.read()` to read this channel.
-pub static ADC_CH13_VREF: AdcVrefChannel = AdcVrefChannel;
+impl_adc_channel_extra!(InternalTempSensor, 12);
+impl_adc_channel_extra!(InternalVRef, 13);
 
+// Users needn't deal with the structs themselves so it just adds noise to the docs. We instead document the functions below. 
 #[doc(hidden)]
 pub struct AdcVssChannel;
 impl_adc_channel_extra!(AdcVssChannel, 14);
-/// ADC channel 14, tied to VSS. Pass this to `adc.read()` to read this channel.
-pub static ADC_CH14_VSS: AdcVssChannel = AdcVssChannel;
+/// ADC channel 14, tied to VSS. Pass this function's output to `read_count()`.
+#[inline(always)]
+pub fn adc_ch14_vss() -> AdcVssChannel { AdcVssChannel }
 
 #[doc(hidden)]
 pub struct AdcVccChannel;
 impl_adc_channel_extra!(AdcVccChannel, 15);
-/// ADC channel 15, tied to VCC. Pass this to `adc.read()` to read this channel.
-pub static ADC_CH15_VCC: AdcVccChannel = AdcVccChannel;
+/// ADC channel 15, tied to VCC. Pass this function's output to `read_count()`.
+#[inline(always)]
+pub fn adc_ch15_vcc() -> AdcVccChannel { AdcVccChannel }
 
 /// Typestate for an ADC configuration with no clock source selected
 pub struct NoClockSet;
