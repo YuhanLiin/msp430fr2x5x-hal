@@ -39,4 +39,4 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --examples --feature embedded-hal-02
+          args: --examples --features embedded-hal-02
