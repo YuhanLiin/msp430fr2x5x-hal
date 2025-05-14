@@ -61,6 +61,7 @@ pub mod delay;
 pub mod i2c;
 pub mod spi;
 pub mod sac;
+pub mod ecomp;
 
 mod hw_traits;
 mod util;
