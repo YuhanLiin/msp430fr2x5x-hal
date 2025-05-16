@@ -210,30 +210,10 @@ impl<USCI: SpiUsci> SpiConfig<USCI, NoClockSet> {
 }
 #[allow(private_bounds)]
 impl<USCI: SpiUsci> SpiConfig<USCI, ClockSet> {
-    /// Performs hardware configuration and creates an [SPI *device*](embedded_hal::spi::SpiDevice). 
-    /// The STE pin is used as the automatic hardware-controlled chip select pin. Suitable for systems with only one slave device.
-    #[inline(always)]
-    pub fn configure_with_hardware_cs<
-        SO: Into<USCI::MISO>,
-        SI: Into<USCI::MOSI>,
-        CLK: Into<USCI::SCLK>,
-        STE: Into<USCI::STE>,
-    >(
-        &mut self,
-        _miso: SO,
-        _mosi: SI,
-        _sclk: CLK,
-        cs: STE,
-        delay: SysDelay,
-    ) -> SpiPeriphHwCs<USCI> {
-        self.configure_hw();
-        SpiPeriphHwCs(SpiPeriph(PhantomData), cs.into(), delay)
-    }
-
     /// Performs hardware configuration and creates an [SPI *bus*](embedded_hal::spi::SpiBus).
-    /// Suitable for systems with multiple slave devices. You must configure and control any chip select pins yourself. 
+    /// You must configure and control any chip select pins yourself. 
     #[inline(always)]
-    pub fn configure_with_software_cs<
+    pub fn configure<
         SO: Into<USCI::MISO>,
         SI: Into<USCI::MOSI>,
         CLK: Into<USCI::SCLK>,
@@ -265,9 +245,6 @@ impl<USCI: SpiUsci> SpiConfig<USCI, ClockSet> {
 
 /// Represents a group of pins configured for SPI communication
 pub struct SpiPeriph<USCI: SpiUsci>(PhantomData<USCI>);
-
-/// Represents an SPI peripheral plus a hardware-controlled chip select pin and a delay mechanism.
-pub struct SpiPeriphHwCs<USCI: SpiUsci>(SpiPeriph<USCI>, USCI::STE, SysDelay);
 
 impl<USCI: SpiUsci> SpiPeriph<USCI> {
     /// Enable Rx interrupts, which fire when a byte is ready to be read
@@ -444,25 +421,6 @@ mod ehal1 {
             Ok(())
         }
     }
-
-    // SpiDevice impl when CS is hardware controlled.
-    impl<USCI: SpiUsci> ErrorType for SpiPeriphHwCs<USCI> {
-        type Error = SpiErr;
-    }
-    impl<USCI: SpiUsci> SpiDevice for SpiPeriphHwCs<USCI> {
-        fn transaction(&mut self, operations: &mut [Operation<'_, u8>]) -> Result<(), Self::Error> {
-            for op in operations {
-                match op {
-                    Operation::Read(recv_buf)                   => self.0.read(recv_buf)?,
-                    Operation::Write(send_buf)                  => self.0.write(send_buf)?,
-                    Operation::Transfer(recv_buf, send_buf)     => self.0.transfer(recv_buf, send_buf)?,
-                    Operation::TransferInPlace(send_recv_buf)   => self.0.transfer_in_place(send_recv_buf)?,
-                    Operation::DelayNs(n)                       => self.2.delay_ns(*n),
-                }
-            }
-            Ok(())
-        }
-    } 
 }
 
 mod ehal_nb1 {
@@ -493,17 +451,6 @@ mod ehal02 {
 
         fn send(&mut self, word: u8) -> nb::Result<(), Self::Error> {
             self.send_byte(word)
-    }
-        }
-
-    impl<USCI: SpiUsci> FullDuplex<u8> for SpiPeriphHwCs<USCI> {
-        type Error = SpiErr;
-        fn read(&mut self) -> nb::Result<u8, Self::Error> {
-            self.0.recv_byte()
-        }
-
-        fn send(&mut self, word: u8) -> nb::Result<(), Self::Error> {
-            self.0.send_byte(word)
         }
     }
 

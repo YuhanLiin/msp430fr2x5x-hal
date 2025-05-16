@@ -38,7 +38,7 @@ fn main() -> ! {
     // If we have multiple slave devices we can should use software controlled chip select pins.
     let mut spi = SpiConfig::new(periph.E_USCI_A0, MODE_0, true)
         .use_smclk(&smclk, 16) // 8MHz / 16 = 500kHz
-        .configure_with_software_cs(miso, mosi, sck);
+        .configure(miso, mosi, sck);
 
     loop {
         cs.set_low().ok();
