@@ -457,7 +457,4 @@ mod ehal02 {
     // Implementing FullDuplex above gets us a blocking write and transfer implementation for free
     impl<USCI: SpiUsci> embedded_hal_02::blocking::spi::write::Default<u8> for SpiPeriph<USCI> {}
     impl<USCI: SpiUsci> embedded_hal_02::blocking::spi::transfer::Default<u8> for SpiPeriph<USCI> {}
-
-    impl<USCI: SpiUsci> embedded_hal_02::blocking::spi::write::Default<u8> for SpiPeriphHwCs<USCI> {}
-    impl<USCI: SpiUsci> embedded_hal_02::blocking::spi::transfer::Default<u8> for SpiPeriphHwCs<USCI> {}
 }
