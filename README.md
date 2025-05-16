@@ -2,6 +2,10 @@
 
 > HAL for microcontrollers MSP430FR2355, MSP430FR2353, MSP430FR2153 and MSP430FR2155.
 
+# Minimum Supported Rust Version (MSRV)
+
+This crate requires the `nightly` toolchain to compile, currently targetting `nightly-2022-03-01` (Rust 1.61) or later. It might compile with older versions but that may change in any new patch release.
+
 # License
 
 Licensed under either of

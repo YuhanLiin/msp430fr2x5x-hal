@@ -1,9 +1,7 @@
 #![no_main]
 #![no_std]
 
-use embedded_hal::digital::v2::*;
-use embedded_hal::prelude::*;
-use embedded_hal::timer::Cancel;
+use embedded_hal::digital::*;
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
     clock::{ClockConfig, MclkDiv, SmclkDiv},
@@ -16,7 +14,7 @@ use msp430fr2x5x_hal::{
 use panic_msp430 as _;
 
 // Red LED blinks 2 seconds on, 2 off
-// Pressing P2.3 button toggles red LED and halts program
+// Pressing P2.3 button toggles red LED
 #[entry]
 fn main() -> ! {
     let periph = msp430fr2355::Peripherals::take().unwrap();
@@ -47,11 +45,11 @@ fn main() -> ! {
 
     loop {
         // 2 seconds
-        rtc.start(2000u16);
+        rtc.start(2000);
         while let Err(nb::Error::WouldBlock) = rtc.wait() {
-            if let Ok(_) = button.wait_for_ifg() {
+            if button.wait_for_ifg().is_ok() {
                 led.toggle().ok();
-                rtc.cancel().ok();
+                rtc.pause();
             }
         }
         led.toggle().ok();

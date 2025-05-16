@@ -1,9 +1,8 @@
 #![no_main]
 #![no_std]
 
-use embedded_hal::digital::v2::OutputPin;
-use embedded_hal::prelude::*;
-use embedded_hal::serial::Read;
+use embedded_hal::digital::OutputPin;
+use embedded_hal_nb::serial::{Read, Write};
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
     clock::{ClockConfig, DcoclkFreqSel, MclkDiv, Smclk, SmclkDiv},
@@ -34,15 +33,8 @@ fn setup_uart<S: SerialUsci>(
         loopback,
         baudrate,
     )
-    .use_smclk(&smclk)
+    .use_smclk(smclk)
     .split(tx, rx)
-}
-
-fn read_unwrap<R: Read<u8>>(rx: &mut R, err: char) -> u8 {
-    match block!(rx.read()) {
-        Ok(c) => c,
-        Err(_) => err as u8,
-    }
 }
 
 // Echoes serial input on UART1 by roundtripping to UART0
@@ -89,9 +81,9 @@ fn main() -> ! {
     led.set_high().ok();
 
     loop {
-        let ch = read_unwrap(&mut rx1, '!');
+        let ch = block!(rx1.read()).unwrap_or(b'!');
         block!(tx0.write(ch)).ok();
-        let ch = read_unwrap(&mut rx0, '?');
+        let ch = block!(rx0.read()).unwrap_or(b'?');
         block!(tx1.write(ch)).ok();
     }
 }

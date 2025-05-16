@@ -1,10 +1,10 @@
 #![no_main]
 #![no_std]
 
-use embedded_hal::blocking::{i2c::{Read, Write, WriteRead}, delay::DelayMs};
+use embedded_hal::{i2c::I2c, delay::DelayNs};
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
-    clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv}, fram::Fram, gpio::Batch, i2c::{GlitchFilter, I2CBusConfig}, pmm::Pmm, watchdog::Wdt
+    clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv}, fram::Fram, gpio::Batch, i2c::{GlitchFilter, I2cConfig}, pmm::Pmm, watchdog::Wdt
 };
 use panic_msp430 as _;
 
@@ -27,7 +27,7 @@ fn main() -> ! {
         .aclk_vloclk()
         .freeze(&mut fram);
 
-    let mut i2c = I2CBusConfig::new(periph.E_USCI_B1, GlitchFilter::Max50ns)
+    let mut i2c = I2cConfig::new(periph.E_USCI_B1, GlitchFilter::Max50ns)
         .use_smclk(&smclk, 80) // 8MHz / 10 = 100kHz
         .configure(scl, sda);
 

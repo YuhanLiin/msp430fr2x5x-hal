@@ -1,8 +1,8 @@
 #![no_main]
 #![no_std]
 
-use embedded_hal::digital::v2::OutputPin;
-use embedded_hal::prelude::*;
+use embedded_hal::digital::OutputPin;
+use embedded_hal_nb::serial::{Read, Write};
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
     clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv},
@@ -12,8 +12,8 @@ use msp430fr2x5x_hal::{
     serial::*,
     watchdog::Wdt,
 };
-use nb::block;
 
+use nb::block;
 #[cfg(debug_assertions)]
 use panic_msp430 as _;
 
@@ -53,20 +53,17 @@ fn main() -> ! {
         .split(p4.pin3.to_alternate1(), p4.pin2.to_alternate1());
 
         led.set_high().ok();
-        tx.bwrite_all(b"HELLO\n").ok();
-
+        // embedded_io contains methods for writing with buffers 
+        embedded_io::Write::write_all(&mut tx, b"HELLO\n").ok();
         loop {
-            let ch = match block!(rx.read()) {
+            // embedded_hal_nb contains non-blocking methods for writing single bytes
+            let ch: u8 = match block!(rx.read()) {
                 Ok(c) => c,
-                Err(err) => {
-                    (match err {
-                        RecvError::Parity => '!',
-                        RecvError::Overrun(_) => '}',
-                        RecvError::Framing => '?',
-                    }) as u8
-                }
+                Err(RecvError::Parity)      => b'!',
+                Err(RecvError::Overrun(_))  => b'}',
+                Err(RecvError::Framing)     => b'?',
             };
-            block!(tx.write(ch)).ok();
+            tx.write(ch).unwrap();
         }
     } else {
         loop {}

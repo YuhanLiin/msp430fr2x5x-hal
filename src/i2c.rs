@@ -2,9 +2,9 @@
 //!
 //! Peripherals eUSCI_B0 and eUSCI_B1 can be used for I2C communication.
 //!
-//! Begin by calling `I2cBusConfig::new()`. Once configured an `I2cBus` will be returned.
+//! Begin by calling [`I2cConfig::new()`]. Once configured an [`I2cPeriph`] will be returned.
 //! 
-//! `I2cBus` implements the blocking embedded_hal `Read`, `Write` and `WriteRead` traits. 
+//! [`I2cPeriph`] implements the blocking embedded_hal [`I2c`](embedded_hal::i2c::I2c) trait. 
 //! Passing a `u8` address to these methods uses 7-bit addressing, passing a `u16` uses 10-bit addressing.
 //! 
 //! Pins used:
@@ -19,9 +19,6 @@ use crate::gpio::{Pin1, Pin5};
 use crate::hw_traits::eusci::I2CUcbIfgOut;
 use crate::{
     gpio::{Alternate1, Pin, Pin2, Pin3, Pin6, Pin7, P1, P4},
-    hal::blocking::i2c::{
-        Read, SevenBitAddress, TenBitAddress, Write, WriteRead,
-    },
     hw_traits::eusci::{
         EUsciI2C, Ucastp, UcbCtlw0, UcbCtlw1, UcbI2coa, UcbIFG, UcbIe, Ucclto, Ucglit, Ucmode,
         Ucssel,
@@ -29,6 +26,7 @@ use crate::{
     pac,
 };
 use core::marker::PhantomData;
+use embedded_hal::i2c::{SevenBitAddress, TenBitAddress};
 use msp430::asm;
 
 /// Configure bus to use 7bit or 10bit I2C slave addressing mode
@@ -92,7 +90,7 @@ impl From<GlitchFilter> for Ucglit {
 }
 
 ///Struct used to configure a I2C bus
-pub struct I2CBusConfig<USCI: I2cUsci, STATE> {
+pub struct I2cConfig<USCI: I2cUsci, STATE> {
     usci: USCI,
     divisor: u16,
 
@@ -171,9 +169,9 @@ pub struct NoClockSet;
 /// Typestate for an I2C bus configuration with a clock source selected
 pub struct ClockSet;
 
-impl<USCI: I2cUsci> I2CBusConfig<USCI, NoClockSet> {
+impl<USCI: I2cUsci> I2cConfig<USCI, NoClockSet> {
     /// Create a new configuration for setting up a EUSCI peripheral in I2C master mode
-    pub fn new(usci: USCI, deglitch_time: GlitchFilter) -> I2CBusConfig<USCI, NoClockSet> {
+    pub fn new(usci: USCI, deglitch_time: GlitchFilter) -> I2cConfig<USCI, NoClockSet> {
         let ctlw0 = UcbCtlw0 {
             uca10: false,
             ucsla10: false,
@@ -259,7 +257,7 @@ impl<USCI: I2cUsci> I2CBusConfig<USCI, NoClockSet> {
             ucrxifg0: false,
         };
 
-        I2CBusConfig {
+        I2cConfig {
             usci,
             divisor: 1,
             ctlw0,
@@ -276,10 +274,10 @@ impl<USCI: I2cUsci> I2CBusConfig<USCI, NoClockSet> {
 
     /// Configures this peripheral to use SMCLK
     #[inline]
-    pub fn use_smclk(mut self, _smclk: &Smclk, clk_divisor: u16) -> I2CBusConfig<USCI, ClockSet> {
+    pub fn use_smclk(mut self, _smclk: &Smclk, clk_divisor: u16) -> I2cConfig<USCI, ClockSet> {
         self.ctlw0.ucssel = Ucssel::Smclk;
         self.divisor = clk_divisor;
-        I2CBusConfig{ 
+        I2cConfig{ 
             usci: self.usci, 
             divisor: self.divisor, 
             ctlw0: self.ctlw0, 
@@ -295,10 +293,10 @@ impl<USCI: I2cUsci> I2CBusConfig<USCI, NoClockSet> {
 
     /// Configures this peripheral to use ACLK
     #[inline]
-    pub fn use_aclk(mut self, _aclk: &Aclk, clk_divisor: u16) -> I2CBusConfig<USCI, ClockSet> {
+    pub fn use_aclk(mut self, _aclk: &Aclk, clk_divisor: u16) -> I2cConfig<USCI, ClockSet> {
         self.ctlw0.ucssel = Ucssel::Aclk;
         self.divisor = clk_divisor;
-        I2CBusConfig{ 
+        I2cConfig{ 
             usci: self.usci, 
             divisor: self.divisor, 
             ctlw0: self.ctlw0, 
@@ -313,10 +311,10 @@ impl<USCI: I2cUsci> I2CBusConfig<USCI, NoClockSet> {
     }
     /// Configures this peripheral to use UCLK
     #[inline]
-    pub fn use_uclk<Pin: Into<USCI::ExternalClockPin> >(mut self, _uclk: Pin, clk_divisor: u16) -> I2CBusConfig<USCI, ClockSet> {
+    pub fn use_uclk<Pin: Into<USCI::ExternalClockPin> >(mut self, _uclk: Pin, clk_divisor: u16) -> I2cConfig<USCI, ClockSet> {
         self.ctlw0.ucssel = Ucssel::Uclk;
         self.divisor = clk_divisor;
-        I2CBusConfig{ 
+        I2cConfig{ 
             usci: self.usci, 
             divisor: self.divisor, 
             ctlw0: self.ctlw0, 
@@ -332,15 +330,15 @@ impl<USCI: I2cUsci> I2CBusConfig<USCI, NoClockSet> {
 }
 
 #[allow(private_bounds)]
-impl<USCI: I2cUsci> I2CBusConfig<USCI, ClockSet> {
+impl<USCI: I2cUsci> I2cConfig<USCI, ClockSet> {
     /// Performs hardware configuration and creates the I2C bus
     pub fn configure<C: Into<USCI::ClockPin>, D: Into<USCI::DataPin>>(
         &self,
         _scl: C,
         _sda: D,
-    ) -> I2cBus<USCI> {
+    ) -> I2cPeriph<USCI> {
         self.configure_regs();
-        I2cBus(PhantomData)
+        I2cPeriph(PhantomData)
     }
 
     /// Performs hardware configuration
@@ -365,7 +363,7 @@ impl<USCI: I2cUsci> I2CBusConfig<USCI, ClockSet> {
 }
 
 /// I2C data bus
-pub struct I2cBus<USCI: I2cUsci>(PhantomData<USCI>);
+pub struct I2cPeriph<USCI: I2cUsci>(PhantomData<USCI>);
 
 /// I2C transmit/receive errors
 #[derive(Clone, Copy, Debug)]
@@ -378,7 +376,7 @@ pub enum I2CErr {
     // Other errors such as the 'clock low timeout' UCCLTOIFG may appear here in future.
 }
 
-impl<USCI: I2cUsci> I2cBus<USCI> {
+impl<USCI: I2cUsci> I2cPeriph<USCI> {
     #[inline(always)]
     fn set_addressing_mode(&mut self, mode: AddressingMode) {
         let usci = unsafe { USCI::steal() };
@@ -489,64 +487,93 @@ impl<USCI: I2cUsci> I2cBus<USCI> {
     }
 }
 
-impl<USCI: I2cUsci> Read<SevenBitAddress> for I2cBus<USCI> {
-    type Error = I2CErr;
-    fn read(&mut self, address: u8, buffer: &mut [u8]) -> Result<(), Self::Error> {
-        self.set_addressing_mode(AddressingMode::SevenBit);
-        self.set_transmission_mode(TransmissionMode::Receive);
-        I2cBus::read(self, address as u16, buffer)
+// Trait to link embedded-hal types to our addressing mode enum.
+// Since SevenBitAddress and TenBitAddress are just aliases for u8 and u16 in both ehal 1.0 and 0.2.7, this works for both!
+trait AddressType {
+    /// Return the `AddressingMode` that relates to this type: `SevenBit` for `u8`, `TenBit` for `u16`.
+    fn addr_type() -> AddressingMode;
+}
+impl AddressType for SevenBitAddress {
+    fn addr_type() -> AddressingMode {AddressingMode::SevenBit}
+}
+impl AddressType for TenBitAddress {
+    fn addr_type() -> AddressingMode {AddressingMode::TenBit}
+}
+
+mod ehal1 {
+    use embedded_hal::i2c::{AddressMode, Error, ErrorKind, ErrorType, I2c, Operation, NoAcknowledgeSource};
+    use super::*;
+
+    impl Error for I2CErr {
+        fn kind(&self) -> ErrorKind {
+            match self {
+                I2CErr::GotNACK => ErrorKind::NoAcknowledge(NoAcknowledgeSource::Unknown),
+                I2CErr::ArbitrationLost => ErrorKind::ArbitrationLoss,
+            }
+        }
+    }
+
+    impl<USCI: I2cUsci> ErrorType for I2cPeriph<USCI> {
+        type Error = I2CErr;
+    }
+
+    impl<USCI: I2cUsci, TenOrSevenBit> I2c<TenOrSevenBit> for I2cPeriph<USCI> 
+    where TenOrSevenBit: AddressMode + AddressType + Into<u16> + Copy {
+        fn transaction(&mut self, address: TenOrSevenBit, ops: &mut [Operation<'_>]) -> Result<(), Self::Error> {
+            self.set_addressing_mode(TenOrSevenBit::addr_type());
+            for op in ops {
+                match op {
+                    Operation::Read(items) => {
+                        self.set_transmission_mode(TransmissionMode::Receive);
+                        self.read(address.into(), items)?;
+                    }
+                    Operation::Write(items) => {
+                        self.set_transmission_mode(TransmissionMode::Transmit);
+                        self.write(address.into(), items)?;
+                    }
+                }
+            }
+            Ok(())
+        }
     }
 }
 
-impl<USCI: I2cUsci> Read<TenBitAddress> for I2cBus<USCI> {
-    type Error = I2CErr;
-    fn read(&mut self, address: u16, buffer: &mut [u8]) -> Result<(), Self::Error> {
-        self.set_addressing_mode(AddressingMode::TenBit);
-        self.set_transmission_mode(TransmissionMode::Receive);
-        I2cBus::read(self, address, buffer)
-    }
-}
+#[cfg(feature = "embedded-hal-02")]
+mod ehal02 {
+    use embedded_hal_02::blocking::i2c::{AddressMode, Read, Write, WriteRead};
+    use super::*;
 
-impl<USCI: I2cUsci> Write<SevenBitAddress> for I2cBus<USCI> {
-    type Error = I2CErr;
-    fn write(&mut self, address: u8, bytes: &[u8]) -> Result<(), Self::Error> {
-        self.set_addressing_mode(AddressingMode::SevenBit);
-        self.set_transmission_mode(TransmissionMode::Transmit);
-        I2cBus::write(self, address as u16, bytes)
+    impl<USCI: I2cUsci, SevenOrTenBit> Read<SevenOrTenBit> for I2cPeriph<USCI>
+    where SevenOrTenBit: AddressMode + AddressType + Into<u16> {
+        type Error = I2CErr;
+        fn read(&mut self, address: SevenOrTenBit, buffer: &mut [u8]) -> Result<(), Self::Error> {
+            self.set_addressing_mode(SevenOrTenBit::addr_type());
+            self.set_transmission_mode(TransmissionMode::Receive);
+            self.read(address.into(), buffer)
+        }
     }
-}
 
-impl<USCI: I2cUsci> Write<TenBitAddress> for I2cBus<USCI> {
-    type Error = I2CErr;
-    fn write(&mut self, address: u16, bytes: &[u8]) -> Result<(), Self::Error> {
-        self.set_addressing_mode(AddressingMode::TenBit);
-        self.set_transmission_mode(TransmissionMode::Transmit);
-        I2cBus::write(self, address, bytes)
+    impl<USCI: I2cUsci, SevenOrTenBit> Write<SevenOrTenBit> for I2cPeriph<USCI> 
+    where SevenOrTenBit: AddressMode + AddressType + Into<u16> {
+        type Error = I2CErr;
+        fn write(&mut self, address: SevenOrTenBit, bytes: &[u8]) -> Result<(), Self::Error> {
+            self.set_addressing_mode(SevenOrTenBit::addr_type());
+            self.set_transmission_mode(TransmissionMode::Transmit);
+            self.write(address.into(), bytes)
+        }
     }
-}
 
-impl<USCI: I2cUsci> WriteRead<SevenBitAddress> for I2cBus<USCI> {
-    type Error = I2CErr;
-    fn write_read(
-        &mut self,
-        address: u8,
-        bytes: &[u8],
-        buffer: &mut [u8],
-    ) -> Result<(), Self::Error> {
-        self.set_addressing_mode(AddressingMode::SevenBit);
-        I2cBus::write_read(self, address as u16, bytes, buffer)
-    }
-}
-
-impl<USCI: I2cUsci> WriteRead<TenBitAddress> for I2cBus<USCI> {
-    type Error = I2CErr;
-    fn write_read(
-        &mut self,
-        address: u16,
-        bytes: &[u8],
-        buffer: &mut [u8],
-    ) -> Result<(), Self::Error> {
-        self.set_addressing_mode(AddressingMode::TenBit);
-        I2cBus::write_read(self, address, bytes, buffer)
+    impl<USCI: I2cUsci, SevenOrTenBit> WriteRead<SevenOrTenBit> for I2cPeriph<USCI>  
+    where SevenOrTenBit: AddressMode + AddressType + Into<u16> {
+        type Error = I2CErr;
+        fn write_read(
+            &mut self,
+            address: SevenOrTenBit,
+            bytes: &[u8],
+            buffer: &mut [u8],
+        ) -> Result<(), Self::Error> {
+            self.set_addressing_mode(SevenOrTenBit::addr_type());
+            self.write_read(address.into(), bytes, buffer)
+        }
     }
 }

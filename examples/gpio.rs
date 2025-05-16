@@ -1,7 +1,7 @@
 #![no_main]
 #![no_std]
 
-use embedded_hal::digital::v2::*;
+use embedded_hal::digital::*;
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{gpio::Batch, pmm::Pmm, watchdog::Wdt};
 use panic_msp430 as _;
@@ -20,7 +20,7 @@ fn main() -> ! {
         .config_pin6(|p| p.to_output())
         .split(&pmm);
 
-    let p2_3 = p2.pin3;
+    let mut p2_3 = p2.pin3;
     let mut p6_6 = p6.pin6;
 
     loop {
