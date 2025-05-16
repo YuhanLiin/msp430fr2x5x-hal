@@ -86,11 +86,11 @@ macro_rules! impl_spi_pin {
 
 /// SPI MISO pin for eUSCI A0
 pub struct UsciA0MISOPin;
-impl_spi_pin!(UsciA0MISOPin, P1, Pin7);
+impl_spi_pin!(UsciA0MISOPin, P1, Pin6);
 
 /// SPI MOSI pin for eUSCI A0
 pub struct UsciA0MOSIPin;
-impl_spi_pin!(UsciA0MOSIPin, P1, Pin6);
+impl_spi_pin!(UsciA0MOSIPin, P1, Pin7);
 
 /// SPI SCLK pin for eUSCI A0
 pub struct UsciA0SCLKPin;
@@ -102,11 +102,11 @@ impl_spi_pin!(UsciA0STEPin, P1, Pin4);
 
 /// SPI MISO pin for eUSCI A1
 pub struct UsciA1MISOPin;
-impl_spi_pin!(UsciA1MISOPin, P4, Pin3);
+impl_spi_pin!(UsciA1MISOPin, P4, Pin2);
 
 /// SPI MOSI pin for eUSCI A1
 pub struct UsciA1MOSIPin;
-impl_spi_pin!(UsciA1MOSIPin, P4, Pin2);
+impl_spi_pin!(UsciA1MOSIPin, P4, Pin3);
 
 /// SPI SCLK pin for eUSCI A1
 pub struct UsciA1SCLKPin;

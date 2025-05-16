@@ -23,8 +23,8 @@ fn main() -> ! {
     let pmm = Pmm::new(periph.PMM);
     let p1 = Batch::new(periph.P1)
         .split(&pmm);
-    let miso = p1.pin7.to_alternate1();
-    let mosi = p1.pin6.to_alternate1();
+    let mosi = p1.pin7.to_alternate1();
+    let miso = p1.pin6.to_alternate1();
     let sck  = p1.pin5.to_alternate1();
     let mut cs   = p1.pin4.to_output();
     cs.set_high().ok();
