@@ -62,6 +62,7 @@ pub mod i2c;
 pub mod spi;
 pub mod sac;
 pub mod ecomp;
+pub mod bak_mem;
 
 mod hw_traits;
 mod util;
