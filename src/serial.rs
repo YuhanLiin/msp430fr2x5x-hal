@@ -621,6 +621,24 @@ mod emb_io {
             block!(self.send(buf[0]))?;
             Ok(1)
         }
+        // The default version of this impl panics if .write() returns Ok(0) when given a non-empty buffer. Our impl never does this, so remove it.
+        /// Write an entire buffer into this writer.
+        ///
+        /// This function calls `write()` in a loop until exactly `buf.len()` bytes have
+        /// been written, blocking if needed.
+        ///
+        /// If you are using [`WriteReady`] to avoid blocking, you should not use this function.
+        /// `WriteReady::write_ready()` returning true only guarantees the first call to `write()` will
+        /// not block, so this function may still block in subsequent calls.
+        fn write_all(&mut self, mut buf: &[u8]) -> Result<(), Self::Error> {
+            while !buf.is_empty() {
+                match self.write(buf) {
+                    Ok(n) => buf = &buf[n..],
+                    Err(e) => return Err(e),
+                }
+            }
+            Ok(())
+        }
     }
     impl<USCI: SerialUsci> WriteReady for Tx<USCI> {
         /// Whether the writer is ready for immediate writing. If this returns `true`, the next call to [`Write::write`] will not block.
