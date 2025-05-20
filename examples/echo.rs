@@ -63,7 +63,7 @@ fn main() -> ! {
                 Err(RecvError::Overrun(_))  => b'}',
                 Err(RecvError::Framing)     => b'?',
             };
-            tx.write(ch).unwrap();
+            block!(tx.write(ch)).unwrap();
         }
     } else {
         loop {}
