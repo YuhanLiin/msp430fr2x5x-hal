@@ -2,24 +2,22 @@
 //! 
 //! Peripherals eUSCI_A0, eUSCI_A1, eUSCI_B0 and eUSCI_B1 can be used for SPI communication.
 //! 
-//! Begin by calling [`SpiConfig::new()`]. Once configured an [`SpiPeriph`] or [`SpiPeriphHwCs`] will be returned, based on 
-//! whether hardware or software chip select control is selected.
+//! Begin by calling [`SpiConfig::new()`]. Once configured an [`SpiPeriph`] will be returned.
 //! 
 //! [`SpiPeriph`] implements the embedded-hal [`SpiBus`](embedded_hal::spi::SpiBus) trait. 
-//! [`SpiPeriphHwCs`] implements [`SpiDevice`](embedded_hal::spi::SpiDevice).
 //! 
 //! [`SpiPeriph`] also provides a non-blocking implementation through [`embedded-hal-nb`](embedded_hal_nb)'s 
 //! [`FullDuplex`](embedded_hal_nb::spi::FullDuplex) trait.
 //!
 //! Pins used:
 //!
-//! eUSCI_A0: {MISO: `P1.7`, MOSI: `P1.6`, SCLK: `P1.5`}. `P1.4` can optionally used as a hardware-controlled chip select pin.
+//! eUSCI_A0: {MISO: `P1.7`, MOSI: `P1.6`, SCLK: `P1.5`}.
 //!
-//! eUSCI_A1: {MISO: `P4.3`, MOSI: `P4.2`, SCLK: `P4.1`}. `P4.0` can optionally used as a hardware-controlled chip select pin.
+//! eUSCI_A1: {MISO: `P4.3`, MOSI: `P4.2`, SCLK: `P4.1`}.
 //!
-//! eUSCI_B0: {MISO: `P1.3`, MOSI: `P1.2`, SCLK: `P1.1`}. `P1.0` can optionally used as a hardware-controlled chip select pin.
+//! eUSCI_B0: {MISO: `P1.3`, MOSI: `P1.2`, SCLK: `P1.1`}.
 //!
-//! eUSCI_B1: {MISO: `P4.7`, MOSI: `P4.6`, SCLK: `P4.5`}. `P4.4` can optionally used as a hardware-controlled chip select pin.
+//! eUSCI_B1: {MISO: `P4.7`, MOSI: `P4.6`, SCLK: `P4.5`}.
 use crate::{
     clock::{Aclk, Smclk}, 
     delay::SysDelay, 
