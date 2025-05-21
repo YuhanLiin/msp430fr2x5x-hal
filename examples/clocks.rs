@@ -1,9 +1,7 @@
 #![no_main]
 #![no_std]
 
-use embedded_hal::digital::v2::*;
-use embedded_hal::timer::CountDown;
-use embedded_hal::watchdog::WatchdogEnable;
+use embedded_hal::digital::*;
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
     clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv},
@@ -40,13 +38,13 @@ fn main() -> ! {
     // blinks should be 1 second on, 1 second off
     let mut wdt = wdt.to_interval();
     p1_0.set_high().ok();
-    wdt.set_smclk(&smclk).start(DELAY);
+    wdt.set_smclk(&smclk).set_interval_and_start(DELAY);
 
     block!(wdt.wait()).ok();
     p1_0.set_low().ok();
 
     let mut wdt = wdt.to_watchdog();
-    wdt.start(DELAY);
+    wdt.set_interval_and_start(DELAY);
 
     loop {
         msp430::asm::nop();

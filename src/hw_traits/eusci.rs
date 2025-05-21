@@ -1,6 +1,7 @@
 use super::Steal;
-use embedded_hal::spi::{Mode, Phase, Polarity};
 use msp430fr2355 as pac;
+
+use embedded_hal::spi::{Mode, Phase, Polarity};
 
 /// Defines macros for a register associated struct to make reading/writing to this struct's
 /// register a lot less tedious.

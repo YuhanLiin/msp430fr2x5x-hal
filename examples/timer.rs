@@ -1,8 +1,7 @@
 #![no_main]
 #![no_std]
 
-use embedded_hal::digital::v2::*;
-use embedded_hal::prelude::*;
+use embedded_hal::digital::*;
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
     clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv},
@@ -14,7 +13,6 @@ use msp430fr2x5x_hal::{
 };
 use nb::block;
 use panic_msp430 as _;
-use void::ResultVoidExt;
 
 // 0.5 second on, 0.5 second off
 #[entry]
@@ -45,12 +43,12 @@ fn main() -> ! {
 
     set_time(&mut timer, &mut subtimer, 500);
     loop {
-        block!(subtimer.wait()).void_unwrap();
-        p1_0.set_high().void_unwrap();
+        block!(subtimer.wait()).unwrap();
+        p1_0.set_high().unwrap();
         // first 0.5 s of timer countdown expires while subtimer expires, so this should only block
         // for 0.5 s
-        block!(timer.wait()).void_unwrap();
-        p1_0.set_low().void_unwrap();
+        block!(timer.wait()).unwrap();
+        p1_0.set_low().unwrap();
     }
 }
 

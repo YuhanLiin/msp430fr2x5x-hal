@@ -18,4 +18,5 @@ pub use crate::timer::CapCmpTimer7 as _msp430fr2x5x_hal_CapCmpTimer7;
 pub use crate::timer::TimerPeriph as _msp430fr2x5x_hal_TimerPeriph;
 pub use crate::watchdog::WatchdogSelect as _msp430fr2x5x_hal_WatchdogSelect;
 
-pub use embedded_hal::prelude;
+#[cfg(feature = "embedded-hal-02")]
+pub use embedded_hal_02::prelude;

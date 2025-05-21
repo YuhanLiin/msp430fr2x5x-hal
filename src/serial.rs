@@ -1,17 +1,31 @@
 //! Serial UART
 //!
-//! The peripherals E_USCI_0 and E_USCI_1 can be used as serial UARTs.
-//! After configuring the E_USCI peripherals, serial Rx and/or Tx pins can be obtained by
-//! converting the appropriate GPIO pins to the alternate function corresponding to UART.
+//! The peripherals E_USCI_A0 and E_USCI_A1 can be used as serial UARTs.
+//! 
+//! Begin configuration by calling [`SerialConfig::new()`]. After configuration, [`Rx`] and/or [`Tx`] structs are produced by
+//! providing the corresponding GPIO pins.
 //!
-//! The Tx and Rx pins are used to send and receive bytes via serial connection.
+//! The [`Tx`] and [`Rx`] structs are used to send and receive bytes via serial. They implement both [`embedded-io`](embedded_io)'s 
+//! serial traits (which are buffer-based, blocking), and the single-byte-based non-blocking [`embedded-hal-nb`](embedded_hal_nb::serial) version.
+//! 
+//! As the MSP430 has only a single byte buffer, `embedded-io`'s buffer-based traits can be a bit unwieldy - 
+//! [`emb_io::Write::write`](embedded_io::Write::write) and [`emb_io::Read::read`](embedded_io::Read::read) will 
+//! always only send or recieve a single byte, despite taking slices as inputs. 
+//! 
+//! For reading or writing single bytes it is recommended to use `embedded-hal-nb`'s 
+//! [`emb_hal_nb::Read::read`](embedded_hal_nb::serial::Read::read) and 
+//! [`emb_hal_nb::Write::write`](embedded_hal_nb::serial::Write::write) ([`nb::block`] can be used to make them blocking).
+//! 
+//! For writing multiple bytes, embedded_io's [`Write::write_all`](embedded_io::Write::write_all) and 
+//! [`Read::read_exact`](embedded_io::Read::read_exact) methods are useful.
+//! 
 
 use crate::clock::{Aclk, Clock, Smclk};
 use crate::gpio::{Alternate1, Pin, Pin1, Pin2, Pin3, Pin5, Pin6, Pin7, P1, P4};
 use crate::hw_traits::eusci::{EUsciUart, UartUcxStatw, UcaCtlw0, Ucssel};
+use core::convert::Infallible;
 use core::marker::PhantomData;
 use core::num::NonZeroU32;
-use embedded_hal::serial::{Read, Write};
 use msp430fr2355 as pac;
 
 /// Bit order of transmit and receive
@@ -454,16 +468,10 @@ impl<USCI: SerialUsci> Tx<USCI> {
         let usci = unsafe { USCI::steal() };
         usci.txie_clear();
     }
-}
 
-impl<USCI: SerialUsci> Write<u8> for Tx<USCI> {
-    type Error = void::Void;
-
-    /// Due to errata USCI42, UCTXCPTIFG will fire every time a byte is done transmitting,
-    /// even if there's still more buffered. Thus, the implementation uses UCTXIFG instead. When
-    /// `flush()` completes, the Tx buffer will be empty but the FIFO may still be sending.
+    // Internal flush function
     #[inline]
-    fn flush(&mut self) -> nb::Result<(), Self::Error> {
+    fn flush(&mut self) -> nb::Result<(), Infallible> {
         let usci = unsafe { USCI::steal() };
         if usci.txifg_rd() {
             Ok(())
@@ -472,10 +480,18 @@ impl<USCI: SerialUsci> Write<u8> for Tx<USCI> {
         }
     }
 
+    #[inline(always)]
+    /// Writes a byte into the Tx buffer with no checks for validity
+    /// # Safety
+    /// May clobber unsent data still in the buffer
+    pub unsafe fn write_no_check(&mut self, data: u8) {
+        let usci = unsafe { USCI::steal() };
+        usci.tx_wr(data);
+    }
+
+    // Internal send function
     #[inline]
-    /// Check if Tx interrupt flag is set. If so, write a byte into the Tx buffer. Otherwise block
-    /// on the Tx flag.
-    fn write(&mut self, data: u8) -> nb::Result<(), Self::Error> {
+    fn send(&mut self, data: u8) -> nb::Result<(), Infallible> {
         let usci = unsafe { USCI::steal() };
         if usci.txifg_rd() {
             usci.tx_wr(data);
@@ -485,8 +501,6 @@ impl<USCI: SerialUsci> Write<u8> for Tx<USCI> {
         }
     }
 }
-
-impl<USCI: SerialUsci> embedded_hal::blocking::serial::write::Default<u8> for Tx<USCI> {}
 
 /// Serial receiver pin
 pub struct Rx<USCI: SerialUsci>(PhantomData<USCI>);
@@ -515,35 +529,8 @@ impl<USCI: SerialUsci> Rx<USCI> {
         usci.rx_rd()
     }
 
-    #[inline(always)]
-    /// Writes a byte into the Tx buffer with no checks for validity
-    /// # Safety
-    /// May clobber unsent data still in the buffer
-    pub unsafe fn write_no_check(&mut self, data: u8) {
-        let usci = unsafe { USCI::steal() };
-        usci.tx_wr(data);
-    }
-}
-
-/// Serial receive errors
-#[derive(Clone, Copy, Debug)]
-pub enum RecvError {
-    /// Framing error
-    Framing,
-    /// Parity error
-    Parity,
-    /// Buffer overrun error. Contains the most recently read byte, which is still valid.
-    Overrun(u8),
-}
-
-impl<USCI: SerialUsci> Read<u8> for Rx<USCI> {
-    type Error = RecvError;
-
-    #[inline]
-    /// Check if Rx interrupt flag is set. If so, try reading the received byte and clear the flag.
-    /// Otherwise block on the Rx interrupt flag. May return errors caused by data corruption or
-    /// buffer overruns.
-    fn read(&mut self) -> nb::Result<u8, Self::Error> {
+    // Internal recieve function
+    fn recv(&mut self) -> nb::Result<u8, RecvError> {
         let usci = unsafe { USCI::steal() };
 
         if usci.rxifg_rd() {
@@ -563,4 +550,183 @@ impl<USCI: SerialUsci> Read<u8> for Rx<USCI> {
             Err(nb::Error::WouldBlock)
         }
     }
+}
+
+/// Serial receive errors
+#[derive(Clone, Copy, Debug)]
+pub enum RecvError {
+    /// Framing error
+    Framing,
+    /// Parity error
+    Parity,
+    /// Buffer overrun error. Contains the most recently read byte, which is still valid.
+    Overrun(u8),
+}
+
+mod emb_io {
+    use embedded_io::{Error, ErrorType, Read, ReadReady, Write, WriteReady};
+    use nb::block;
+    use super::*;
+    
+    impl<USCI: SerialUsci> ErrorType for Rx<USCI> { type Error = RecvError; }
+    impl Error for RecvError {
+        fn kind(&self) -> embedded_io::ErrorKind {
+            match self {
+                RecvError::Framing      => embedded_io::ErrorKind::Other,
+                RecvError::Parity       => embedded_io::ErrorKind::Other,
+                RecvError::Overrun(_)   => embedded_io::ErrorKind::Other,
+            }
+        }
+    }
+    impl<USCI: SerialUsci> Read for Rx<USCI> {
+        #[inline]
+        /// Read one byte into the specified buffer, then returns the number of bytes sent (1).
+        /// If a byte isn't currently available to read, this function blocks until one is available.
+        ///
+        /// If `buf` is length zero, `write` returns `Ok(0)` without blocking.
+        fn read(&mut self, buf: &mut [u8]) -> Result<usize, Self::Error> {
+            if buf.is_empty() { return Ok(0) }
+            buf[0] = block!(self.recv())?;
+            Ok(1)
+        }
+    }
+    impl<USCI: SerialUsci> ReadReady for Rx<USCI> {
+        fn read_ready(&mut self) -> Result<bool, Self::Error> {
+            let usci = unsafe { USCI::steal() };
+            Ok(usci.rxifg_rd())
+        }
+    }
+
+    impl<USCI: SerialUsci> ErrorType for Tx<USCI> { type Error = Infallible; }
+    impl<USCI: SerialUsci> Write for Tx<USCI> {
+        /// Due to errata USCI42, UCTXCPTIFG will fire every time a byte is done transmitting,
+        /// even if there's still more buffered. Thus, the implementation uses UCTXIFG instead. When
+        /// `flush()` completes, the Tx buffer will be empty but the FIFO may still be sending.
+        /// 
+        /// As the error type is `Infallible`, this can be safely unwrapped.
+        #[inline]
+        fn flush(&mut self) -> Result<(), Self::Error> {
+            block!(self.flush())
+        }
+    
+        #[inline]
+        /// This function sends only **THE FIRST** byte in the buffer, blocking until the writer is ready to accept, then returns `Ok(1)`.
+        /// If you want to send the entire buffer use `write_all()` instead.
+        ///
+        /// If `buf` is length zero, `write` returns `Ok(0)` without blocking.
+        /// 
+        /// As the error type is `Infallible`, this can be safely unwrapped.
+        fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error> {
+            if buf.is_empty() { return Ok(0) }
+            block!(self.send(buf[0]))?;
+            Ok(1)
+        }
+        // The default version of this impl panics if .write() returns Ok(0) when given a non-empty buffer. Our impl never does this, so remove it.
+        /// Write an entire buffer into this writer.
+        ///
+        /// This function calls `write()` in a loop until exactly `buf.len()` bytes have
+        /// been written, blocking if needed.
+        ///
+        /// If you are using [`WriteReady`] to avoid blocking, you should not use this function.
+        /// `WriteReady::write_ready()` returning true only guarantees the first call to `write()` will
+        /// not block, so this function may still block in subsequent calls.
+        fn write_all(&mut self, mut buf: &[u8]) -> Result<(), Self::Error> {
+            while !buf.is_empty() {
+                match self.write(buf) {
+                    Ok(n) => buf = &buf[n..],
+                    Err(e) => return Err(e),
+                }
+            }
+            Ok(())
+        }
+    }
+    impl<USCI: SerialUsci> WriteReady for Tx<USCI> {
+        /// Whether the writer is ready for immediate writing. If this returns `true`, the next call to [`Write::write`] will not block.
+        ///
+        /// As the error type is `Infallible`, this can be safely unwrapped.
+        fn write_ready(&mut self) -> Result<bool, Self::Error> {
+            let usci = unsafe { USCI::steal() };
+            Ok(usci.txifg_rd())
+        }
+    }
+}
+
+mod ehal_nb1 {
+    use embedded_hal_nb::serial::{Error, ErrorType, ErrorKind, Read, Write};
+    use super::*;
+
+    impl Error for RecvError {
+        fn kind(&self) -> ErrorKind {
+            match self {
+                RecvError::Framing      => ErrorKind::FrameFormat,
+                RecvError::Parity       => ErrorKind::Parity,
+                RecvError::Overrun(_)   => ErrorKind::Overrun,
+            }
+        }
+    }
+    impl<USCI: SerialUsci> ErrorType for Rx<USCI> { type Error = RecvError; }
+    impl<USCI: SerialUsci> Read<u8> for Rx<USCI> {
+        #[inline]
+        /// Check if Rx interrupt flag is set. If so, try reading the received byte and clear the flag.
+        /// Otherwise return `WouldBlock`. May return errors caused by data corruption or
+        /// buffer overruns.
+        fn read(&mut self) -> nb::Result<u8, Self::Error> {
+            self.recv()
+        }
+    }
+
+    impl<USCI: SerialUsci> ErrorType for Tx<USCI> { type Error = Infallible; }
+    impl<USCI: SerialUsci> Write<u8> for Tx<USCI> {
+        /// Due to errata USCI42, UCTXCPTIFG will fire every time a byte is done transmitting,
+        /// even if there's still more buffered. Thus, the implementation uses UCTXIFG instead. When
+        /// `flush()` completes, the Tx buffer will be empty but the FIFO may still be sending.
+        #[inline]
+        fn flush(&mut self) -> nb::Result<(), Self::Error> {
+            self.flush()
+        }
+
+        #[inline]
+        /// Check if Tx interrupt flag is set. If so, write a byte into the Tx buffer. Otherwise return `WouldBlock`
+        fn write(&mut self, data: u8) -> nb::Result<(), Self::Error> {
+            self.send(data)
+        }
+    }
+}
+
+#[cfg(feature = "embedded-hal-02")]
+mod ehal02 {
+    use embedded_hal_02::serial::{Read, Write};
+    use super::*;
+
+    impl<USCI: SerialUsci> Read<u8> for Rx<USCI> {
+        type Error = RecvError;
+    
+        #[inline]
+        /// Check if Rx interrupt flag is set. If so, try reading the received byte and clear the flag.
+        /// Otherwise return `WouldBlock`. May return errors caused by data corruption or
+        /// buffer overruns.
+        fn read(&mut self) -> nb::Result<u8, Self::Error> {
+            self.recv()
+        }
+    }
+
+    impl<USCI: SerialUsci> Write<u8> for Tx<USCI> {
+        type Error = void::Void;
+
+        /// Due to errata USCI42, UCTXCPTIFG will fire every time a byte is done transmitting,
+        /// even if there's still more buffered. Thus, the implementation uses UCTXIFG instead. When
+        /// `flush()` completes, the Tx buffer will be empty but the FIFO may still be sending.
+        #[inline]
+        fn flush(&mut self) -> nb::Result<(), Self::Error> {
+            self.flush().map_err(|_| nb::Error::WouldBlock)
+        }
+
+        #[inline]
+        /// Check if Tx interrupt flag is set. If so, write a byte into the Tx buffer. Otherwise return `WouldBlock`
+        fn write(&mut self, data: u8) -> nb::Result<(), Self::Error> {
+            self.send(data).map_err(|_| nb::Error::WouldBlock)
+        }
+    }
+
+    impl<USCI: SerialUsci> embedded_hal_02::blocking::serial::write::Default<u8> for Tx<USCI> {}
 }
