@@ -261,13 +261,13 @@ impl<MCLK, SMCLK> ClockConfig<MCLK, SMCLK> {
 #[inline(always)]
 fn fll_off() {
     // 64 = 1 << 6, which is the 6th bit of SR
-    unsafe { asm!("bis.b 64, SR", options(nomem, nostack)) };
+    unsafe { asm!("bis.b #64, SR", options(nomem, nostack)) };
 }
 
 #[inline(always)]
 fn fll_on() {
     // 64 = 1 << 6, which is the 6th bit of SR
-    unsafe { asm!("bic.b 64, SR", options(nomem, nostack)) };
+    unsafe { asm!("bic.b #64, SR", options(nomem, nostack)) };
 }
 
 impl<SMCLK: SmclkState> ClockConfig<MclkDefined, SMCLK> {
@@ -276,12 +276,6 @@ impl<SMCLK: SmclkState> ClockConfig<MclkDefined, SMCLK> {
         // Run FLL configuration procedure from the user's guide if we are using DCO
         if let MclkSel::Dcoclk(target_freq) = self.mclk.0 {
             fll_off();
-            msp430::asm::nop();
-            msp430::asm::nop();
-            msp430::asm::nop();
-            msp430::asm::nop();
-            msp430::asm::nop();
-            msp430::asm::nop();
 
             self.periph.csctl3.write(|w| w.selref().refoclk());
             self.periph.csctl0.write(|w| unsafe { w.bits(0) });
@@ -294,13 +288,6 @@ impl<SMCLK: SmclkState> ClockConfig<MclkDefined, SMCLK> {
                     ._1()
             });
 
-            msp430::asm::nop();
-            msp430::asm::nop();
-            msp430::asm::nop();
-            msp430::asm::nop();
-            msp430::asm::nop();
-            msp430::asm::nop();
-            msp430::asm::nop();
             fll_on();
 
             while !self.periph.csctl7.read().fllunlock().is_fllunlock_0() {}
@@ -361,8 +348,8 @@ impl ClockConfig<MclkDefined, SmclkDisabled> {
     #[inline]
     pub fn freeze(self, fram: &mut Fram) -> (Aclk, SysDelay) {
         let mclk_freq = self.mclk.0.freq() >> (self.mclk_div as u32);
-        self.configure_dco_fll();
         unsafe { Self::configure_fram(fram, mclk_freq) };
+        self.configure_dco_fll();
         self.configure_cs();
         (Aclk(self.aclk_sel.freq()), SysDelay::new(mclk_freq))
     }
