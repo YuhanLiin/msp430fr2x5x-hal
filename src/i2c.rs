@@ -333,12 +333,12 @@ impl<USCI: I2cUsci> I2cConfig<USCI, NoClockSet> {
 impl<USCI: I2cUsci> I2cConfig<USCI, ClockSet> {
     /// Performs hardware configuration and creates the I2C bus
     pub fn configure<C: Into<USCI::ClockPin>, D: Into<USCI::DataPin>>(
-        &self,
+        self,
         _scl: C,
         _sda: D,
     ) -> I2cPeriph<USCI> {
         self.configure_regs();
-        I2cPeriph(PhantomData)
+        I2cPeriph{ usci: self.usci }
     }
 
     /// Performs hardware configuration
@@ -363,7 +363,7 @@ impl<USCI: I2cUsci> I2cConfig<USCI, ClockSet> {
 }
 
 /// I2C data bus
-pub struct I2cPeriph<USCI: I2cUsci>(PhantomData<USCI>);
+pub struct I2cPeriph<USCI: I2cUsci>{usci: USCI}
 
 /// I2C transmit/receive errors
 #[derive(Clone, Copy, Debug)]
@@ -379,21 +379,19 @@ pub enum I2CErr {
 impl<USCI: I2cUsci> I2cPeriph<USCI> {
     #[inline(always)]
     fn set_addressing_mode(&mut self, mode: AddressingMode) {
-        let usci = unsafe { USCI::steal() };
-        usci.set_ucsla10(mode.into())
+        self.usci.set_ucsla10(mode.into())
     }
 
     #[inline(always)]
     fn set_transmission_mode(&mut self, mode: TransmissionMode) {
-        let usci = unsafe { USCI::steal() };
-        usci.set_uctr(mode.into())
+        self.usci.set_uctr(mode.into())
     }
 
     /// Blocking read
     fn read(&mut self, address: u16, buffer: &mut [u8]) -> Result<(), I2CErr> {
         if buffer.is_empty() { return Ok(()) }
 
-        let usci = unsafe { USCI::steal() };
+        let usci = &mut self.usci;
 
         usci.i2csa_wr(address);
         usci.transmit_start();
@@ -432,7 +430,7 @@ impl<USCI: I2cUsci> I2cPeriph<USCI> {
     /// Blocking write
     fn write(&mut self, address: u16, bytes: &[u8]) -> Result<(), I2CErr> {
         if bytes.is_empty() { return Ok(()) }
-        let usci = unsafe { USCI::steal() };
+        let usci = &mut self.usci;
 
         usci.i2csa_wr(address);
         usci.transmit_start();

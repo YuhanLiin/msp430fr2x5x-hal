@@ -724,7 +724,7 @@ macro_rules! eusci_b_impl {
 
             #[inline(always)]
             fn uctxstt_rd(&self) -> bool {
-                self.$ucbxctlw0().read().uctxstp().bit()
+                self.$ucbxctlw0().read().uctxstt().bit()
             }
 
             #[inline(always)]
