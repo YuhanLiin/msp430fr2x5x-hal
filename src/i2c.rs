@@ -371,9 +371,7 @@ pub struct I2cPeriph<USCI: I2cUsci>{usci: USCI}
 pub enum I2CErr {
     /// Address was never acknolwedged by slave
     GotNACK,
-    /// Device lost arbitration
-    ArbitrationLost,
-    // Other errors such as the 'clock low timeout' UCCLTOIFG may appear here in future.
+    // Other errors such as 'arbitration lost' and the 'clock low timeout' UCCLTOIFG may appear here in future.
 }
 
 impl<USCI: I2cUsci> I2cPeriph<USCI> {
@@ -389,7 +387,8 @@ impl<USCI: I2cUsci> I2cPeriph<USCI> {
 
     /// Blocking read
     // TODO: Check for arbitration loss
-    fn read(&mut self, address: u16, buffer: &mut [u8]) -> Result<(), I2CErr> {
+    fn read(&mut self, address: u16, buffer: &mut [u8], send_start: bool, send_stop: bool) -> Result<(), I2CErr> {
+        // Hardware doesn't support zero byte reads.
         if buffer.is_empty() { return Ok(()) }
 
         let usci = &mut self.usci;
@@ -398,16 +397,18 @@ impl<USCI: I2cUsci> I2cPeriph<USCI> {
         usci.ifg_rst();
         
         usci.i2csa_wr(address);
-        usci.transmit_start();
 
-        // Wait for initial address byte and (N)ACK to complete.
-        while usci.uctxstt_rd() {
-            asm::nop();
+        if send_start {
+            usci.transmit_start();
+            // Wait for initial address byte and (N)ACK to complete.
+            while usci.uctxstt_rd() {
+                asm::nop();
+            }
         }
 
         let len = buffer.len();
         for (idx, byte) in buffer.iter_mut().enumerate() {
-            if idx == len - 1 {
+            if send_stop && (idx == len - 1) {
                 usci.transmit_stop();
             }
             loop {
@@ -428,8 +429,10 @@ impl<USCI: I2cUsci> I2cPeriph<USCI> {
             *byte = usci.ucrxbuf_rd();
         }
 
-        while usci.uctxstp_rd() {
-            asm::nop();
+        if send_stop {
+            while usci.uctxstp_rd() {
+                asm::nop();
+            }
         }
 
         Ok(())
@@ -437,15 +440,23 @@ impl<USCI: I2cUsci> I2cPeriph<USCI> {
 
     /// Blocking write
     // TODO: Check for arbitration loss
-    fn write(&mut self, address: u16, bytes: &[u8]) -> Result<(), I2CErr> {
-        if bytes.is_empty() { return Ok(()) }
+    fn write(&mut self, address: u16, bytes: &[u8], mut send_start: bool, mut send_stop: bool) -> Result<(), I2CErr> {
+        // The only way to perform a zero byte write is with a start + stop
+        if bytes.is_empty() {
+            send_start = true;
+            send_stop = true;
+        }
+
         let usci = &mut self.usci;
 
         // Clear any flags from previous transactions
         usci.ifg_rst();
 
         usci.i2csa_wr(address);
-        usci.transmit_start();
+
+        if send_start {
+            usci.transmit_start();
+        }
 
         while !usci.ifg_rd().uctxifg0() {
             asm::nop();
@@ -467,20 +478,42 @@ impl<USCI: I2cUsci> I2cPeriph<USCI> {
             }
         } 
 
-        usci.transmit_stop();
-        while usci.uctxstp_rd() {
-            asm::nop();
+        if send_stop {
+            usci.transmit_stop();
+            while usci.uctxstp_rd() {
+                // This is mainly for catching NACKs in a zero-byte write
+                if usci.ifg_rd().ucnackifg() {
+                    return Err(I2CErr::GotNACK);
+                }
+            }
         }
 
         Ok(())
     }
 
+    /// Checks whether a slave with the specified address is present on the I2C bus.
+    /// Sends a zero-byte write and records whether the slave sends an ACK or not.
+    /// 
+    /// A u8 address will use the 7-bit addressing mode, a u16 address uses 10-bit addressing.
+    // If we add more I2C error variants this fn should be changed to return a Result<bool, I2cErr>
+    #[allow(private_bounds)] // The user needn't worry about `AddressType`
+    pub fn is_slave_present<TenOrSevenBit>(&mut self, address: TenOrSevenBit) -> bool 
+    where TenOrSevenBit: embedded_hal::i2c::AddressMode + AddressType + Into<u16> {
+        self.set_addressing_mode(TenOrSevenBit::addr_type());
+        self.set_transmission_mode(TransmissionMode::Transmit);
+        match self.write(address.into(), &[], true, true) {
+            Ok(_) => true,
+            Err(I2CErr::GotNACK) => false,
+            //Err(e) => Err(e),
+        }
+    }
+
     /// blocking write then blocking read
     fn write_read(&mut self, address: u16, bytes: &[u8], buffer: &mut [u8]) -> Result<(), I2CErr> {
         self.set_transmission_mode(TransmissionMode::Transmit);
-        self.write(address, bytes)?;
+        self.write(address, bytes, true, false)?;
         self.set_transmission_mode(TransmissionMode::Receive);
-        self.read(address, buffer)
+        self.read(address, buffer, true, true)
     }
 }
 
@@ -505,7 +538,6 @@ mod ehal1 {
         fn kind(&self) -> ErrorKind {
             match self {
                 I2CErr::GotNACK => ErrorKind::NoAcknowledge(NoAcknowledgeSource::Unknown),
-                I2CErr::ArbitrationLost => ErrorKind::ArbitrationLoss,
             }
         }
     }
@@ -518,15 +550,28 @@ mod ehal1 {
     where TenOrSevenBit: AddressMode + AddressType + Into<u16> + Copy {
         fn transaction(&mut self, address: TenOrSevenBit, ops: &mut [Operation<'_>]) -> Result<(), Self::Error> {
             self.set_addressing_mode(TenOrSevenBit::addr_type());
-            for op in ops {
-                match op {
-                    Operation::Read(items) => {
+            
+            // Ideally this would be done with sliding windows rather than manual indexing, 
+            // but we need a &mut for reads, and `windows_mut` doesn't exist
+            for i in 0..ops.len() {
+                // Send a start if this is the first operation, 
+                // or if the previous operation was a different type (e.g. Read and Write)
+                let send_start = if i == 0 { true } else {
+                    let op1 = &ops[i];
+                    let op2 = &ops[i-1];
+                    core::mem::discriminant(op1) != core::mem::discriminant(op2)
+                };
+                // Send a stop only if this is the last operation
+                let send_stop = i == (ops.len() - 1);
+                
+                match ops[i] {
+                    Operation::Read(ref mut items) => {
                         self.set_transmission_mode(TransmissionMode::Receive);
-                        self.read(address.into(), items)?;
+                        self.read(address.into(), items, send_start, send_stop)?;
                     }
                     Operation::Write(items) => {
                         self.set_transmission_mode(TransmissionMode::Transmit);
-                        self.write(address.into(), items)?;
+                        self.write(address.into(), items, send_start, send_stop)?;
                     }
                 }
             }
@@ -546,7 +591,7 @@ mod ehal02 {
         fn read(&mut self, address: SevenOrTenBit, buffer: &mut [u8]) -> Result<(), Self::Error> {
             self.set_addressing_mode(SevenOrTenBit::addr_type());
             self.set_transmission_mode(TransmissionMode::Receive);
-            self.read(address.into(), buffer)
+            self.read(address.into(), buffer, true, true)
         }
     }
 
@@ -556,7 +601,7 @@ mod ehal02 {
         fn write(&mut self, address: SevenOrTenBit, bytes: &[u8]) -> Result<(), Self::Error> {
             self.set_addressing_mode(SevenOrTenBit::addr_type());
             self.set_transmission_mode(TransmissionMode::Transmit);
-            self.write(address.into(), bytes)
+            self.write(address.into(), bytes, true, true)
         }
     }
 
