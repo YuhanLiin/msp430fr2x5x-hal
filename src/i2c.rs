@@ -388,25 +388,21 @@ impl<USCI: I2cUsci> I2cPeriph<USCI> {
     }
 
     /// Blocking read
+    // TODO: Check for arbitration loss
     fn read(&mut self, address: u16, buffer: &mut [u8]) -> Result<(), I2CErr> {
         if buffer.is_empty() { return Ok(()) }
 
         let usci = &mut self.usci;
 
+        // Clear any flags from previous transactions
+        usci.ifg_rst();
+        
         usci.i2csa_wr(address);
         usci.transmit_start();
 
+        // Wait for initial address byte and (N)ACK to complete.
         while usci.uctxstt_rd() {
             asm::nop();
-        }
-
-        let mut ifg = usci.ifg_rd();
-        if ifg.ucnackifg() {
-            usci.transmit_stop();
-            while usci.uctxstp_rd() {
-                asm::nop();
-            }
-            return Err::<(), I2CErr>(I2CErr::GotNACK);
         }
 
         let len = buffer.len();
@@ -414,8 +410,20 @@ impl<USCI: I2cUsci> I2cPeriph<USCI> {
             if idx == len - 1 {
                 usci.transmit_stop();
             }
-            while !ifg.ucrxifg0() {
-                ifg = usci.ifg_rd();
+            loop {
+                let ifg = usci.ifg_rd();
+                // If NACK (from initial address packet), send STOP and abort
+                if ifg.ucnackifg() {
+                    usci.transmit_stop();
+                    while usci.uctxstp_rd() {
+                        asm::nop();
+                    }
+                    return Err::<(), I2CErr>(I2CErr::GotNACK);
+                }
+                // If byte recieved
+                if ifg.ucrxifg0() {
+                    break;
+                }
             }
             *byte = usci.ucrxbuf_rd();
         }
@@ -428,46 +436,37 @@ impl<USCI: I2cUsci> I2cPeriph<USCI> {
     }
 
     /// Blocking write
+    // TODO: Check for arbitration loss
     fn write(&mut self, address: u16, bytes: &[u8]) -> Result<(), I2CErr> {
         if bytes.is_empty() { return Ok(()) }
         let usci = &mut self.usci;
 
+        // Clear any flags from previous transactions
+        usci.ifg_rst();
+
         usci.i2csa_wr(address);
         usci.transmit_start();
 
-        let mut ifg = usci.ifg_rd();
-        while !ifg.uctxifg0() {
-            ifg = usci.ifg_rd();
-        }
-
-        while usci.uctxstt_rd() {
+        while !usci.ifg_rd().uctxifg0() {
             asm::nop();
-        }
-
-        ifg = usci.ifg_rd();
-        if ifg.ucnackifg() {
-            usci.transmit_stop();
-            while usci.uctxstp_rd() {
-                asm::nop();
-            }
-            return Err::<(), I2CErr>(I2CErr::GotNACK);
         }
 
         for &byte in bytes {
             usci.uctxbuf_wr(byte);
-            ifg = usci.ifg_rd();
-            while !ifg.uctxifg0() {
-                ifg = usci.ifg_rd();
-            }
-            if ifg.ucnackifg() {
-                usci.transmit_stop();
-                while usci.uctxstp_rd() {
-                    asm::nop();
+            loop {
+                if usci.ifg_rd().ucnackifg() {
+                    usci.transmit_stop();
+                    while usci.uctxstp_rd() {
+                        asm::nop();
+                    }
+                    return Err(I2CErr::GotNACK);
                 }
-                return Err::<(), I2CErr>(I2CErr::GotNACK);
+                if usci.ifg_rd().uctxifg0() {
+                    break;
+                }
             }
-        }
-        // usci.uctxbuf_wr(bytes[bytes.len()-1]);
+        } 
+
         usci.transmit_stop();
         while usci.uctxstp_rd() {
             asm::nop();

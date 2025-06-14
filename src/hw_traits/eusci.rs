@@ -302,6 +302,8 @@ pub trait EUsciI2C: Steal {
 
     fn ifg_rd(&self) -> Self::IfgOut;
     fn ifg_wr(&self, reg: &UcbIFG);
+    fn ifg_rst(&self);
+
     fn iv_rd(&self) -> u16;
 }
 
@@ -898,6 +900,11 @@ macro_rules! eusci_b_impl {
             #[inline(always)]
             fn ifg_wr(&self, reg: &UcbIFG) {
                 self.$ucbxifg().write(UcbIFG_wr! {reg});
+            }
+
+            #[inline(always)]
+            fn ifg_rst(&self) {
+                self.$ucbxifg().reset();
             }
 
             #[inline(always)]
