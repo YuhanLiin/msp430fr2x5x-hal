@@ -29,12 +29,14 @@ use core::marker::PhantomData;
 use embedded_hal::i2c::{SevenBitAddress, TenBitAddress};
 use msp430::asm;
 
-/// Configure bus to use 7bit or 10bit I2C slave addressing mode
+/// Enumerates the two I2C addressing modes: 7-bit and 10-bit.
+/// 
+/// Used internally by the HAL.
 #[derive(Clone, Copy)]
-enum AddressingMode {
-    /// 7 Bit addressing mode
+pub enum AddressingMode {
+    /// 7-bit addressing mode
     SevenBit = 0,
-    /// 10 bit addressing mode
+    /// 10-bit addressing mode
     TenBit = 1,
 }
 
@@ -496,7 +498,6 @@ impl<USCI: I2cUsci> I2cPeriph<USCI> {
     /// 
     /// A u8 address will use the 7-bit addressing mode, a u16 address uses 10-bit addressing.
     // If we add more I2C error variants this fn should be changed to return a Result<bool, I2cErr>
-    #[allow(private_bounds)] // The user needn't worry about `AddressType`
     pub fn is_slave_present<TenOrSevenBit>(&mut self, address: TenOrSevenBit) -> bool 
     where TenOrSevenBit: embedded_hal::i2c::AddressMode + AddressType + Into<u16> {
         self.set_addressing_mode(TenOrSevenBit::addr_type());
@@ -519,7 +520,10 @@ impl<USCI: I2cUsci> I2cPeriph<USCI> {
 
 // Trait to link embedded-hal types to our addressing mode enum.
 // Since SevenBitAddress and TenBitAddress are just aliases for u8 and u16 in both ehal 1.0 and 0.2.7, this works for both!
-trait AddressType {
+/// A trait marking types that can be used as I2C addresses. Namely `u8` for 7-bit addresses and `u16` for 10-bit addresses.
+/// 
+/// Used internally by the HAL.
+pub trait AddressType: sealed::Sealed {
     /// Return the `AddressingMode` that relates to this type: `SevenBit` for `u8`, `TenBit` for `u16`.
     fn addr_type() -> AddressingMode;
 }
@@ -528,6 +532,14 @@ impl AddressType for SevenBitAddress {
 }
 impl AddressType for TenBitAddress {
     fn addr_type() -> AddressingMode {AddressingMode::TenBit}
+}
+
+mod sealed {
+    use embedded_hal::i2c::{SevenBitAddress, TenBitAddress};
+
+    pub trait Sealed {}
+    impl Sealed for SevenBitAddress {}
+    impl Sealed for TenBitAddress {}
 }
 
 mod ehal1 {
