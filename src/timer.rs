@@ -374,8 +374,7 @@ mod ehal02 {
     
         #[inline(always)]
         fn cancel(&mut self) -> Result<(), Self::Error> {
-            let timer = unsafe { T::steal() };
-            timer.stop();
+            self.pause();
             Ok(())
         }
     }

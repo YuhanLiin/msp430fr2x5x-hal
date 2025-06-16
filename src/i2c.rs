@@ -26,7 +26,7 @@ use crate::{
     pac,
 };
 use core::marker::PhantomData;
-use embedded_hal::i2c::{SevenBitAddress, TenBitAddress};
+use embedded_hal::i2c::{AddressMode, SevenBitAddress, TenBitAddress};
 use msp430::asm;
 
 /// Enumerates the two I2C addressing modes: 7-bit and 10-bit.
@@ -499,7 +499,7 @@ impl<USCI: I2cUsci> I2cPeriph<USCI> {
     /// A u8 address will use the 7-bit addressing mode, a u16 address uses 10-bit addressing.
     // If we add more I2C error variants this fn should be changed to return a Result<bool, I2cErr>
     pub fn is_slave_present<TenOrSevenBit>(&mut self, address: TenOrSevenBit) -> bool 
-    where TenOrSevenBit: embedded_hal::i2c::AddressMode + AddressType + Into<u16> {
+    where TenOrSevenBit: AddressType {
         self.set_addressing_mode(TenOrSevenBit::addr_type());
         self.set_transmission_mode(TransmissionMode::Transmit);
         match self.write(address.into(), &[], true, true) {
@@ -523,27 +523,23 @@ impl<USCI: I2cUsci> I2cPeriph<USCI> {
 /// A trait marking types that can be used as I2C addresses. Namely `u8` for 7-bit addresses and `u16` for 10-bit addresses.
 /// 
 /// Used internally by the HAL.
-pub trait AddressType: sealed::Sealed {
+pub trait AddressType: AddressMode + Into<u16> + Copy {
     /// Return the `AddressingMode` that relates to this type: `SevenBit` for `u8`, `TenBit` for `u16`.
     fn addr_type() -> AddressingMode;
 }
 impl AddressType for SevenBitAddress {
-    fn addr_type() -> AddressingMode {AddressingMode::SevenBit}
+    fn addr_type() -> AddressingMode {
+        AddressingMode::SevenBit
+    }
 }
 impl AddressType for TenBitAddress {
-    fn addr_type() -> AddressingMode {AddressingMode::TenBit}
-}
-
-mod sealed {
-    use embedded_hal::i2c::{SevenBitAddress, TenBitAddress};
-
-    pub trait Sealed {}
-    impl Sealed for SevenBitAddress {}
-    impl Sealed for TenBitAddress {}
+    fn addr_type() -> AddressingMode {
+        AddressingMode::TenBit
+    }
 }
 
 mod ehal1 {
-    use embedded_hal::i2c::{AddressMode, Error, ErrorKind, ErrorType, I2c, Operation, NoAcknowledgeSource};
+    use embedded_hal::i2c::{Error, ErrorKind, ErrorType, I2c, Operation, NoAcknowledgeSource};
     use super::*;
 
     impl Error for I2CErr {
@@ -559,7 +555,7 @@ mod ehal1 {
     }
 
     impl<USCI: I2cUsci, TenOrSevenBit> I2c<TenOrSevenBit> for I2cPeriph<USCI> 
-    where TenOrSevenBit: AddressMode + AddressType + Into<u16> + Copy {
+    where TenOrSevenBit: AddressType {
         fn transaction(&mut self, address: TenOrSevenBit, ops: &mut [Operation<'_>]) -> Result<(), Self::Error> {
             self.set_addressing_mode(TenOrSevenBit::addr_type());
             
@@ -594,11 +590,11 @@ mod ehal1 {
 
 #[cfg(feature = "embedded-hal-02")]
 mod ehal02 {
-    use embedded_hal_02::blocking::i2c::{AddressMode, Read, Write, WriteRead};
+    use embedded_hal_02::blocking::i2c::{AddressMode as ehal02AddressMode, Read, Write, WriteRead};
     use super::*;
 
     impl<USCI: I2cUsci, SevenOrTenBit> Read<SevenOrTenBit> for I2cPeriph<USCI>
-    where SevenOrTenBit: AddressMode + AddressType + Into<u16> {
+    where SevenOrTenBit: ehal02AddressMode + AddressType {
         type Error = I2CErr;
         fn read(&mut self, address: SevenOrTenBit, buffer: &mut [u8]) -> Result<(), Self::Error> {
             self.set_addressing_mode(SevenOrTenBit::addr_type());
@@ -608,7 +604,7 @@ mod ehal02 {
     }
 
     impl<USCI: I2cUsci, SevenOrTenBit> Write<SevenOrTenBit> for I2cPeriph<USCI> 
-    where SevenOrTenBit: AddressMode + AddressType + Into<u16> {
+    where SevenOrTenBit: ehal02AddressMode + AddressType {
         type Error = I2CErr;
         fn write(&mut self, address: SevenOrTenBit, bytes: &[u8]) -> Result<(), Self::Error> {
             self.set_addressing_mode(SevenOrTenBit::addr_type());
@@ -618,7 +614,7 @@ mod ehal02 {
     }
 
     impl<USCI: I2cUsci, SevenOrTenBit> WriteRead<SevenOrTenBit> for I2cPeriph<USCI>  
-    where SevenOrTenBit: AddressMode + AddressType + Into<u16> {
+    where SevenOrTenBit: ehal02AddressMode + AddressType {
         type Error = I2CErr;
         fn write_read(
             &mut self,

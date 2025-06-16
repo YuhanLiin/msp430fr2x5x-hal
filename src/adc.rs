@@ -27,7 +27,7 @@ use core::convert::Infallible;
 use msp430fr2355::ADC;
 
 #[cfg(feature = "embedded-hal-02")]
-use embedded_hal_02::adc::Channel;
+pub use embedded_hal_02::adc::Channel;
 
 #[cfg(not(feature = "embedded-hal-02"))]
 /// A marker trait to identify MCU pins that can be used as inputs to an ADC channel.

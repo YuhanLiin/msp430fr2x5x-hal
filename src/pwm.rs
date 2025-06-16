@@ -178,6 +178,7 @@ pub struct PwmUninit<T, C>(PhantomData<T>, PhantomData<C>);
 
 impl<T: PwmPeriph<C>, C> PwmUninit<T, C> {
     /// Initializes the PWM pin by passing in the appropriately configured GPIO pin.
+    #[inline]
     pub fn init(self, pin: T::Gpio) -> Pwm<T, C> {
         Pwm {
             _timer: PhantomData,
@@ -188,6 +189,7 @@ impl<T: PwmPeriph<C>, C> PwmUninit<T, C> {
 }
 
 impl<T, C> PwmUninit<T, C> {
+    #[inline]
     fn new() -> Self {
         Self(PhantomData, PhantomData)
     }
@@ -210,6 +212,7 @@ mod ehal1 {
     }
 
     impl<T: PwmPeriph<C>, C> SetDutyCycle for Pwm<T, C> {
+        #[inline]
         fn max_duty_cycle(&self) -> u16 {
             let timer = unsafe { T::steal() };
             CCRn::<CCR0>::get_ccrn(&timer)
@@ -221,6 +224,7 @@ mod ehal1 {
         /// as reported by `max_duty_cycle`.
         ///
         /// As the error type is `Infallible` this can be safely unwrapped.
+        #[inline]
         fn set_duty_cycle(&mut self, duty: u16) -> Result<(), Self::Error> {
             let timer = unsafe { T::steal() };
             CCRn::<C>::set_ccrn(&timer, duty);
