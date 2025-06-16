@@ -559,20 +559,19 @@ mod ehal1 {
         fn transaction(&mut self, address: TenOrSevenBit, ops: &mut [Operation<'_>]) -> Result<(), Self::Error> {
             self.set_addressing_mode(TenOrSevenBit::addr_type());
             
-            // Ideally this would be done with sliding windows rather than manual indexing, 
-            // but we need a &mut for reads, and `windows_mut` doesn't exist
-            for i in 0..ops.len() {
+            let mut prev_discr = None;
+            let len = ops.len();
+            for (i, op) in ops.iter_mut().enumerate() {
                 // Send a start if this is the first operation, 
                 // or if the previous operation was a different type (e.g. Read and Write)
-                let send_start = if i == 0 { true } else {
-                    let op1 = &ops[i];
-                    let op2 = &ops[i-1];
-                    core::mem::discriminant(op1) != core::mem::discriminant(op2)
+                let send_start = match prev_discr {
+                    None => true,
+                    Some(prev) => prev != core::mem::discriminant(op),
                 };
                 // Send a stop only if this is the last operation
-                let send_stop = i == (ops.len() - 1);
+                let send_stop = i == (len - 1);
                 
-                match ops[i] {
+                match op {
                     Operation::Read(ref mut items) => {
                         self.set_transmission_mode(TransmissionMode::Receive);
                         self.read(address.into(), items, send_start, send_stop)?;
@@ -582,6 +581,7 @@ mod ehal1 {
                         self.write(address.into(), items, send_start, send_stop)?;
                     }
                 }
+                prev_discr = Some(core::mem::discriminant(op));
             }
             Ok(())
         }

@@ -336,7 +336,7 @@ pub enum SpiErr {
 }
 
 mod ehal1 {
-    use embedded_hal::{delay::DelayNs, spi::{Error, ErrorType, Operation, SpiBus, SpiDevice}};
+    use embedded_hal::spi::{Error, ErrorType, SpiBus};
     use nb::block;
     use super::*;
 
@@ -382,17 +382,16 @@ mod ehal1 {
             let mut read_bytes = read.iter_mut();
             let mut write_bytes = write.iter();
             const DUMMY_WRITE: u8 = 0x00;
-            let dummy_read = &mut 0;
+            let mut dummy_read = 0;
 
             // Pair up read and write bytes (inserting dummy values as necessary) until everything's sent
             loop {
-                let rd_byte = read_bytes.next();
-                let wr_byte = write_bytes.next();
-                
-                if rd_byte.is_none() && wr_byte.is_none() { break; }
-
-                let wr = wr_byte.unwrap_or(&DUMMY_WRITE);
-                let rd = rd_byte.unwrap_or(dummy_read);
+                let (rd, wr) = match (read_bytes.next(), write_bytes.next()) {
+                    (Some(rd), Some(wr)) => { (rd, wr) },
+                    (Some(rd), None    ) => { (rd, &DUMMY_WRITE) },
+                    (None,     Some(wr)) => { (&mut dummy_read, wr) },
+                    (None,     None    ) => { break },
+                };
 
                 block!(self.send_byte(*wr))?;
                 *rd = block!(self.recv_byte())?;
