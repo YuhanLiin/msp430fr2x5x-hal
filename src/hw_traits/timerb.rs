@@ -83,7 +83,10 @@ pub trait TimerB: Steal {
     /// Stop timer
     fn stop(&self);
 
-    /// Resume counting
+    /// Resume counting up.
+    /// 
+    /// # Note
+    /// Assumes bit 1 of MC is 0. If you add support for Continuous or Up/Down modes you will have to rewrite this.
     fn resume(&self);
 
     /// Set expansion register clock divider settings
@@ -258,7 +261,7 @@ macro_rules! timerb_impl {
 
             #[inline(always)]
             fn resume(&self) {
-                unsafe { self.$tbxctl.modify(|r, w| w.mc().up()) };
+                unsafe { self.$tbxctl.set_bits(|w| w.mc().up()) };
             }
 
             #[inline(always)]
