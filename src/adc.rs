@@ -256,7 +256,7 @@ macro_rules! impl_adc_channel_extra {
 }
 
 
-impl_adc_channel_extra!(InternalTempSensor, 12);
+impl_adc_channel_extra!(InternalTempSensor<'_>, 12);
 impl_adc_channel_extra!(InternalVRef, 13);
 
 // Users needn't deal with the structs themselves so it just adds noise to the docs. We instead document the functions below. 

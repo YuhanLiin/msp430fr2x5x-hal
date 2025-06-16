@@ -1,5 +1,7 @@
 //! Power management module
 
+use core::marker::PhantomData;
+
 use msp430fr2355::PMM;
 
 /// PMM type
@@ -30,7 +32,7 @@ pub enum ReferenceVoltage {
 /// Token indicating that the internal temperature sensor has been enabled.
 /// This can be passed to the ADC to read the temperature sensor voltage.
 #[derive(Debug)]
-pub struct InternalTempSensor(());
+pub struct InternalTempSensor<'a>(PhantomData<&'a InternalVRef>);
 
 impl Pmm {
     /// Sets the LOCKLPM5 bit and returns a `Pmm`
@@ -56,9 +58,9 @@ impl Pmm {
 
     /// Enables the internal temperature sensor.
     /// Returns a token signifying that the temp sensor has been enabled.
-    pub fn enable_internal_temp_sensor(&mut self, _vref: &InternalVRef) -> InternalTempSensor {
+    pub fn enable_internal_temp_sensor<'a, 'b:'a>(&'a mut self, _vref: &'b InternalVRef) -> InternalTempSensor<'b> {
         unsafe { self.0.pmmctl2.set_bits(|w| w.tsensoren().set_bit()); }
-        InternalTempSensor(())
+        InternalTempSensor(PhantomData)
     }
 
     /// Disables the internal temperature sensor
