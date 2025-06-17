@@ -35,7 +35,6 @@ fn main() -> ! {
         .aclk_vloclk()
         .freeze(&mut fram);
 
-    // If we have multiple slave devices we can should use software controlled chip select pins.
     let mut spi = SpiConfig::new(periph.E_USCI_A0, MODE_0, true)
         .use_smclk(&smclk, 16) // 8MHz / 16 = 500kHz
         .configure(miso, mosi, sck);
@@ -48,7 +47,7 @@ fn main() -> ! {
         block!(spi.write(0b10101010)).unwrap();
 
         // Writing on MOSI also shifts in data on MISO - read from the hardware buffer with `.read()`.
-        // Every successful `write()` call should be followed by a `.read()`.
+        // Every successful `.write()` call should be followed by a `.read()`.
         // You should handle errors here rather than unwrapping
         let _ = block!(spi.read()).unwrap();
 

@@ -220,10 +220,10 @@ impl<USCI: SpiUsci> SpiConfig<USCI, ClockSet> {
         _miso: SO,
         _mosi: SI,
         _sclk: CLK
-    ) -> SpiPeriph<USCI> {
+    ) -> Spi<USCI> {
         self.ctlw0.ucmode = Ucmode::ThreePinSPI;
         self.configure_hw();
-        SpiPeriph(PhantomData)
+        Spi(PhantomData)
     }
 
     #[inline]
@@ -242,9 +242,9 @@ impl<USCI: SpiUsci> SpiConfig<USCI, ClockSet> {
 }
 
 /// Represents a group of pins configured for SPI communication
-pub struct SpiPeriph<USCI: SpiUsci>(PhantomData<USCI>);
+pub struct Spi<USCI: SpiUsci>(PhantomData<USCI>);
 
-impl<USCI: SpiUsci> SpiPeriph<USCI> {
+impl<USCI: SpiUsci> Spi<USCI> {
     /// Enable Rx interrupts, which fire when a byte is ready to be read
     #[inline(always)]
     pub fn set_rx_interrupt(&mut self) {
@@ -348,11 +348,11 @@ mod ehal1 {
         }
     }
 
-    impl<USCI: SpiUsci> ErrorType for SpiPeriph<USCI> {
+    impl<USCI: SpiUsci> ErrorType for Spi<USCI> {
         type Error = SpiErr;
     }
 
-    impl<USCI: SpiUsci> SpiBus for SpiPeriph<USCI> {
+    impl<USCI: SpiUsci> SpiBus for Spi<USCI> {
         /// Send dummy packets (`0x00`) on MOSI so the slave can respond on MISO. Store the response in `words`.
         fn read(&mut self, words: &mut [u8]) -> Result<(), Self::Error> {
             for word in words {
@@ -424,7 +424,7 @@ mod ehal_nb1 {
     use embedded_hal_nb::{nb, spi::FullDuplex};
     use super::*;
 
-    impl<USCI: SpiUsci> FullDuplex<u8> for SpiPeriph<USCI> {
+    impl<USCI: SpiUsci> FullDuplex<u8> for Spi<USCI> {
         fn read(&mut self) -> nb::Result<u8, Self::Error> {
             self.recv_byte()
         }
@@ -440,7 +440,7 @@ mod ehal02 {
     use embedded_hal_02::spi::FullDuplex;
     use super::*;
 
-    impl<USCI: SpiUsci> FullDuplex<u8> for SpiPeriph<USCI> {
+    impl<USCI: SpiUsci> FullDuplex<u8> for Spi<USCI> {
         type Error = SpiErr;
         fn read(&mut self) -> nb::Result<u8, Self::Error> {
             self.recv_byte()
@@ -452,6 +452,6 @@ mod ehal02 {
     }
 
     // Implementing FullDuplex above gets us a blocking write and transfer implementation for free
-    impl<USCI: SpiUsci> embedded_hal_02::blocking::spi::write::Default<u8> for SpiPeriph<USCI> {}
-    impl<USCI: SpiUsci> embedded_hal_02::blocking::spi::transfer::Default<u8> for SpiPeriph<USCI> {}
+    impl<USCI: SpiUsci> embedded_hal_02::blocking::spi::write::Default<u8> for Spi<USCI> {}
+    impl<USCI: SpiUsci> embedded_hal_02::blocking::spi::transfer::Default<u8> for Spi<USCI> {}
 }

@@ -338,9 +338,9 @@ impl<USCI: I2cUsci> I2cConfig<USCI, ClockSet> {
         self,
         _scl: C,
         _sda: D,
-    ) -> I2cPeriph<USCI> {
+    ) -> I2cBus<USCI> {
         self.configure_regs();
-        I2cPeriph{ usci: self.usci }
+        I2cBus{ usci: self.usci }
     }
 
     /// Performs hardware configuration
@@ -365,7 +365,7 @@ impl<USCI: I2cUsci> I2cConfig<USCI, ClockSet> {
 }
 
 /// I2C data bus
-pub struct I2cPeriph<USCI: I2cUsci>{usci: USCI}
+pub struct I2cBus<USCI: I2cUsci>{usci: USCI}
 
 /// I2C transmit/receive errors
 #[derive(Clone, Copy, Debug)]
@@ -376,7 +376,7 @@ pub enum I2CErr {
     // Other errors such as 'arbitration lost' and the 'clock low timeout' UCCLTOIFG may appear here in future.
 }
 
-impl<USCI: I2cUsci> I2cPeriph<USCI> {
+impl<USCI: I2cUsci> I2cBus<USCI> {
     #[inline(always)]
     fn set_addressing_mode(&mut self, mode: AddressingMode) {
         self.usci.set_ucsla10(mode.into())
@@ -550,11 +550,11 @@ mod ehal1 {
         }
     }
 
-    impl<USCI: I2cUsci> ErrorType for I2cPeriph<USCI> {
+    impl<USCI: I2cUsci> ErrorType for I2cBus<USCI> {
         type Error = I2CErr;
     }
 
-    impl<USCI: I2cUsci, TenOrSevenBit> I2c<TenOrSevenBit> for I2cPeriph<USCI> 
+    impl<USCI: I2cUsci, TenOrSevenBit> I2c<TenOrSevenBit> for I2cBus<USCI> 
     where TenOrSevenBit: AddressType {
         fn transaction(&mut self, address: TenOrSevenBit, ops: &mut [Operation<'_>]) -> Result<(), Self::Error> {
             self.set_addressing_mode(TenOrSevenBit::addr_type());
@@ -593,7 +593,7 @@ mod ehal02 {
     use embedded_hal_02::blocking::i2c::{AddressMode as ehal02AddressMode, Read, Write, WriteRead};
     use super::*;
 
-    impl<USCI: I2cUsci, SevenOrTenBit> Read<SevenOrTenBit> for I2cPeriph<USCI>
+    impl<USCI: I2cUsci, SevenOrTenBit> Read<SevenOrTenBit> for I2cBus<USCI>
     where SevenOrTenBit: ehal02AddressMode + AddressType {
         type Error = I2CErr;
         fn read(&mut self, address: SevenOrTenBit, buffer: &mut [u8]) -> Result<(), Self::Error> {
@@ -603,7 +603,7 @@ mod ehal02 {
         }
     }
 
-    impl<USCI: I2cUsci, SevenOrTenBit> Write<SevenOrTenBit> for I2cPeriph<USCI> 
+    impl<USCI: I2cUsci, SevenOrTenBit> Write<SevenOrTenBit> for I2cBus<USCI> 
     where SevenOrTenBit: ehal02AddressMode + AddressType {
         type Error = I2CErr;
         fn write(&mut self, address: SevenOrTenBit, bytes: &[u8]) -> Result<(), Self::Error> {
@@ -613,7 +613,7 @@ mod ehal02 {
         }
     }
 
-    impl<USCI: I2cUsci, SevenOrTenBit> WriteRead<SevenOrTenBit> for I2cPeriph<USCI>  
+    impl<USCI: I2cUsci, SevenOrTenBit> WriteRead<SevenOrTenBit> for I2cBus<USCI>  
     where SevenOrTenBit: ehal02AddressMode + AddressType {
         type Error = I2CErr;
         fn write_read(
