@@ -1,12 +1,15 @@
 //! SPI
 //! 
 //! Peripherals eUSCI_A0, eUSCI_A1, eUSCI_B0 and eUSCI_B1 can be used for SPI communication.
+//! Currently there is only support for the MSP430 to act as the master.
+//!
+//! Begin by calling [`SpiConfig::new()`]. Once configured an [`Spi`] will be returned. 
+//!
+//! Note that even if you are only using the legacy embedded-hal 0.2.7 trait implementations, configuration of the SPI bus uses the embedded-hal 1.0 versions of types (e.g. [`Mode`]).
 //! 
-//! Begin by calling [`SpiConfig::new()`]. Once configured an [`SpiPeriph`] will be returned.
+//! [`Spi`] implements the embedded-hal [`SpiBus`](embedded_hal::spi::SpiBus) trait. 
 //! 
-//! [`SpiPeriph`] implements the embedded-hal [`SpiBus`](embedded_hal::spi::SpiBus) trait. 
-//! 
-//! [`SpiPeriph`] also provides a non-blocking implementation through [`embedded-hal-nb`](embedded_hal_nb)'s 
+//! [`Spi`] also provides a non-blocking implementation through [`embedded-hal-nb`](embedded_hal_nb)'s 
 //! [`FullDuplex`](embedded_hal_nb::spi::FullDuplex) trait.
 //!
 //! Pins used:
