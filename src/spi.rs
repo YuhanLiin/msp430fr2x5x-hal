@@ -387,10 +387,10 @@ mod ehal1 {
             // Pair up read and write bytes (inserting dummy values as necessary) until everything's sent
             loop {
                 let (rd, wr) = match (read_bytes.next(), write_bytes.next()) {
-                    (Some(rd), Some(wr)) => { (rd, wr) },
-                    (Some(rd), None    ) => { (rd, &DUMMY_WRITE) },
-                    (None,     Some(wr)) => { (&mut dummy_read, wr) },
-                    (None,     None    ) => { break },
+                    (Some(rd), Some(wr)) => (rd, wr),
+                    (Some(rd), None    ) => (rd, &DUMMY_WRITE),
+                    (None,     Some(wr)) => (&mut dummy_read, wr),
+                    (None,     None    ) => break,
                 };
 
                 block!(self.send_byte(*wr))?;
