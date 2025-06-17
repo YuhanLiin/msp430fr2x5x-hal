@@ -83,11 +83,12 @@ pub trait TimerB: Steal {
     /// Stop timer
     fn stop(&self);
 
-    /// Resume counting up.
-    /// 
-    /// # Note
-    /// Assumes bit 1 of MC is 0. If you add support for Continuous or Up/Down modes you will have to rewrite this.
-    fn resume(&self);
+    /// Resume a *stopped* timer. Assumes the previous mode was 'stop'.
+    /// Atomic, fast.
+    fn resume(&self, mode: RunningMode);
+    
+    /// Change a timer's mode. Non-atomic, slower.
+    fn change_mode(&self, mode: Mode);
 
     /// Set expansion register clock divider settings
     fn set_tbidex(&self, tbidex: TimerExDiv);
@@ -99,6 +100,21 @@ pub trait TimerB: Steal {
     fn tbie_clr(&self);
 
     fn tbxiv_rd(&self) -> u16;
+
+    /// Get the current timer value.
+    fn get_tbxr(&self) -> u16;
+}
+
+pub enum RunningMode {
+    Up = 0b01, 
+    Continuous = 0b10, 
+    UpDown = 0b11,
+}
+pub enum Mode {
+    Stop = 0b00,
+    Up = 0b01, 
+    Continuous = 0b10, 
+    UpDown = 0b11,
 }
 
 pub trait CCRn<C>: Steal {
@@ -203,7 +219,7 @@ macro_rules! ccrn_impl {
 }
 
 macro_rules! timerb_impl {
-    ($TBx:ident, $tbx:ident, $tbxctl:ident, $tbxex:ident, $tbxiv:ident, $([$CCRn:ident, $tbxcctln:ident, $tbxccrn:ident]),*) => {
+    ($TBx:ident, $tbx:ident, $tbxctl:ident, $tbxex:ident, $tbxiv:ident, $tbxr:ident, $([$CCRn:ident, $tbxcctln:ident, $tbxccrn:ident]),*) => {
         impl Steal for pac::$TBx {
             #[inline(always)]
             unsafe fn steal() -> Self {
@@ -260,8 +276,13 @@ macro_rules! timerb_impl {
             }
 
             #[inline(always)]
-            fn resume(&self) {
-                unsafe { self.$tbxctl.set_bits(|w| w.mc().up()) };
+            fn change_mode(&self, mode: Mode) {
+                self.$tbxctl.modify(|_,w| w.mc().bits(mode as u8))
+            }
+
+            #[inline(always)]
+            fn resume(&self, mode: RunningMode) {
+                unsafe { self.$tbxctl.set_bits(|w| w.mc().bits(mode as u8)) };
             }
 
             #[inline(always)]
@@ -293,6 +314,11 @@ macro_rules! timerb_impl {
             fn tbxiv_rd(&self) -> u16 {
                 self.$tbxiv.read().bits()
             }
+
+            #[inline(always)]
+            fn get_tbxr(&self) -> u16 {
+                self.$tbxr.read().bits()
+            }
         }
 
         $(ccrn_impl!($TBx, $CCRn, $tbxcctln, $tbxccrn);)*
@@ -305,6 +331,7 @@ timerb_impl!(
     tb0ctl,
     tb0ex0,
     tb0iv,
+    tb0r,
     [CCR0, tb0cctl0, tb0ccr0],
     [CCR1, tb0cctl1, tb0ccr1],
     [CCR2, tb0cctl2, tb0ccr2]
@@ -316,6 +343,7 @@ timerb_impl!(
     tb1ctl,
     tb1ex0,
     tb1iv,
+    tb1r,
     [CCR0, tb1cctl0, tb1ccr0],
     [CCR1, tb1cctl1, tb1ccr1],
     [CCR2, tb1cctl2, tb1ccr2]
@@ -327,6 +355,7 @@ timerb_impl!(
     tb2ctl,
     tb2ex0,
     tb2iv,
+    tb2r,
     [CCR0, tb2cctl0, tb2ccr0],
     [CCR1, tb2cctl1, tb2ccr1],
     [CCR2, tb2cctl2, tb2ccr2]
@@ -338,6 +367,7 @@ timerb_impl!(
     tb3ctl,
     tb3ex0,
     tb3iv,
+    tb3r,
     [CCR0, tb3cctl0, tb3ccr0],
     [CCR1, tb3cctl1, tb3ccr1],
     [CCR2, tb3cctl2, tb3ccr2],

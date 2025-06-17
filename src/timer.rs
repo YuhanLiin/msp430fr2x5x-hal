@@ -9,7 +9,7 @@
 
 use crate::clock::{Aclk, Smclk};
 use crate::gpio::{Alternate1, Floating, Input, Pin, Pin2, Pin6, Pin7, P2, P5, P6};
-use crate::hw_traits::timerb::{CCRn, Tbssel, TimerB};
+use crate::hw_traits::timerb::{CCRn, RunningMode, Tbssel, TimerB};
 use core::convert::Infallible;
 use core::marker::PhantomData;
 use msp430fr2355 as pac;
@@ -307,7 +307,14 @@ impl<T: TimerPeriph> Timer<T> {
     /// Resume counting from the current value
     pub fn resume(&mut self) {
         let timer = unsafe { T::steal() };
-        timer.resume();
+        timer.resume(RunningMode::Up);
+    }
+
+    #[inline]
+    /// Get the current timer value
+    pub fn count(&mut self) -> u16 {
+        let timer = unsafe { T::steal() };
+        timer.get_tbxr()
     }
 }
 
