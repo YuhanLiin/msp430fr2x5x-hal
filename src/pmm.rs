@@ -42,13 +42,18 @@ impl Pmm {
     }
 
     /// Configures the internal voltage reference to the specified voltage and enables it.
-    /// Returns a token signifying that the voltage reference has been enabled.
-    pub fn enable_internal_reference(&mut self, vref: ReferenceVoltage) -> InternalVRef {
-        self.0.pmmctl2.modify(|_, w| w
-            .refvsel().bits(vref as u8)
-            .intrefen().intrefen_1()
-        );
-        InternalVRef(vref)
+    /// Returns a token signifying that the voltage reference has been enabled, unless it was *already* enabled.
+    pub fn enable_internal_reference(&mut self, vref: ReferenceVoltage) -> Option<InternalVRef> {
+        match self.0.pmmctl2.read().intrefen().bit() {
+            true => None,
+            false => {
+                self.0.pmmctl2.modify(|_, w| w
+                    .refvsel().bits(vref as u8)
+                    .intrefen().intrefen_1()
+                );
+                Some(InternalVRef(vref))
+            },
+        }
     }
 
     /// Disables the internal reference voltage
@@ -57,10 +62,15 @@ impl Pmm {
     }
 
     /// Enables the internal temperature sensor.
-    /// Returns a token signifying that the temp sensor has been enabled.
-    pub fn enable_internal_temp_sensor<'a, 'b:'a>(&'a mut self, _vref: &'b InternalVRef) -> InternalTempSensor<'b> {
-        unsafe { self.0.pmmctl2.set_bits(|w| w.tsensoren().set_bit()); }
-        InternalTempSensor(PhantomData)
+    /// Returns a token signifying that the temp sensor has been enabled, unless it was *already* enabled.
+    pub fn enable_internal_temp_sensor<'a>(&mut self, _vref: &'a InternalVRef) -> Option<InternalTempSensor<'a>> {
+        match self.0.pmmctl2.read().tsensoren().bit() {
+            true  => None,
+            false => {
+                unsafe { self.0.pmmctl2.set_bits(|w| w.tsensoren().set_bit()); }
+                Some(InternalTempSensor(PhantomData))
+            },
+        }
     }
 
     /// Disables the internal temperature sensor

@@ -37,8 +37,8 @@ fn main() -> ! {
     .use_modclk()
     .configure(periph.ADC);
 
-    let vref = pmm.enable_internal_reference(ReferenceVoltage::_1V5);
-    let mut t_sense = pmm.enable_internal_temp_sensor(&vref);
+    let vref = pmm.enable_internal_reference(ReferenceVoltage::_1V5).unwrap();
+    let mut t_sense = pmm.enable_internal_temp_sensor(&vref).unwrap();
 
     loop {
         // Get the voltage of the internal temp sensor, assuming the ADC reference voltage is 3300mV
