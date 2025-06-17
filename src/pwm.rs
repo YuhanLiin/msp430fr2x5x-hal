@@ -13,7 +13,6 @@ use crate::gpio::{
 use crate::hw_traits::timerb::{CCRn, Outmod};
 use crate::timer::{CapCmpTimer3, CapCmpTimer7};
 use core::marker::PhantomData;
-use embedded_hal::PwmPin;
 use msp430fr2355 as pac;
 
 pub use crate::timer::{
@@ -178,7 +177,8 @@ impl<T: CapCmpTimer7> PwmParts7<T> {
 pub struct PwmUninit<T, C>(PhantomData<T>, PhantomData<C>);
 
 impl<T: PwmPeriph<C>, C> PwmUninit<T, C> {
-    /// Initialized the PWM pin by passing in the appropriately configured GPIO pin
+    /// Initializes the PWM pin by passing in the appropriately configured GPIO pin.
+    #[inline]
     pub fn init(self, pin: T::Gpio) -> Pwm<T, C> {
         Pwm {
             _timer: PhantomData,
@@ -189,6 +189,7 @@ impl<T: PwmPeriph<C>, C> PwmUninit<T, C> {
 }
 
 impl<T, C> PwmUninit<T, C> {
+    #[inline]
     fn new() -> Self {
         Self(PhantomData, PhantomData)
     }
@@ -201,37 +202,74 @@ pub struct Pwm<T: PwmPeriph<C>, C> {
     pin: T::Gpio,
 }
 
-impl<T: PwmPeriph<C>, C> PwmPin for Pwm<T, C> {
-    /// Number of cycles
-    type Duty = u16;
+mod ehal1 {
+    use core::convert::Infallible;
+    use embedded_hal::pwm::{ErrorType, SetDutyCycle};
+    use super::*;
 
-    #[inline]
-    fn set_duty(&mut self, duty: Self::Duty) {
-        let timer = unsafe { T::steal() };
-        CCRn::<C>::set_ccrn(&timer, duty);
+    impl<T: PwmPeriph<C>, C> ErrorType for Pwm<T, C> {
+        type Error = Infallible;
     }
 
-    #[inline]
-    fn get_duty(&self) -> Self::Duty {
-        let timer = unsafe { T::steal() };
-        CCRn::<C>::get_ccrn(&timer)
+    impl<T: PwmPeriph<C>, C> SetDutyCycle for Pwm<T, C> {
+        #[inline]
+        fn max_duty_cycle(&self) -> u16 {
+            let timer = unsafe { T::steal() };
+            CCRn::<CCR0>::get_ccrn(&timer)
+        }
+    
+        /// Set the duty cycle to `duty / max_duty`.
+        ///
+        /// The caller is responsible for ensuring that the duty cycle value is less than or equal to the maximum duty cycle value,
+        /// as reported by `max_duty_cycle`.
+        ///
+        /// As the error type is `Infallible` this can be safely unwrapped.
+        #[inline]
+        fn set_duty_cycle(&mut self, duty: u16) -> Result<(), Self::Error> {
+            let timer = unsafe { T::steal() };
+            CCRn::<C>::set_ccrn(&timer, duty);
+            Ok(())
+        }
     }
+}
 
-    /// Maximum valid duty is equal to the period. If number of duty cycles exceeds number of
-    /// period cycles, then signal stays high (equivalent to 100% duty cycle).
-    #[inline]
-    fn get_max_duty(&self) -> Self::Duty {
-        let timer = unsafe { T::steal() };
-        CCRn::<CCR0>::get_ccrn(&timer)
-    }
+#[cfg(feature = "embedded-hal-02")]
+mod ehal02 {
+    use embedded_hal_02::PwmPin;
+    use super::*;
 
-    #[inline]
-    fn disable(&mut self) {
-        T::to_gpio(&mut self.pin);
-    }
-
-    #[inline]
-    fn enable(&mut self) {
-        T::to_alt(&mut self.pin);
+    impl<T: PwmPeriph<C>, C> PwmPin for Pwm<T, C> {
+        /// Number of cycles
+        type Duty = u16;
+    
+        #[inline]
+        fn set_duty(&mut self, duty: Self::Duty) {
+            let timer = unsafe { T::steal() };
+            CCRn::<C>::set_ccrn(&timer, duty);
+        }
+    
+        #[inline]
+        fn get_duty(&self) -> Self::Duty {
+            let timer = unsafe { T::steal() };
+            CCRn::<C>::get_ccrn(&timer)
+        }
+    
+        /// Maximum valid duty is equal to the period. If number of duty cycles exceeds number of
+        /// period cycles, then signal stays high (equivalent to 100% duty cycle).
+        #[inline]
+        fn get_max_duty(&self) -> Self::Duty {
+            let timer = unsafe { T::steal() };
+            CCRn::<CCR0>::get_ccrn(&timer)
+        }
+    
+        #[inline]
+        fn disable(&mut self) {
+            T::to_gpio(&mut self.pin);
+        }
+    
+        #[inline]
+        fn enable(&mut self) {
+            T::to_alt(&mut self.pin);
+        }
     }
 }

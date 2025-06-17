@@ -7,8 +7,7 @@ use critical_section::with;
 use msp430fr2355::interrupt;
 
 use core::cell::RefCell;
-use embedded_hal::digital::v2::*;
-use embedded_hal::timer::*;
+use embedded_hal::digital::*;
 use msp430::interrupt::{enable as enable_int, Mutex};
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
@@ -59,7 +58,7 @@ fn main() -> ! {
 
     wdt.set_aclk(&aclk)
         .enable_interrupts()
-        .start(WdtClkPeriods::_32K);
+        .set_interval_and_start(WdtClkPeriods::_32K);
     pin.select_rising_edge_trigger().enable_interrupts();
     button.select_falling_edge_trigger();
 

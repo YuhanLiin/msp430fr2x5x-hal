@@ -1,26 +1,66 @@
 //! Analog to Digital Converter (ADC)
 //!
-//! Begin configuration by calling `AdcConfig::new()` or `::default()`. Once fully configured an `Adc` will be returned.
+//! Begin configuration by calling [`AdcConfig::new()`] or [`::default()`](AdcConfig::default()). 
+//! Once fully configured an [`Adc`] will be returned.
 //! 
-//! `Adc` can read from a channel by calling `.read()` (an implementation of the embedded_hal `OneShot` trait) to return an ADC count. 
+//! [`Adc`] can read from a channel by calling [`read_count()`](Adc::read_count()) to return an ADC count. 
 //! 
-//! The `.count_to_mv()` method is available to convert an ADC count to a voltage in millivolts, given a reference voltage. 
+//! The [`count_to_mv()`](Adc::count_to_mv()) method is available to convert an ADC count to a voltage in millivolts, 
+//! given a reference voltage. 
 //! 
-//! As a convenience, `.read_voltage_mv()` combines `.read()` and `.count_to_mv()`.
+//! As a convenience, [`read_voltage_mv()`](Adc::read_voltage_mv()) combines [`read_count()`](Adc::read_count()) and 
+//! [`count_to_mv()`](Adc::count_to_mv()).
 //! 
 //! Currently the only supported ADC voltage reference is `AVCC`, the operating voltage of the MSP430.
 //! 
-//! The ADC may read from any of the following pins:
+//! [`read_count()`](Adc::read_count()) takes a reference to the GPIO pin corresponding to the relevant ADC channel 
+//! to ensure it's been correctly configured. The ADC may read from any of the following pins:
 //!
 //! P1.0 - P1.7 (channels 0 to 7), P5.0 - P5.3 (channels 8 to 11).
 //! 
-//! ADC channels 12 to 15 are not associated with external pins, so in lieu of a pin use the `static`s below.
-//!
+//! ADC channels 12 to 15 are not associated with external pins, so instead channels 12 and 13 can be read by passing a 
+//! reference to [`InternalVRef`] or [`InternalTempSensor`] respectively. Channels 14 and 15 require no prior 
+//! configuration, so the two functions below provide a reference that can be used to read from these channels.
 
-use crate::{clock::{Aclk, Smclk}, gpio::*};
+use crate::{clock::{Aclk, Smclk}, gpio::*, pmm::{InternalTempSensor, InternalVRef}};
 use core::convert::Infallible;
-use embedded_hal::adc::{Channel, OneShot};
 use msp430fr2355::ADC;
+
+#[cfg(feature = "embedded-hal-02")]
+pub use embedded_hal_02::adc::Channel;
+
+#[cfg(not(feature = "embedded-hal-02"))]
+/// A marker trait to identify MCU pins that can be used as inputs to an ADC channel.
+///
+/// This marker trait denotes an object, i.e. a GPIO pin, that is ready for use as an input to the
+/// ADC. As ADCs channels can be supplied by multiple pins, this trait defines the relationship
+/// between the physical interface and the ADC sampling buffer.
+///
+/// ```
+/// # use std::marker::PhantomData;
+/// # use embedded_hal::adc::Channel;
+///
+/// struct Adc1; // Example ADC with single bank of 8 channels
+/// struct Gpio1Pin1<MODE>(PhantomData<MODE>);
+/// struct Analog(()); // marker type to denote a pin in "analog" mode
+///
+/// // GPIO 1 pin 1 can supply an ADC channel when it is configured in Analog mode
+/// impl Channel<Adc1> for Gpio1Pin1<Analog> {
+///     fn channel() -> u8 { 7 } // GPIO pin 1 is connected to ADC channel 7
+/// }
+/// ```
+pub trait Channel<ADC> {
+    /// Type denoting the method used to identify ADC channels. This may be an integer (e.g. single ADC bank), or a tuple (multiple ADC banks), etc.
+    /// On the MSP430 this is a `u8`, but this type remains generic for compatibility reasons with embedded-hal v0.2.7.
+    type ID;
+    /// Channel ID type
+    ///
+    /// A type used to identify this ADC channel. For example, if the ADC has eight channels, this
+    /// might be a `u8`. If the ADC has multiple banks of channels, it could be a tuple, like
+    /// `(u8: bank_id, u8: channel_id)`.
+    /// Get the specific ID that identifies this channel, for example `0_u8` for the first ADC channel
+    fn channel() -> u8;
+}
 
 /// How many ADCCLK cycles the ADC's sample-and-hold stage will last for.
 /// 
@@ -215,30 +255,24 @@ macro_rules! impl_adc_channel_extra {
     };
 }
 
-// We instead document the statics below. Users needn't deal with the structs themselves so it just adds noise to the docs.
-#[doc(hidden)]
-pub struct AdcTempSenseChannel;
-impl_adc_channel_extra!(AdcTempSenseChannel, 12);
-/// ADC channel 12, tied to the internal temperature sensor. Pass this to `adc.read()` to read this channel.
-pub static ADC_CH12_TEMP_SENSE: AdcTempSenseChannel = AdcTempSenseChannel;
 
-#[doc(hidden)]
-pub struct AdcVrefChannel;
-impl_adc_channel_extra!(AdcVrefChannel, 13);
-/// ADC channel 13, tied to the internal reference voltage. Pass this to `adc.read()` to read this channel.
-pub static ADC_CH13_VREF: AdcVrefChannel = AdcVrefChannel;
+impl_adc_channel_extra!(InternalTempSensor<'_>, 12);
+impl_adc_channel_extra!(InternalVRef, 13);
 
+// Users needn't deal with the structs themselves so it just adds noise to the docs. We instead document the functions below. 
 #[doc(hidden)]
 pub struct AdcVssChannel;
 impl_adc_channel_extra!(AdcVssChannel, 14);
-/// ADC channel 14, tied to VSS. Pass this to `adc.read()` to read this channel.
-pub static ADC_CH14_VSS: AdcVssChannel = AdcVssChannel;
+/// ADC channel 14, tied to VSS. Pass this function's output to `read_count()`.
+#[inline(always)]
+pub fn adc_ch14_vss() -> AdcVssChannel { AdcVssChannel }
 
 #[doc(hidden)]
 pub struct AdcVccChannel;
 impl_adc_channel_extra!(AdcVccChannel, 15);
-/// ADC channel 15, tied to VCC. Pass this to `adc.read()` to read this channel.
-pub static ADC_CH15_VCC: AdcVccChannel = AdcVccChannel;
+/// ADC channel 15, tied to VCC. Pass this function's output to `read_count()`.
+#[inline(always)]
+pub fn adc_ch15_vcc() -> AdcVccChannel { AdcVccChannel }
 
 /// Typestate for an ADC configuration with no clock source selected
 pub struct NoClockSet;
@@ -416,48 +450,13 @@ impl Adc {
         }
     }
 
-    /// Convert an ADC count to a voltage value in millivolts.
-    /// 
-    /// `ref_voltage_mv` is the reference voltage of the ADC in millivolts.
-    pub fn count_to_mv(&self, count: u16, ref_voltage_mv: u16) -> u16 {
-        use crate::pac::adc::adcctl2::ADCRES_A;
-        let resolution = match self.adc_reg.adcctl2.read().adcres().variant() {
-            ADCRES_A::ADCRES_0 => 256, // 8-bit
-            ADCRES_A::ADCRES_1 => 1024, // 10-bit
-            ADCRES_A::ADCRES_2 => 4096, // 12-bit
-            ADCRES_A::ADCRES_3 => 4096, // Reserved, unreachable
-        };
-        ((count as u32 * ref_voltage_mv as u32) / resolution) as u16
-    }
-
-    /// Begins a single ADC conversion if one isn't already underway, enabling the ADC in the process.
-    ///
-    /// If the result is ready it is returned as a voltage in millivolts based on `ref_voltage_mv`, otherwise returns `WouldBlock`.
-    /// 
-    /// If you instead want a raw count you should use the `.read()` method from the `OneShot` trait implementation.
-    pub fn read_voltage_mv<PIN: Channel<Self, ID = u8>>(&mut self, pin: &mut PIN, ref_voltage_mv: u16) -> nb::Result<u16, Infallible> {
-        self.read(pin).map(|count| self.count_to_mv(count, ref_voltage_mv))
-    }
-}
-
-fn disable_adc_reg(adc: &mut ADC) {
-    unsafe {
-        adc.adcctl0.clear_bits(|w| w
-            .adcon().clear_bit()
-            .adcenc().clear_bit());
-    }
-}
-
-impl<PIN> OneShot<Adc, u16, PIN> for Adc
-where
-    PIN: Channel<Self, ID = u8>,
-{
-    type Error = Infallible; // Only returns WouldBlock
-
     /// Begins a single ADC conversion if one isn't already underway, enabling the ADC in the process.
     ///
     /// If the result is ready it is returned as an ADC count, otherwise returns `WouldBlock`
-    fn read(&mut self, pin: &mut PIN) -> nb::Result<u16, Self::Error> {
+    pub fn read_count<PIN>(&mut self, pin: &mut PIN) -> nb::Result<u16, Infallible>
+    where
+        PIN: Channel<Self, ID = u8>,
+    {
         if self.is_waiting {
             if self.adc_is_busy() {
                 return Err(nb::Error::WouldBlock);
@@ -473,5 +472,57 @@ where
         self.start_conversion();
         self.is_waiting = true;
         Err(nb::Error::WouldBlock)
+    }
+
+    /// Convert an ADC count to a voltage value in millivolts.
+    /// 
+    /// `ref_voltage_mv` is the reference voltage of the ADC in millivolts.
+    pub fn count_to_mv(&self, count: u16, ref_voltage_mv: u16) -> u16 {
+        use crate::pac::adc::adcctl2::ADCRES_A;
+        let resolution = match self.adc_reg.adcctl2.read().adcres().variant() {
+            ADCRES_A::ADCRES_0 => 256,  //  8-bit
+            ADCRES_A::ADCRES_1 => 1024, // 10-bit
+            ADCRES_A::ADCRES_2 => 4096, // 12-bit
+            ADCRES_A::ADCRES_3 => 4096, // Reserved, unreachable
+        };
+        ((count as u32 * ref_voltage_mv as u32) / resolution) as u16
+    }
+
+    /// Begins a single ADC conversion if one isn't already underway, enabling the ADC in the process.
+    ///
+    /// If the result is ready it is returned as a voltage in millivolts based on `ref_voltage_mv`, otherwise returns `WouldBlock`.
+    /// 
+    /// If you instead want a raw count you should use the `.read_count()` method.
+    pub fn read_voltage_mv<PIN: Channel<Self, ID = u8>>(&mut self, pin: &mut PIN, ref_voltage_mv: u16) -> nb::Result<u16, Infallible> {
+        self.read_count(pin).map(|count| self.count_to_mv(count, ref_voltage_mv))
+    }
+}
+
+fn disable_adc_reg(adc: &mut ADC) {
+    unsafe {
+        adc.adcctl0.clear_bits(|w| w
+            .adcon().clear_bit()
+            .adcenc().clear_bit());
+    }
+}
+
+#[cfg(feature = "embedded-hal-02")]
+mod ehal02 {
+    use embedded_hal_02::adc::{Channel, OneShot};
+    use super::*;
+
+    impl<PIN> OneShot<Adc, u16, PIN> for Adc
+    where
+        PIN: Channel<Self, ID = u8>,
+    {
+        type Error = Infallible; // Only returns WouldBlock
+
+        /// Begins a single ADC conversion if one isn't already underway, enabling the ADC in the process.
+        ///
+        /// If the result is ready it is returned as an ADC count, otherwise returns `WouldBlock`
+        #[inline(always)]
+        fn read(&mut self, pin: &mut PIN) -> nb::Result<u16, Self::Error> {
+            self.read_count(pin)
+        }
     }
 }

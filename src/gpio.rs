@@ -16,8 +16,8 @@
 pub use crate::batch_gpio::*;
 use crate::hw_traits::gpio::{GpioPeriph, IntrPeriph};
 use crate::util::BitsExt;
+use core::convert::Infallible;
 use core::marker::PhantomData;
-use embedded_hal::digital::v2::{InputPin, OutputPin, StatefulOutputPin, ToggleableOutputPin};
 use msp430fr2355 as pac;
 pub use pac::{P1, P2, P3, P4, P5, P6};
 
@@ -245,7 +245,7 @@ impl<PORT: IntrPortNum, PIN: PinNum, PULL> Pin<PORT, PIN, Input<PULL>> {
 
     /// Wait for interrupt flag to go high nonblockingly. Clear the flag if high.
     #[inline]
-    pub fn wait_for_ifg(&mut self) -> nb::Result<(), void::Void> {
+    pub fn wait_for_ifg(&mut self) -> nb::Result<(), Infallible> {
         let p = unsafe { PORT::steal() };
         if p.pxifg_rd().check(PIN::NUM) != 0 {
             p.pxifg_clear(PIN::CLR_MASK);
@@ -336,63 +336,6 @@ impl<PORT: PortNum, PIN: PinNum> Pin<PORT, PIN, Output> {
         let p = unsafe { PORT::steal() };
         p.pxdir_clear(PIN::CLR_MASK);
         make_pin!(Input<Floating>).pulldown()
-    }
-}
-
-impl<PORT: PortNum, PIN: PinNum, PULL> InputPin for Pin<PORT, PIN, Input<PULL>> {
-    type Error = void::Void;
-
-    #[inline]
-    fn is_high(&self) -> Result<bool, Self::Error> {
-        let p = unsafe { PORT::steal() };
-        Ok(p.pxin_rd().check(PIN::NUM) != 0)
-    }
-
-    #[inline]
-    fn is_low(&self) -> Result<bool, Self::Error> {
-        self.is_high().map(|r| !r)
-    }
-}
-
-impl<PORT: PortNum, PIN: PinNum> OutputPin for Pin<PORT, PIN, Output> {
-    type Error = void::Void;
-
-    #[inline]
-    fn set_low(&mut self) -> Result<(), Self::Error> {
-        let p = unsafe { PORT::steal() };
-        p.pxout_clear(PIN::CLR_MASK);
-        Ok(())
-    }
-
-    #[inline]
-    fn set_high(&mut self) -> Result<(), Self::Error> {
-        let p = unsafe { PORT::steal() };
-        p.pxout_set(PIN::SET_MASK);
-        Ok(())
-    }
-}
-
-impl<PORT: PortNum, PIN: PinNum> StatefulOutputPin for Pin<PORT, PIN, Output> {
-    #[inline]
-    fn is_set_high(&self) -> Result<bool, Self::Error> {
-        let p = unsafe { PORT::steal() };
-        Ok(p.pxout_rd().check(PIN::NUM) != 0)
-    }
-
-    #[inline]
-    fn is_set_low(&self) -> Result<bool, Self::Error> {
-        self.is_set_high().map(|r| !r)
-    }
-}
-
-impl<PORT: PortNum, PIN: PinNum> ToggleableOutputPin for Pin<PORT, PIN, Output> {
-    type Error = void::Void;
-
-    #[inline]
-    fn toggle(&mut self) -> Result<(), Self::Error> {
-        let p = unsafe { PORT::steal() };
-        p.pxout_toggle(PIN::SET_MASK);
-        Ok(())
     }
 }
 
@@ -705,3 +648,118 @@ impl<DIR> ToAlternate3 for Pin<P5, Pin3, DIR> {}
 
 // P6 alternate 1
 impl<PIN: PinNum, DIR> ToAlternate1 for Pin<P6, PIN, DIR> {}
+
+mod ehal1 {
+    use core::convert::Infallible;
+    use embedded_hal::digital::{ErrorType, InputPin, OutputPin, StatefulOutputPin};
+    use super::*;
+
+    impl<PORT: PortNum, PIN: PinNum, DIR> ErrorType for Pin<PORT, PIN, DIR> {
+        type Error = Infallible;
+    }
+    
+    impl<PORT: PortNum, PIN: PinNum, PULL> InputPin for Pin<PORT, PIN, Input<PULL>> {
+        #[inline]
+        fn is_high(&mut self) -> Result<bool, Self::Error> {
+            let p = unsafe { PORT::steal() };
+            Ok(p.pxin_rd().check(PIN::NUM) != 0)
+        }
+
+        #[inline]
+        fn is_low(&mut self) -> Result<bool, Self::Error> {
+            self.is_high().map(|r| !r)
+        }
+    }
+
+    impl<PORT: PortNum, PIN: PinNum> OutputPin for Pin<PORT, PIN, Output> {
+        #[inline]
+        fn set_low(&mut self) -> Result<(), Self::Error> {
+            let p = unsafe { PORT::steal() };
+            p.pxout_clear(PIN::CLR_MASK);
+            Ok(())
+        }
+
+        #[inline]
+        fn set_high(&mut self) -> Result<(), Self::Error> {
+            let p = unsafe { PORT::steal() };
+            p.pxout_set(PIN::SET_MASK);
+            Ok(())
+        }
+    }
+
+    impl<PORT: PortNum, PIN: PinNum> StatefulOutputPin for Pin<PORT, PIN, Output> {
+        #[inline]
+        fn is_set_high(&mut self) -> Result<bool, Self::Error> {
+            let p = unsafe { PORT::steal() };
+            Ok(p.pxout_rd().check(PIN::NUM) != 0)
+        }
+
+        #[inline]
+        fn is_set_low(&mut self) -> Result<bool, Self::Error> {
+            self.is_set_high().map(|r| !r)
+        }
+    }
+}
+
+#[cfg(feature = "embedded-hal-02")]
+mod ehal02 {
+    use embedded_hal_02::digital::v2::{InputPin, OutputPin, StatefulOutputPin, ToggleableOutputPin};
+    use super::*;
+
+    impl<PORT: PortNum, PIN: PinNum, PULL> InputPin for Pin<PORT, PIN, Input<PULL>> {
+        type Error = void::Void;
+
+        #[inline]
+        fn is_high(&self) -> Result<bool, Self::Error> {
+            let p = unsafe { PORT::steal() };
+            Ok(p.pxin_rd().check(PIN::NUM) != 0)
+        }
+
+        #[inline]
+        fn is_low(&self) -> Result<bool, Self::Error> {
+            self.is_high().map(|r| !r)
+        }
+    }
+
+    impl<PORT: PortNum, PIN: PinNum> OutputPin for Pin<PORT, PIN, Output> {
+        type Error = void::Void;
+
+        #[inline]
+        fn set_low(&mut self) -> Result<(), Self::Error> {
+            let p = unsafe { PORT::steal() };
+            p.pxout_clear(PIN::CLR_MASK);
+            Ok(())
+        }
+
+        #[inline]
+        fn set_high(&mut self) -> Result<(), Self::Error> {
+            let p = unsafe { PORT::steal() };
+            p.pxout_set(PIN::SET_MASK);
+            Ok(())
+        }
+    }
+
+    impl<PORT: PortNum, PIN: PinNum> StatefulOutputPin for Pin<PORT, PIN, Output> {
+        #[inline]
+        fn is_set_high(&self) -> Result<bool, Self::Error> {
+            let p = unsafe { PORT::steal() };
+            Ok(p.pxout_rd().check(PIN::NUM) != 0)
+        }
+
+        #[inline]
+        fn is_set_low(&self) -> Result<bool, Self::Error> {
+            self.is_set_high().map(|r| !r)
+        }
+    }
+
+    impl<PORT: PortNum, PIN: PinNum> ToggleableOutputPin for Pin<PORT, PIN, Output> {
+        type Error = void::Void;
+
+        #[inline]
+        fn toggle(&mut self) -> Result<(), Self::Error> {
+            let p = unsafe { PORT::steal() };
+            p.pxout_toggle(PIN::SET_MASK);
+            Ok(())
+        }
+    }
+}

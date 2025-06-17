@@ -1,7 +1,7 @@
 #![no_main]
 #![no_std]
 
-use embedded_hal::digital::v2::*;
+use embedded_hal::digital::*;
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
     adc::{AdcConfig, ClockDivider, Predivider, Resolution, SampleTime, SamplingRate},
@@ -39,7 +39,7 @@ fn main() -> ! {
     loop {
         // Get ADC voltage, assuming the ADC reference voltage is 3300mV
         // It's infallible besides nb::WouldBlock, so it's safe to unwrap after block!()
-        // If you want a raw count use adc.read() instead.
+        // If you want a raw count use adc.read_count() instead.
         let reading_mv = block!( adc.read_voltage_mv(&mut adc_pin, 3300) ).unwrap();
 
         // Turn on LED if voltage between 1000 and 2000mV

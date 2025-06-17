@@ -1,10 +1,10 @@
 #![no_main]
 #![no_std]
 
-use embedded_hal::blocking::{i2c::{Read, Write, WriteRead}, delay::DelayMs};
+use embedded_hal::{delay::DelayNs, digital::{OutputPin, StatefulOutputPin}, i2c::{I2c, Operation}};
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
-    clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv}, fram::Fram, gpio::Batch, i2c::{GlitchFilter, I2CBusConfig}, pmm::Pmm, watchdog::Wdt
+    clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv}, fram::Fram, gpio::Batch, i2c::{GlitchFilter, I2cConfig}, pmm::Pmm, watchdog::Wdt
 };
 use panic_msp430 as _;
 
@@ -16,6 +16,8 @@ fn main() -> ! {
     let _wdt = Wdt::constrain(periph.WDT_A);
 
     let pmm = Pmm::new(periph.PMM);
+    let mut red_led = Batch::new(periph.P1).split(&pmm).pin0.to_output();
+    let mut green_led = Batch::new(periph.P6).split(&pmm).pin6.to_output();
     let p4 = Batch::new(periph.P4)
         .split(&pmm);
     let scl = p4.pin7.to_alternate1();
@@ -27,27 +29,58 @@ fn main() -> ! {
         .aclk_vloclk()
         .freeze(&mut fram);
 
-    let mut i2c = I2CBusConfig::new(periph.E_USCI_B1, GlitchFilter::Max50ns)
-        .use_smclk(&smclk, 80) // 8MHz / 10 = 100kHz
+    let mut i2c = I2cConfig::new(periph.E_USCI_B1, GlitchFilter::Max50ns)
+        .use_smclk(&smclk, 80) // 8MHz / 80 = 100kHz
         .configure(scl, sda);
-
+    
     loop {
-        // Blocking read. Read 10 bytes (length of buffer) from address 0x12.
-        // Pass a u8 address for 7-bit addressing mode, pass a u16 for 10-bit addressing mode.
-        let mut buf = [0; 10];
-        // You should handle errors here rather than unwrapping
-        i2c.read(0x12_u8, &mut buf).unwrap();
+        // Below are examples of the various I2C methods provided for writing to / reading from the bus.
+        // 7- and 10-bit addressing modes are controlled by passing the address as either a u8 or a u16.
+        
+        let mut is_ok = true;
 
-        // Blocking write. Write one byte to address 0x12.
-        // You should handle errors here rather than unwrapping
-        i2c.write(0x12_u8, &[0b10101010]).unwrap();
+        // Check if anything with this address is present on the bus by 
+        // sending a zero-byte write and listening for an ACK.
+        if !i2c.is_slave_present(0x29_u8) {
+            is_ok = false;
+        }
+        
+        // Blocking write. Write two bytes (length of buffer) to address 0x12.
+        // If a NACK is recieved the transmission is aborted.
+        let wr_res = i2c.write(0x12_u8, &[(1<<7) + (0b01 << 5), 0b11]);
+        if wr_res.is_err() {
+            is_ok = false;
+        }
+        
+        // Blocking read. Read one byte from address 0x12.
+        // Each byte recieved is automatically ACKed, except for the last one which is NACKed.
+        let mut recv = [0];
+        let rd_res = i2c.read(0x12_u8, &mut recv);
+        if rd_res.is_err() {
+            is_ok = false;
+        }
+        
+        // Do a write then a read within one transaction.
+        // Commonly used to read a specific register from the slave.
+        // There is no 'stop' between the write and read, only a repeated start.
+        let wr_rd_res = i2c.write_read(0x12_u8, &[(1<<7) + (0b01 << 5), 0b11], &mut recv);
+        if wr_rd_res.is_err() {
+            is_ok = false;
+        }
 
-        // Blocking send + recieve. Write 10 bytes to 0x12, then read 20 bytes
-        let send_buf = [0b11001100; 10];
-        let mut recv_buf = [0; 20];
-        // You should handle errors here rather than unwrapping
-        i2c.write_read(0x12_u8, &send_buf, &mut recv_buf).unwrap();
+        // Do any arbitrary transaction. One initial start, a repeated
+        // start between operations of dissimilar types, and a stop at the end.
+        // This particular example is equivalent to the write_read call above.
+        let tr_res = i2c.transaction(0x12_u8, &mut [
+            Operation::Write(&[(1<<7) + (0b01 << 5), 0b11]), 
+            Operation::Read(&mut recv)
+        ]);
+        if tr_res.is_err() {
+            is_ok = false;
+        }
 
+        green_led.set_state(is_ok.into()).ok();
+        red_led.toggle().ok();
         delay.delay_ms(1000);
     }
 }

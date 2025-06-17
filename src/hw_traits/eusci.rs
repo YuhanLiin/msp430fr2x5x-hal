@@ -1,6 +1,7 @@
 use super::Steal;
-use embedded_hal::spi::{Mode, Phase, Polarity};
 use msp430fr2355 as pac;
+
+use embedded_hal::spi::{Mode, Phase, Polarity};
 
 /// Defines macros for a register associated struct to make reading/writing to this struct's
 /// register a lot less tedious.
@@ -301,6 +302,8 @@ pub trait EUsciI2C: Steal {
 
     fn ifg_rd(&self) -> Self::IfgOut;
     fn ifg_wr(&self, reg: &UcbIFG);
+    fn ifg_rst(&self);
+
     fn iv_rd(&self) -> u16;
 }
 
@@ -723,7 +726,7 @@ macro_rules! eusci_b_impl {
 
             #[inline(always)]
             fn uctxstt_rd(&self) -> bool {
-                self.$ucbxctlw0().read().uctxstp().bit()
+                self.$ucbxctlw0().read().uctxstt().bit()
             }
 
             #[inline(always)]
@@ -897,6 +900,11 @@ macro_rules! eusci_b_impl {
             #[inline(always)]
             fn ifg_wr(&self, reg: &UcbIFG) {
                 self.$ucbxifg().write(UcbIFG_wr! {reg});
+            }
+
+            #[inline(always)]
+            fn ifg_rst(&self) {
+                self.$ucbxifg().reset();
             }
 
             #[inline(always)]

@@ -9,9 +9,9 @@
 
 use crate::clock::{Aclk, Smclk};
 use crate::gpio::{Alternate1, Floating, Input, Pin, Pin2, Pin6, Pin7, P2, P5, P6};
-use crate::hw_traits::timerb::{CCRn, Tbssel, TimerB};
+use crate::hw_traits::timerb::{CCRn, RunningMode, Tbssel, TimerB};
+use core::convert::Infallible;
 use core::marker::PhantomData;
-use embedded_hal::timer::{Cancel, CountDown, Periodic};
 use msp430fr2355 as pac;
 
 pub use crate::hw_traits::timerb::{
@@ -260,42 +260,6 @@ impl<T: TimerB> TBxIV<T> {
     }
 }
 
-impl<T: TimerPeriph + CapCmp<CCR0>> CountDown for Timer<T> {
-    type Time = u16;
-
-    #[inline]
-    fn start<U: Into<Self::Time>>(&mut self, count: U) {
-        let timer = unsafe { T::steal() };
-        timer.stop();
-        timer.set_ccrn(count.into());
-        timer.upmode();
-    }
-
-    #[inline]
-    fn wait(&mut self) -> nb::Result<(), void::Void> {
-        let timer = unsafe { T::steal() };
-        if timer.tbifg_rd() {
-            timer.tbifg_clr();
-            Ok(())
-        } else {
-            Err(nb::Error::WouldBlock)
-        }
-    }
-}
-
-impl<T: TimerPeriph + CapCmp<CCR0>> Cancel for Timer<T> {
-    type Error = void::Void;
-
-    #[inline(always)]
-    fn cancel(&mut self) -> Result<(), Self::Error> {
-        let timer = unsafe { T::steal() };
-        timer.stop();
-        Ok(())
-    }
-}
-
-impl<T: TimerPeriph> Periodic for Timer<T> {}
-
 impl<T: TimerPeriph> Timer<T> {
     /// Enable timer countdown expiration interrupts
     #[inline(always)]
@@ -309,6 +273,48 @@ impl<T: TimerPeriph> Timer<T> {
     pub fn disable_interrupts(&mut self) {
         let timer = unsafe { T::steal() };
         timer.tbie_clr();
+    }
+
+    #[inline]
+    /// Clears the timer, sets the count, and starts the timer in upcounting mode. 
+    pub fn start(&mut self, count: u16) {
+        let timer = unsafe { T::steal() };
+        timer.stop();
+        timer.set_ccrn(count);
+        timer.upmode();
+    }
+
+    #[inline]
+    /// Checks if the timer has reached the target value. Returns `Ok(())` if so, otherwise `WouldBlock`.
+    pub fn wait(&mut self) -> nb::Result<(), Infallible> {
+        let timer = unsafe { T::steal() };
+        if timer.tbifg_rd() {
+            timer.tbifg_clr();
+            Ok(())
+        } else {
+            Err(nb::Error::WouldBlock)
+        }
+    }
+
+    #[inline]
+    /// Pause the timer at the current value
+    pub fn pause(&mut self) {
+        let timer = unsafe { T::steal() };
+        timer.stop();
+    }
+
+    #[inline]
+    /// Resume counting from the current value
+    pub fn resume(&mut self) {
+        let timer = unsafe { T::steal() };
+        timer.resume(RunningMode::Up);
+    }
+
+    #[inline]
+    /// Get the current timer value
+    pub fn count(&mut self) -> u16 {
+        let timer = unsafe { T::steal() };
+        timer.get_tbxr()
     }
 }
 
@@ -326,7 +332,7 @@ impl<T: CapCmp<C>, C> SubTimer<T, C> {
 
     #[inline]
     /// Wait for the sub-timer to fire
-    pub fn wait(&mut self) -> nb::Result<(), void::Void> {
+    pub fn wait(&mut self) -> nb::Result<(), Infallible> {
         let timer = unsafe { T::steal() };
         if timer.ccifg_rd() {
             timer.ccifg_clr();
@@ -349,4 +355,36 @@ impl<T: CapCmp<C>, C> SubTimer<T, C> {
         let timer = unsafe { T::steal() };
         timer.ccie_clr();
     }
+}
+
+#[cfg(feature = "embedded-hal-02")]
+mod ehal02 {
+    use embedded_hal_02::timer::{Cancel, CountDown, Periodic};
+    use super::*;
+
+    impl<T: TimerPeriph + CapCmp<CCR0>> CountDown for Timer<T> {
+        type Time = u16;
+    
+        #[inline]
+        fn start<U: Into<Self::Time>>(&mut self, count: U) {
+            self.start(count.into())
+        }
+    
+        #[inline]
+        fn wait(&mut self) -> nb::Result<(), void::Void> {
+            self.wait().map_err(|_| nb::Error::WouldBlock)
+        }
+    }
+    
+    impl<T: TimerPeriph + CapCmp<CCR0>> Cancel for Timer<T> {
+        type Error = void::Void;
+    
+        #[inline(always)]
+        fn cancel(&mut self) -> Result<(), Self::Error> {
+            self.pause();
+            Ok(())
+        }
+    }
+    
+    impl<T: TimerPeriph> Periodic for Timer<T> {}
 }

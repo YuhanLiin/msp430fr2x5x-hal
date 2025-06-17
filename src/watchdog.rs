@@ -5,9 +5,7 @@
 //! application as possible to stop the watchdog.
 
 use crate::clock::{Aclk, Smclk};
-use core::marker::PhantomData;
-use embedded_hal::timer::{Cancel, CountDown, Periodic};
-use embedded_hal::watchdog::{Watchdog, WatchdogDisable, WatchdogEnable};
+use core::{convert::Infallible, marker::PhantomData};
 use msp430fr2355 as pac;
 use pac::wdt_a::wdtctl::WDTSSEL_A;
 
@@ -123,9 +121,9 @@ impl<MODE: WatchdogSelect> Wdt<MODE> {
         self.set_clk(WDTSSEL_A::SMCLK)
     }
 
-    // Reset countdown, unpause timer, and set timeout in a single write
+    /// Reset countdown, unpause timer, and set timeout in a single write
     #[inline]
-    fn unpause_and_set_time(&mut self, periods: WdtClkPeriods) {
+    pub fn set_interval_and_start(&mut self, periods: WdtClkPeriods) {
         self.periph.wdtctl.modify(|r, w| {
             Self::prewrite(w, r.bits())
                 .wdtcntcl()
@@ -137,57 +135,26 @@ impl<MODE: WatchdogSelect> Wdt<MODE> {
         });
     }
 
-    // Pause timer
+    /// Pause the timer.
     #[inline]
-    fn pause(&mut self) {
+    pub fn pause(&mut self) {
         self.periph
             .wdtctl
             .modify(|r, w| Self::prewrite(w, r.bits()).wdthold().hold());
     }
-}
 
-impl Watchdog for Wdt<WatchdogMode> {
+    /// Resumes the timer, counting from the previously stored value.
     #[inline]
-    fn feed(&mut self) {
+    pub fn resume(&mut self) {
         self.periph
             .wdtctl
-            .modify(|r, w| Self::prewrite(w, r.bits()).wdtcntcl().set_bit());
-    }
-}
-
-impl WatchdogEnable for Wdt<WatchdogMode> {
-    type Time = WdtClkPeriods;
-
-    #[inline]
-    fn start<T>(&mut self, period: T)
-    where
-        T: Into<Self::Time>,
-    {
-        self.unpause_and_set_time(period.into());
-    }
-}
-
-impl WatchdogDisable for Wdt<WatchdogMode> {
-    #[inline]
-    fn disable(&mut self) {
-        self.pause();
-    }
-}
-
-impl CountDown for Wdt<IntervalMode> {
-    type Time = WdtClkPeriods;
-
-    #[inline]
-    fn start<T>(&mut self, count: T)
-    where
-        T: Into<Self::Time>,
-    {
-        self.unpause_and_set_time(count.into());
+            .modify(|r, w| Self::prewrite(w, r.bits()).wdthold().unhold());
     }
 
-    /// If called while timer is not running, this will always return WouldBlock.
+    /// Checks if the timer has expired, returning `Ok(())` if it has, otherwise `WouldBlock`.
+    /// If called while the timer is not running, this will always return `WouldBlock`.
     #[inline]
-    fn wait(&mut self) -> nb::Result<(), void::Void> {
+    pub fn wait(&mut self) -> nb::Result<(), Infallible> {
         let sfr = unsafe { &*pac::SFR::ptr() };
         if sfr.sfrifg1.read().wdtifg().is_wdtifg_1() {
             unsafe { sfr.sfrifg1.clear_bits(|w| w.wdtifg().clear_bit()) };
@@ -197,20 +164,6 @@ impl CountDown for Wdt<IntervalMode> {
         }
     }
 }
-
-impl Cancel for Wdt<IntervalMode> {
-    type Error = void::Void;
-
-    /// This implementation will never return error even if watchdog has already been paused, hence
-    /// the `Void` error type.
-    #[inline]
-    fn cancel(&mut self) -> Result<(), Self::Error> {
-        self.pause();
-        Ok(())
-    }
-}
-
-impl Periodic for Wdt<IntervalMode> {}
 
 impl Wdt<WatchdogMode> {
     /// Convert to interval mode and pause timer
@@ -223,6 +176,13 @@ impl Wdt<WatchdogMode> {
         // Change mode bit and pause timer
         wdt.pause();
         wdt
+    }
+
+    /// Refreshes the watchdog timer, preventing the processor from being reset.
+    pub fn feed(&mut self) {
+        self.periph
+            .wdtctl
+            .modify(|r, w| Self::prewrite(w, r.bits()).wdtcntcl().set_bit());
     }
 }
 
@@ -259,4 +219,69 @@ impl Wdt<IntervalMode> {
         unsafe { sfr.sfrie1.clear_bits(|w| w.wdtie().clear_bit()) };
         self
     }
+}
+
+#[cfg(feature = "embedded-hal-02")]
+mod ehal02 {
+    use embedded_hal_02::timer::{Cancel, CountDown, Periodic};
+    use embedded_hal_02::watchdog::{Watchdog, WatchdogDisable, WatchdogEnable};
+    use super::*;
+
+    impl Watchdog for Wdt<WatchdogMode> {
+        #[inline]
+        fn feed(&mut self) {
+            self.feed()
+        }
+    }
+
+    impl WatchdogEnable for Wdt<WatchdogMode> {
+        type Time = WdtClkPeriods;
+
+        #[inline]
+        fn start<T>(&mut self, period: T)
+        where
+            T: Into<Self::Time>,
+        {
+            self.set_interval_and_start(period.into());
+        }
+    }
+
+    impl WatchdogDisable for Wdt<WatchdogMode> {
+        #[inline]
+        fn disable(&mut self) {
+            self.pause();
+        }
+    }
+
+    impl CountDown for Wdt<IntervalMode> {
+        type Time = WdtClkPeriods;
+
+        #[inline]
+        fn start<T>(&mut self, count: T)
+        where
+            T: Into<Self::Time>,
+        {
+            self.set_interval_and_start(count.into());
+        }
+
+        /// If called while timer is not running, this will always return WouldBlock.
+        #[inline]
+        fn wait(&mut self) -> nb::Result<(), void::Void> {
+            self.wait().map_err(|_| nb::Error::WouldBlock)
+        }
+    }
+
+    impl Cancel for Wdt<IntervalMode> {
+        type Error = void::Void;
+
+        /// This implementation will never return error even if watchdog has already been paused, hence
+        /// the `Void` error type.
+        #[inline]
+        fn cancel(&mut self) -> Result<(), Self::Error> {
+            self.pause();
+            Ok(())
+        }
+    }
+
+    impl Periodic for Wdt<IntervalMode> {}
 }

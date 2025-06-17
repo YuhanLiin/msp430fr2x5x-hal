@@ -1,31 +1,37 @@
 //! SPI
 //! 
 //! Peripherals eUSCI_A0, eUSCI_A1, eUSCI_B0 and eUSCI_B1 can be used for SPI communication.
+//! Currently there is only support for the MSP430 to act as the master.
+//!
+//! Begin by calling [`SpiConfig::new()`]. Once configured an [`Spi`] will be returned. 
+//!
+//! Note that even if you are only using the legacy embedded-hal 0.2.7 trait implementations, configuration of the SPI bus uses the embedded-hal 1.0 versions of types (e.g. [`Mode`]).
 //! 
-//! Begin by calling `SpiBusConfig::new()`. Once configured an `SpiBus` will be returned.
+//! [`Spi`] implements the embedded-hal [`SpiBus`](embedded_hal::spi::SpiBus) trait. 
 //! 
-//! `SpiBus` implements the embedded_hal `FullDuplex` trait with non-blocking `.read()` and `.send()` methods, 
-//! and the blocking embedded_hal `Transfer` and `Write` traits, with `.transfer()`  and `.write()` methods respectively.
+//! [`Spi`] also provides a non-blocking implementation through [`embedded-hal-nb`](embedded_hal_nb)'s 
+//! [`FullDuplex`](embedded_hal_nb::spi::FullDuplex) trait.
 //!
 //! Pins used:
 //!
-//! eUSCI_A0: {MISO: `P1.7`, MOSI: `P1.6`, SCLK: `P1.5`}. `P1.4` can optionally used as a hardware-controlled chip select pin.
+//! eUSCI_A0: {MISO: `P1.7`, MOSI: `P1.6`, SCLK: `P1.5`}.
 //!
-//! eUSCI_A1: {MISO: `P4.3`, MOSI: `P4.2`, SCLK: `P4.1`}. `P4.0` can optionally used as a hardware-controlled chip select pin.
+//! eUSCI_A1: {MISO: `P4.3`, MOSI: `P4.2`, SCLK: `P4.1`}.
 //!
-//! eUSCI_B0: {MISO: `P1.3`, MOSI: `P1.2`, SCLK: `P1.1`}. `P1.0` can optionally used as a hardware-controlled chip select pin.
+//! eUSCI_B0: {MISO: `P1.3`, MOSI: `P1.2`, SCLK: `P1.1`}.
 //!
-//! eUSCI_B1: {MISO: `P4.7`, MOSI: `P4.6`, SCLK: `P4.5`}. `P4.4` can optionally used as a hardware-controlled chip select pin.
-use crate::hal::spi::{Mode, Phase, Polarity};
+//! eUSCI_B1: {MISO: `P4.7`, MOSI: `P4.6`, SCLK: `P4.5`}.
 use crate::{
-    clock::{Aclk, Smclk},
-    gpio::{Alternate1, Pin, Pin0, Pin1, Pin2, Pin3, Pin4, Pin5, Pin6, Pin7, P1, P4},
+    clock::{Aclk, Smclk}, 
+    delay::SysDelay, 
+    gpio::{Alternate1, Pin, Pin0, Pin1, Pin2, Pin3, Pin4, Pin5, Pin6, Pin7, P1, P4}, 
     hw_traits::eusci::{EusciSPI, Ucmode, Ucssel, UcxSpiCtw0},
 };
 use core::marker::PhantomData;
-use embedded_hal::spi::FullDuplex;
 use msp430fr2355 as pac;
 use nb::Error::WouldBlock;
+
+use embedded_hal::spi::{Mode, Phase, Polarity};
 
 /// Marks a eUSCI capable of SPI communication (in this case, all euscis do)
 pub trait SpiUsci: EusciSPI {
@@ -81,11 +87,11 @@ macro_rules! impl_spi_pin {
 
 /// SPI MISO pin for eUSCI A0
 pub struct UsciA0MISOPin;
-impl_spi_pin!(UsciA0MISOPin, P1, Pin7);
+impl_spi_pin!(UsciA0MISOPin, P1, Pin6);
 
 /// SPI MOSI pin for eUSCI A0
 pub struct UsciA0MOSIPin;
-impl_spi_pin!(UsciA0MOSIPin, P1, Pin6);
+impl_spi_pin!(UsciA0MOSIPin, P1, Pin7);
 
 /// SPI SCLK pin for eUSCI A0
 pub struct UsciA0SCLKPin;
@@ -97,11 +103,11 @@ impl_spi_pin!(UsciA0STEPin, P1, Pin4);
 
 /// SPI MISO pin for eUSCI A1
 pub struct UsciA1MISOPin;
-impl_spi_pin!(UsciA1MISOPin, P4, Pin3);
+impl_spi_pin!(UsciA1MISOPin, P4, Pin2);
 
 /// SPI MOSI pin for eUSCI A1
 pub struct UsciA1MOSIPin;
-impl_spi_pin!(UsciA1MOSIPin, P4, Pin2);
+impl_spi_pin!(UsciA1MOSIPin, P4, Pin3);
 
 /// SPI SCLK pin for eUSCI A1
 pub struct UsciA1SCLKPin;
@@ -148,7 +154,7 @@ pub struct NoClockSet;
 pub struct ClockSet;
 
 /// Struct used to configure a SPI bus
-pub struct SpiBusConfig<USCI: SpiUsci, STATE> {
+pub struct SpiConfig<USCI: SpiUsci, STATE> {
     usci: USCI,
     prescaler: u16,
 
@@ -157,7 +163,7 @@ pub struct SpiBusConfig<USCI: SpiUsci, STATE> {
     _phantom: PhantomData<STATE>,
 }
 
-impl<USCI: SpiUsci> SpiBusConfig<USCI, NoClockSet> {
+impl<USCI: SpiUsci> SpiConfig<USCI, NoClockSet> {
     /// Create a new configuration for setting up a EUSCI peripheral in SPI mode
     pub fn new(usci: USCI, mode: Mode, msb_first: bool) -> Self {
         let ctlw0 = UcxSpiCtw0 {
@@ -179,7 +185,7 @@ impl<USCI: SpiUsci> SpiBusConfig<USCI, NoClockSet> {
             ucssel: Ucssel::Smclk, // overwritten by `use_smclk/aclk()`
         };
 
-        SpiBusConfig {
+        SpiConfig {
             usci,
             prescaler: 0,
             ctlw0,
@@ -189,43 +195,26 @@ impl<USCI: SpiUsci> SpiBusConfig<USCI, NoClockSet> {
 
     /// Configures this peripheral to use smclk
     #[inline]
-    pub fn use_smclk(mut self, _smclk: &Smclk, clk_divisor: u16) -> SpiBusConfig<USCI, ClockSet>{
+    pub fn use_smclk(mut self, _smclk: &Smclk, clk_divisor: u16) -> SpiConfig<USCI, ClockSet>{
         self.ctlw0.ucssel = Ucssel::Smclk;
         self.prescaler = clk_divisor;
-        SpiBusConfig { usci: self.usci, prescaler: self.prescaler, ctlw0: self.ctlw0, _phantom: PhantomData }
+        SpiConfig { usci: self.usci, prescaler: self.prescaler, ctlw0: self.ctlw0, _phantom: PhantomData }
     }
 
     /// Configures this peripheral to use aclk
     #[inline]
-    pub fn use_aclk(mut self, _aclk: &Aclk, clk_divisor: u16) -> SpiBusConfig<USCI, ClockSet> {
+    pub fn use_aclk(mut self, _aclk: &Aclk, clk_divisor: u16) -> SpiConfig<USCI, ClockSet> {
         self.ctlw0.ucssel = Ucssel::Aclk;
         self.prescaler = clk_divisor;
-        SpiBusConfig { usci: self.usci, prescaler: self.prescaler, ctlw0: self.ctlw0, _phantom: PhantomData }
+        SpiConfig { usci: self.usci, prescaler: self.prescaler, ctlw0: self.ctlw0, _phantom: PhantomData }
     }
 }
 #[allow(private_bounds)]
-impl<USCI: SpiUsci> SpiBusConfig<USCI, ClockSet> {
-    /// Performs hardware configuration and creates an SPI bus. The STE pin is used as an automatically controlled chip select pin. Suitable for systems with only one slave device.
+impl<USCI: SpiUsci> SpiConfig<USCI, ClockSet> {
+    /// Performs hardware configuration and creates an [SPI *bus*](embedded_hal::spi::SpiBus).
+    /// You must configure and control any chip select pins yourself. 
     #[inline(always)]
-    pub fn configure_with_hardware_cs<
-        SO: Into<USCI::MISO>,
-        SI: Into<USCI::MOSI>,
-        CLK: Into<USCI::SCLK>,
-        STE: Into<USCI::STE>,
-    >(
-        &mut self,
-        _miso: SO,
-        _mosi: SI,
-        _sclk: CLK,
-        _cs: STE,
-    ) -> SpiBus<USCI> {
-        self.configure_hw();
-        SpiBus(PhantomData)
-    }
-
-    /// Performs hardware configuration and creates an SPI bus. You must configure and control any chip select pins yourself. Suitable for systems with multiple slave devices. 
-    #[inline(always)]
-    pub fn configure_with_software_cs<
+    pub fn configure<
         SO: Into<USCI::MISO>,
         SI: Into<USCI::MOSI>,
         CLK: Into<USCI::SCLK>,
@@ -234,10 +223,10 @@ impl<USCI: SpiUsci> SpiBusConfig<USCI, ClockSet> {
         _miso: SO,
         _mosi: SI,
         _sclk: CLK
-    ) -> SpiBus<USCI> {
+    ) -> Spi<USCI> {
         self.ctlw0.ucmode = Ucmode::ThreePinSPI;
         self.configure_hw();
-        SpiBus(PhantomData)
+        Spi(PhantomData)
     }
 
     #[inline]
@@ -256,9 +245,9 @@ impl<USCI: SpiUsci> SpiBusConfig<USCI, ClockSet> {
 }
 
 /// Represents a group of pins configured for SPI communication
-pub struct SpiBus<USCI: SpiUsci>(PhantomData<USCI>);
+pub struct Spi<USCI: SpiUsci>(PhantomData<USCI>);
 
-impl<USCI: SpiUsci> SpiBus<USCI> {
+impl<USCI: SpiUsci> Spi<USCI> {
     /// Enable Rx interrupts, which fire when a byte is ready to be read
     #[inline(always)]
     pub fn set_rx_interrupt(&mut self) {
@@ -313,25 +302,13 @@ impl<USCI: SpiUsci> SpiBus<USCI> {
         usci.set_spi_mode(mode);
         usci.ctw0_clear_rst();
     }
-}
 
-/// SPI transmit/receive errors
-#[derive(Clone, Copy, Debug)]
-#[non_exhaustive]
-pub enum SPIErr {
-    /// Data in the recieve buffer was overwritten before it was read. The contained data is the new contents of the recieve buffer.
-    OverrunError(u8),
-    // In future the framing error bit UCFE may appear here. Right now it's unimplemented.
-}
-
-impl<USCI: SpiUsci> FullDuplex<u8> for SpiBus<USCI> {
-    type Error = SPIErr;
-    fn read(&mut self) -> nb::Result<u8, Self::Error> {
+    fn recv_byte(&mut self) -> nb::Result<u8, SpiErr> {
         let usci = unsafe { USCI::steal() };
         
         if usci.receive_flag() {
             if usci.overrun_flag() {
-                Err(nb::Error::Other(SPIErr::OverrunError(usci.rxbuf_rd())))
+                Err(nb::Error::Other(SpiErr::OverrunError(usci.rxbuf_rd())))
             }
             else {
                 Ok(usci.rxbuf_rd())
@@ -341,7 +318,7 @@ impl<USCI: SpiUsci> FullDuplex<u8> for SpiBus<USCI> {
         }
     }
 
-    fn send(&mut self, word: u8) -> nb::Result<(), Self::Error> {
+    fn send_byte(&mut self, word: u8) -> nb::Result<(), SpiErr> {
         let usci = unsafe { USCI::steal() };
         if usci.transmit_flag() {
             usci.txbuf_wr(word);
@@ -352,6 +329,132 @@ impl<USCI: SpiUsci> FullDuplex<u8> for SpiBus<USCI> {
     }
 }
 
-// Implementing FullDuplex above gets us a blocking write and transfer implementation for free
-impl<USCI: SpiUsci> embedded_hal::blocking::spi::write::Default<u8> for SpiBus<USCI> {}
-impl<USCI: SpiUsci> embedded_hal::blocking::spi::transfer::Default<u8> for SpiBus<USCI> {}
+/// SPI transmit/receive errors
+#[derive(Clone, Copy, Debug)]
+#[non_exhaustive]
+pub enum SpiErr {
+    /// Data in the recieve buffer was overwritten before it was read. The contained data is the new contents of the recieve buffer.
+    OverrunError(u8),
+    // In future the framing error bit UCFE may appear here. Right now it's unimplemented.
+}
+
+mod ehal1 {
+    use embedded_hal::spi::{Error, ErrorType, SpiBus};
+    use nb::block;
+    use super::*;
+
+    impl Error for SpiErr {
+        fn kind(&self) -> embedded_hal::spi::ErrorKind {
+            match self {
+                SpiErr::OverrunError(_) => embedded_hal::spi::ErrorKind::Overrun,
+            }
+        }
+    }
+
+    impl<USCI: SpiUsci> ErrorType for Spi<USCI> {
+        type Error = SpiErr;
+    }
+
+    impl<USCI: SpiUsci> SpiBus for Spi<USCI> {
+        /// Send dummy packets (`0x00`) on MOSI so the slave can respond on MISO. Store the response in `words`.
+        fn read(&mut self, words: &mut [u8]) -> Result<(), Self::Error> {
+            for word in words {
+                block!(self.send_byte(0x00))?;
+                *word = block!(self.recv_byte())?;
+            }
+            Ok(())
+        }
+    
+        /// Write `words` to the slave, ignoring all the incoming words.
+        ///
+        /// Returns as soon as the last word is placed in the hardware buffer.
+        fn write(&mut self, words: &[u8]) -> Result<(), Self::Error> {
+            for word in words {
+                block!(self.send_byte(*word))?;
+                let _ = block!(self.recv_byte());
+            }
+            Ok(())
+        }
+    
+        /// Write and read simultaneously. `write` is written to the slave on MOSI and
+        /// words received on MISO are stored in `read`.
+        ///
+        /// If `write` is longer than `read`, then after `read` is full any subsequent incoming words will be discarded. 
+        /// If `read` is longer than `write`, then dummy packets of `0x00` are sent until `read` is full.
+        fn transfer(&mut self, read: &mut [u8], write: &[u8]) -> Result<(), Self::Error> {
+            let mut read_bytes = read.iter_mut();
+            let mut write_bytes = write.iter();
+            const DUMMY_WRITE: u8 = 0x00;
+            let mut dummy_read = 0;
+
+            // Pair up read and write bytes (inserting dummy values as necessary) until everything's sent
+            loop {
+                let (rd, wr) = match (read_bytes.next(), write_bytes.next()) {
+                    (Some(rd), Some(wr)) => (rd, wr),
+                    (Some(rd), None    ) => (rd, &DUMMY_WRITE),
+                    (None,     Some(wr)) => (&mut dummy_read, wr),
+                    (None,     None    ) => break,
+                };
+
+                block!(self.send_byte(*wr))?;
+                *rd = block!(self.recv_byte())?;
+            }
+            Ok(())
+        }
+    
+        /// Write and read simultaneously. The contents of `words` are
+        /// written to the slave, and the received words are stored into the same
+        /// `words` buffer, overwriting it.
+        fn transfer_in_place(&mut self, words: &mut [u8]) -> Result<(), Self::Error> {
+            for word in words {
+                block!(self.send_byte(*word))?;
+                *word = block!(self.recv_byte())?;
+            }
+            Ok(())
+        }
+    
+        fn flush(&mut self) -> Result<(), Self::Error> {
+            // I would usually do this by checking the UCBUSY bit, but 
+            // it seems to be missing from the (SPI version of the) PAC...
+            let usci = unsafe { USCI::steal() };
+            while !usci.transmit_flag() {}
+            Ok(())
+        }
+    }
+}
+
+mod ehal_nb1 {
+    use embedded_hal_nb::{nb, spi::FullDuplex};
+    use super::*;
+
+    impl<USCI: SpiUsci> FullDuplex<u8> for Spi<USCI> {
+        fn read(&mut self) -> nb::Result<u8, Self::Error> {
+            self.recv_byte()
+        }
+    
+        fn write(&mut self, word: u8) -> nb::Result<(), Self::Error> {
+            self.send_byte(word)
+        }
+    }
+}
+
+#[cfg(feature = "embedded-hal-02")]
+mod ehal02 {
+    use embedded_hal_02::spi::FullDuplex;
+    use super::*;
+
+    impl<USCI: SpiUsci> FullDuplex<u8> for Spi<USCI> {
+        type Error = SpiErr;
+        fn read(&mut self) -> nb::Result<u8, Self::Error> {
+            self.recv_byte()
+        }
+
+        fn send(&mut self, word: u8) -> nb::Result<(), Self::Error> {
+            self.send_byte(word)
+        }
+    }
+
+    // Implementing FullDuplex above gets us a blocking write and transfer implementation for free
+    impl<USCI: SpiUsci> embedded_hal_02::blocking::spi::write::Default<u8> for Spi<USCI> {}
+    impl<USCI: SpiUsci> embedded_hal_02::blocking::spi::transfer::Default<u8> for Spi<USCI> {}
+}

@@ -1,7 +1,7 @@
 #![no_main]
 #![no_std]
 
-use embedded_hal::prelude::*;
+use embedded_hal::pwm::SetDutyCycle;
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
     clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv},
@@ -34,15 +34,10 @@ fn main() -> ! {
     let mut pwm4 = pwm.pwm4.init(p6.pin3.to_output().to_alternate1());
     let mut pwm5 = pwm.pwm5.init(p6.pin4.to_output().to_alternate1());
 
-    config_pwm(&mut pwm4, 100);
-    config_pwm(&mut pwm5, 3795);
+    pwm4.set_duty_cycle(100).unwrap();
+    pwm5.set_duty_cycle(3795).unwrap();
 
     loop {}
-}
-
-fn config_pwm<T: PwmPeriph<C>, C>(pwm: &mut Pwm<T, C>, duty: u16) {
-    pwm.enable();
-    pwm.set_duty(duty);
 }
 
 // The compiler will emit calls to the abort() compiler intrinsic if debug assertions are
