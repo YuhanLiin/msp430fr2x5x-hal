@@ -44,13 +44,14 @@ impl Pmm {
     /// Configures the internal voltage reference to the specified voltage and enables it.
     /// Returns a token signifying that the voltage reference has been enabled, unless it was *already* enabled.
     pub fn enable_internal_reference(&mut self, vref: ReferenceVoltage) -> Option<InternalVRef> {
-        match self.0.pmmctl2.read().intrefen().bit() {
+        let pmmctl2 = self.0.pmmctl2.read();
+        match pmmctl2.intrefen().bit() {
             true => None,
             false => {
-                self.0.pmmctl2.modify(|_, w| w
+                self.0.pmmctl2.write(|w| 
+                    unsafe{ w.bits(pmmctl2.bits()) }
                     .refvsel().bits(vref as u8)
-                    .intrefen().intrefen_1()
-                );
+                    .intrefen().intrefen_1());
                 Some(InternalVRef(vref))
             },
         }
