@@ -288,6 +288,10 @@ impl<SMCLK: SmclkState> ClockConfig<MclkDefined, SMCLK> {
                     ._1()
             });
 
+            msp430::asm::nop();
+            msp430::asm::nop();
+            msp430::asm::nop();
+
             fll_on();
 
             while !self.periph.csctl7.read().fllunlock().is_fllunlock_0() {}
