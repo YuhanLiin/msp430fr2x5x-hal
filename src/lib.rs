@@ -63,6 +63,7 @@ pub mod spi;
 pub mod sac;
 pub mod ecomp;
 pub mod bak_mem;
+pub mod info_mem;
 pub mod crc;
 
 mod hw_traits;
