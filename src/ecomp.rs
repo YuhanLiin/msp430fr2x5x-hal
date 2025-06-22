@@ -187,7 +187,7 @@ impl<COMP: ECompPeriph> ComparatorDacConfig<COMP> {
     #[inline(always)]
     pub fn new_sw_dac(self, vref: DacVRef, buf: BufferSel) -> ComparatorDac<COMP, SwDualBuffer> {
         COMP::cpxdacctl(true, vref, DacBufferMode::Software, buf);
-        ComparatorDac { reg: PhantomData, mode: PhantomData }
+        ComparatorDac { reg: PhantomData, mode: PhantomData, vref_lifetime: PhantomData }
     }
     /// Initialise the DAC in this eCOMP peripheral in hardware dual buffering mode.
     /// 
@@ -195,16 +195,17 @@ impl<COMP: ECompPeriph> ComparatorDacConfig<COMP> {
     #[inline(always)]
     pub fn new_hw_dac(self, vref: DacVRef) -> ComparatorDac<COMP, HwDualBuffer> {
         COMP::cpxdacctl(true, vref, DacBufferMode::Hardware, BufferSel::_1);
-        ComparatorDac { reg: PhantomData, mode: PhantomData }
+        ComparatorDac { reg: PhantomData, mode: PhantomData, vref_lifetime: PhantomData }
     }
 }
 
 /// Represents an eCOMP DAC that has been configured
-pub struct ComparatorDac<COMP: ECompPeriph, MODE> {
+pub struct ComparatorDac<'a, COMP: ECompPeriph, MODE> {
     reg: PhantomData<COMP>,
     mode: PhantomData<MODE>,
+    vref_lifetime: PhantomData<DacVRef<'a>>, // If we are using internal vref ensure it stays on for the lifetime of the DAC
 }
-impl<COMP: ECompPeriph, MODE> ComparatorDac<COMP, MODE> {
+impl<COMP: ECompPeriph, MODE> ComparatorDac<'_, COMP, MODE> {
     /// Set the value in buffer 1 (CPDACBUF1)
     #[inline(always)]
     pub fn write_buffer_1(&mut self, count: u8) {
@@ -216,12 +217,12 @@ impl<COMP: ECompPeriph, MODE> ComparatorDac<COMP, MODE> {
         COMP::set_buf2_val(count);
     }
 }
-impl<COMP: ECompPeriph> ComparatorDac<COMP, SwDualBuffer> {
+impl<'a, COMP: ECompPeriph> ComparatorDac<'a, COMP, SwDualBuffer> {
     /// Consume this DAC and return a DAC in the hardware dual buffer mode
     #[inline(always)]
-    pub fn into_hw_buffer_mode(self) -> ComparatorDac<COMP, HwDualBuffer> {
+    pub fn into_hw_buffer_mode(self) -> ComparatorDac<'a, COMP, HwDualBuffer> {
         COMP::set_dac_buffer_mode(DacBufferMode::Hardware);
-        ComparatorDac{ reg: PhantomData, mode: PhantomData }
+        ComparatorDac{ reg: PhantomData, mode: PhantomData, vref_lifetime: PhantomData }
     }
     /// Select which buffer is passed to the DAC
     #[inline(always)]
@@ -229,12 +230,12 @@ impl<COMP: ECompPeriph> ComparatorDac<COMP, SwDualBuffer> {
         COMP::select_buffer(buf);
     }
 }
-impl<COMP: ECompPeriph> ComparatorDac<COMP, HwDualBuffer> {
+impl<'a, COMP: ECompPeriph> ComparatorDac<'a, COMP, HwDualBuffer> {
     /// Consume this DAC and return a DAC in the software dual buffer mode
     #[inline(always)]
-    pub fn into_sw_buffer_mode(self) -> ComparatorDac<COMP, SwDualBuffer> {
+    pub fn into_sw_buffer_mode(self) -> ComparatorDac<'a, COMP, SwDualBuffer> {
         COMP::set_dac_buffer_mode(DacBufferMode::Software);
-        ComparatorDac{ reg: PhantomData, mode: PhantomData }
+        ComparatorDac{ reg: PhantomData, mode: PhantomData, vref_lifetime: PhantomData }
     }
 }
 

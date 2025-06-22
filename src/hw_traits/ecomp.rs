@@ -44,7 +44,7 @@ pub trait ECompPeriph: Steal {
 // Marker trait for an eCOMP DAC. Since the DAC has a typestate (hardware/software double buffer)
 // we can't just say `type CompDac = ComparatorDac<COMP>` 
 pub trait CompDacPeriph<COMP: ECompPeriph> {}
-impl<COMP: ECompPeriph, MODE> CompDacPeriph<COMP> for ComparatorDac<COMP, MODE> {}
+impl<COMP: ECompPeriph, MODE> CompDacPeriph<COMP> for ComparatorDac<'_, COMP, MODE> {}
 
 /// Possible eCOMP DAC dual buffer modes
 pub enum DacBufferMode {

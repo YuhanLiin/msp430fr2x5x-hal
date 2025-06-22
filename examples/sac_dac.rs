@@ -3,7 +3,7 @@
 
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
-    gpio::Batch, pmm::Pmm, sac::{LoadTrigger, VRef, PositiveInput, PowerMode, SacConfig}, watchdog::Wdt
+    gpio::Batch, pmm::{Pmm, ReferenceVoltage}, sac::{LoadTrigger, PositiveInput, PowerMode, SacConfig, VRef}, watchdog::Wdt
 };
 use panic_msp430 as _;
 
@@ -16,7 +16,7 @@ fn main() -> ! {
     let _wdt = Wdt::constrain(periph.WDT_A);
 
     // Configure GPIO
-    let pmm = Pmm::new(periph.PMM);
+    let mut pmm = Pmm::new(periph.PMM);
     let port1 = Batch::new(periph.P1).split(&pmm);
 
     let p1_1 = port1.pin1.to_alternate3();
@@ -24,8 +24,9 @@ fn main() -> ! {
     // Each Smart Analog Combo unit contains a DAC and amplifier.
     let (dac_config, amp_config) = SacConfig::begin(periph.SAC0);
 
-    // Configure the DAC within SAC0
-    let mut dac = dac_config.configure(VRef::Vcc, LoadTrigger::Immediate);
+    // Configure the DAC within SAC0. Let's use the internal voltage reference too.
+    let vref = pmm.enable_internal_reference(ReferenceVoltage::_1V5).unwrap();
+    let mut dac = dac_config.configure(VRef::Internal(&vref), LoadTrigger::Immediate);
     
     // To see the DAC output on a GPIO pin, we must set the SAC amplifier into buffer mode and set the DAC as the buffer input 
     let _amp = amp_config.buffer(PositiveInput::Dac(&dac), PowerMode::LowPower)

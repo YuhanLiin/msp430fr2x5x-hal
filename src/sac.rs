@@ -69,7 +69,7 @@ impl<SAC: SacPeriph> DacConfig<SAC> {
     #[inline(always)]
     pub fn configure<'a>(self, vref: VRef<'a>, load_trigger: LoadTrigger<'_>) -> Dac<'a, SAC> {
         SAC::configure_dac(load_trigger, vref);
-        Dac(PhantomData)
+        Dac{sac: PhantomData, vref_lifetime: PhantomData}
     }
 }
 
@@ -115,8 +115,11 @@ impl From<VRef<'_>> for bool {
 
 /// The Digital to Analog Converter (DAC) inside this Smart Analog Combo (SAC) module.
 #[derive(Debug)]
-pub struct Dac<SAC: SacPeriph>(PhantomData<SAC>);
-impl<SAC: SacPeriph> Dac<SAC> {
+pub struct Dac<'a, SAC: SacPeriph>{
+    sac: PhantomData<SAC>, 
+    vref_lifetime: PhantomData<VRef<'a>>, // If we use the internal reference, ensure it stays enabled for the life of the DAC.
+}
+impl<SAC: SacPeriph> Dac<'_, SAC> {
     /// Set the DAC count. This should be a value between 0 and 4095, where 0 is 0V, and 4095 is (just below) the DAC reference voltage.
     /// The value is masked with `0xFFF` before being written to the register.
     #[inline(always)]
@@ -182,7 +185,7 @@ pub enum PositiveInput<'a, SAC: SacPeriph> {
     /// Use the GPIO pin labelled as OA+ as this amplifier's non-inverting input
     ExtPin(SAC::PosInputPin),
     /// Use the SAC's Internal DAC as the amplifier's non-inverting input
-    Dac(&'a Dac<SAC>),
+    Dac(&'a Dac<'a, SAC>),
     /// Use the output of the paired SAC amplifier as this amplifier's non-inverting input. 
     /// It is your responsibility to ensure this amplifier has been configured.
     // We can't require a reference to this Amplifier, as they could both refer to the other which would be impossible to instantiate
