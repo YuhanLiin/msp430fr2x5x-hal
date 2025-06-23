@@ -26,7 +26,7 @@ fn main() -> ! {
     }
 
     // Disable write protection and get the information memory as an array type
-    let nv_mem = InfoMemory::as_u8s(periph.SYS);
+    let (nv_mem, _) = InfoMemory::as_u8s(periph.SYS);
 
     // Toggle the first byte between 0 and 1.
     nv_mem[0] = (nv_mem[0].wrapping_add(1)) & 1;
