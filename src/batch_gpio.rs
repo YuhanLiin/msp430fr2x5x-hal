@@ -83,7 +83,8 @@ impl<PORT: PortNum, PIN: PinNum> PinProxy<PORT, PIN, Output> {
 
 // Traits for deciding the value of a pin's registers
 trait PxdirOn {}
-trait PxoutOn {}
+trait PxoutSet {}
+trait PxoutClr {}
 trait PxrenOn {}
 trait Pxsel0On {}
 trait Pxsel1On {}
@@ -104,19 +105,39 @@ impl<T: PxdirOn> WritePxdir for T {
     }
 }
 
-trait WritePxout {
-    fn pxout_on(&self) -> bool;
+// Whether PxOUT is set during config
+trait WritePxoutSet {
+    // The bit mask value - if true then the set bit mask is 1 (i.e. bit is set), if false then the bit mask is 0 (i.e. no effect)
+    fn pxout_set_on(&self) -> bool;
 }
-impl<T> WritePxout for T {
+impl<T> WritePxoutSet for T {
     #[inline(always)]
-    default fn pxout_on(&self) -> bool {
+    default fn pxout_set_on(&self) -> bool {
         false
     }
 }
-impl<T: PxoutOn> WritePxout for T {
+impl<T: PxoutSet> WritePxoutSet for T {
     #[inline(always)]
-    fn pxout_on(&self) -> bool {
+    fn pxout_set_on(&self) -> bool {
         true
+    }
+}
+
+// Whether PxOUT is cleared during config
+trait WritePxoutClr {
+    // The bit mask value - if true then the clear bit mask is 1 (i.e. no effect), if false then the bit mask is 0 (i.e. bit is cleared)
+    fn pxout_clr_on(&self) -> bool;
+}
+impl<T> WritePxoutClr for T {
+    #[inline(always)]
+    default fn pxout_clr_on(&self) -> bool {
+        true
+    }
+}
+impl<T: PxoutClr> WritePxoutClr for T {
+    #[inline(always)]
+    fn pxout_clr_on(&self) -> bool {
+        false
     }
 }
 
@@ -183,10 +204,15 @@ impl<PORT: PortNum, PIN: PinNum> PxrenOn for PinProxy<PORT, PIN, Alternate2<Inpu
 impl<PORT: PortNum, PIN: PinNum> PxrenOn for PinProxy<PORT, PIN, Alternate3<Input<Pullup>>> {}
 impl<PORT: PortNum, PIN: PinNum> PxrenOn for PinProxy<PORT, PIN, Alternate3<Input<Pulldown>>> {}
 
-impl<PORT: PortNum, PIN: PinNum> PxoutOn for PinProxy<PORT, PIN, Input<Pullup>> {}
-impl<PORT: PortNum, PIN: PinNum> PxoutOn for PinProxy<PORT, PIN, Alternate1<Input<Pullup>>> {}
-impl<PORT: PortNum, PIN: PinNum> PxoutOn for PinProxy<PORT, PIN, Alternate2<Input<Pullup>>> {}
-impl<PORT: PortNum, PIN: PinNum> PxoutOn for PinProxy<PORT, PIN, Alternate3<Input<Pullup>>> {}
+impl<PORT: PortNum, PIN: PinNum> PxoutSet for PinProxy<PORT, PIN, Input<Pullup>> {}
+impl<PORT: PortNum, PIN: PinNum> PxoutSet for PinProxy<PORT, PIN, Alternate1<Input<Pullup>>> {}
+impl<PORT: PortNum, PIN: PinNum> PxoutSet for PinProxy<PORT, PIN, Alternate2<Input<Pullup>>> {}
+impl<PORT: PortNum, PIN: PinNum> PxoutSet for PinProxy<PORT, PIN, Alternate3<Input<Pullup>>> {}
+
+impl<PORT: PortNum, PIN: PinNum> PxoutClr for PinProxy<PORT, PIN, Input<Pulldown>> {}
+impl<PORT: PortNum, PIN: PinNum> PxoutClr for PinProxy<PORT, PIN, Alternate1<Input<Pulldown>>> {}
+impl<PORT: PortNum, PIN: PinNum> PxoutClr for PinProxy<PORT, PIN, Alternate2<Input<Pulldown>>> {}
+impl<PORT: PortNum, PIN: PinNum> PxoutClr for PinProxy<PORT, PIN, Alternate3<Input<Pulldown>>> {}
 
 impl<PORT: PortNum, PIN: PinNum, DIR> Pxsel0On for PinProxy<PORT, PIN, Alternate1<DIR>> {}
 impl<PORT: PortNum, PIN: PinNum, DIR> Pxsel0On for PinProxy<PORT, PIN, Alternate3<DIR>> {}
@@ -196,7 +222,8 @@ impl<PORT: PortNum, PIN: PinNum, DIR> Pxsel1On for PinProxy<PORT, PIN, Alternate
 
 // Derive bitmasks for different GPIO registers from pin numbers and register trait implementations
 trait MaskRegisters {
-    fn pxout_mask(&self) -> u8;
+    fn pxout_set_mask(&self) -> u8;
+    fn pxout_clr_mask(&self) -> u8;
     fn pxdir_mask(&self) -> u8;
     fn pxren_mask(&self) -> u8;
     fn pxsel0_mask(&self) -> u8;
@@ -205,8 +232,13 @@ trait MaskRegisters {
 
 impl<PORT: PortNum, PIN: PinNum, DIR> MaskRegisters for PinProxy<PORT, PIN, DIR> {
     #[inline(always)]
-    fn pxout_mask(&self) -> u8 {
-        (self.pxout_on() as u8) << PIN::NUM
+    fn pxout_set_mask(&self) -> u8 {
+        (self.pxout_set_on() as u8) << PIN::NUM
+    }
+
+    #[inline(always)]
+    fn pxout_clr_mask(&self) -> u8 {
+        (self.pxout_clr_on() as u8) << PIN::NUM
     }
 
     #[inline(always)]
@@ -293,15 +325,25 @@ impl<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
             .set_mask(self.pin6.pxdir_mask())
             .set_mask(self.pin7.pxdir_mask());
 
-        let pxout = 0u8
-            .set_mask(self.pin0.pxout_mask())
-            .set_mask(self.pin1.pxout_mask())
-            .set_mask(self.pin2.pxout_mask())
-            .set_mask(self.pin3.pxout_mask())
-            .set_mask(self.pin4.pxout_mask())
-            .set_mask(self.pin5.pxout_mask())
-            .set_mask(self.pin6.pxout_mask())
-            .set_mask(self.pin7.pxout_mask());
+        let pxout_set = 0u8
+            .set_mask(self.pin0.pxout_set_mask())
+            .set_mask(self.pin1.pxout_set_mask())
+            .set_mask(self.pin2.pxout_set_mask())
+            .set_mask(self.pin3.pxout_set_mask())
+            .set_mask(self.pin4.pxout_set_mask())
+            .set_mask(self.pin5.pxout_set_mask())
+            .set_mask(self.pin6.pxout_set_mask())
+            .set_mask(self.pin7.pxout_set_mask());
+
+        let pxout_clr = 0u8
+            .set_mask(self.pin0.pxout_clr_mask())
+            .set_mask(self.pin1.pxout_clr_mask())
+            .set_mask(self.pin2.pxout_clr_mask())
+            .set_mask(self.pin3.pxout_clr_mask())
+            .set_mask(self.pin4.pxout_clr_mask())
+            .set_mask(self.pin5.pxout_clr_mask())
+            .set_mask(self.pin6.pxout_clr_mask())
+            .set_mask(self.pin7.pxout_clr_mask());
 
         let pxren = 0u8
             .set_mask(self.pin0.pxren_mask())
@@ -338,7 +380,13 @@ impl<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
         p.maybe_set_pxie(0);
         p.pxsel0_wr(pxsel0);
         p.pxsel1_wr(pxsel1);
-        p.pxout_wr(pxout);
+
+        // Only write to PxOUT if we need to match the pull resistor state to the typestate,
+        // otherwise keep it at it's previous value.
+        // Instead of a write(), use a set_bits() and a clear_bits() to allow for leaving unchanged.
+        p.pxout_set(pxout_set);
+        p.pxout_clear(pxout_clr);
+
         p.pxdir_wr(pxdir);
         p.pxren_wr(pxren);
     }
