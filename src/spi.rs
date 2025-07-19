@@ -272,20 +272,25 @@ impl<USCI: SpiUsci> Spi<USCI> {
         self.usci.clear_transmit_interrupt();
     }
 
-    /// Writes raw value to Tx buffer with no checks for validity
+    /// Write a byte into the Tx buffer, without checking if the Tx buffer is empty. Returns immediately.
+    /// Useful if you already know the buffer is empty (e.g. a Tx interrupt was triggered)
     /// # Safety
-    /// May clobber unsent data still in the buffer
+    /// May clobber previous unsent data if the TXIFG bit is not set.
     #[inline(always)]
-    pub unsafe fn write_no_check(&mut self, val: u8) {
+    pub unsafe fn write_unchecked(&mut self, val: u8) {
         self.usci.txbuf_wr(val)
     }
 
-    #[inline(always)]
-    /// Reads a raw value from the Rx buffer with no checks for validity
+    /// Read the byte in the Rx buffer, without checking if the Rx buffer is ready.
+    /// Useful when you already know the buffer is ready (e.g. an Rx interrupt was triggered).
     /// # Safety
-    /// May read duplicate data
-    pub unsafe fn read_no_check(&mut self) -> u8 {
-        self.usci.rxbuf_rd()
+    /// May read invalid data if RXIFG bit is not ready.
+    #[inline]
+    pub unsafe fn read_unchecked(&mut self) -> Result<u8, SpiErr> {
+        if self.usci.overrun_flag() {
+            return Err(SpiErr::Overrun(self.usci.rxbuf_rd()));
+        }
+        Ok(self.usci.rxbuf_rd())
     }
 
     #[inline(always)]
