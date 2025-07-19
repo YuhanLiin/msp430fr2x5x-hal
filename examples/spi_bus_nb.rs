@@ -36,8 +36,8 @@ fn main() -> ! {
         .freeze(&mut fram);
 
     let mut spi = SpiConfig::new(periph.E_USCI_A0, MODE_0, true)
-        .use_smclk(&smclk, 16) // 8MHz / 16 = 500kHz
-        .configure(miso, mosi, sck);
+        .as_master_using_smclk(&smclk, 16) // 8MHz / 16 = 500kHz
+        .single_master_bus(miso, mosi, sck);
 
     loop {
         cs.set_low().ok();

@@ -23,7 +23,6 @@
 //! eUSCI_B1: {MISO: `P4.7`, MOSI: `P4.6`, SCLK: `P4.5`}.
 use crate::{
     clock::{Aclk, Smclk}, 
-    delay::SysDelay, 
     gpio::{Alternate1, Pin, Pin0, Pin1, Pin2, Pin3, Pin4, Pin5, Pin6, Pin7, P1, P4}, 
     hw_traits::eusci::{EusciSPI, Ucmode, Ucssel, UcxSpiCtw0},
 };
@@ -148,23 +147,23 @@ impl_spi_pin!(UsciB1SCLKPin, P4, Pin5);
 pub struct UsciB1STEPin;
 impl_spi_pin!(UsciB1STEPin, P4, Pin4);
 
-/// Typestate for an SPI bus configuration with no clock source selected
-pub struct NoClockSet;
-/// Typestate for an SPI bus configuration with a clock source selected
-pub struct ClockSet;
+/// Typestate for an SPI bus whose role has not yet been chosen.
+pub struct RoleNotSet;
+/// Typestate for an SPI bus being configured as a master device.
+pub struct Master;
+/// Typestate for an SPI bus being configured as a slave device.
+pub struct Slave;
 
-/// Struct used to configure a SPI bus
-pub struct SpiConfig<USCI: SpiUsci, STATE> {
-    usci: USCI,
-    prescaler: u16,
-
-    // Register configs
+/// Configuration object for an eUSCI peripheral being set up for SPI mode.
+pub struct SpiConfig<USCI: SpiUsci, ROLE>{
+    usci: USCI, 
     ctlw0: UcxSpiCtw0,
-    _phantom: PhantomData<STATE>,
+    prescaler: u16,
+    _phantom: PhantomData<ROLE>,
 }
 
-impl<USCI: SpiUsci> SpiConfig<USCI, NoClockSet> {
-    /// Create a new configuration for setting up a EUSCI peripheral in SPI mode
+impl<USCI: SpiUsci> SpiConfig<USCI, RoleNotSet> {
+    /// Begin configuring an EUSCI peripheral for SPI mode.
     pub fn new(usci: USCI, mode: Mode, msb_first: bool) -> Self {
         let ctlw0 = UcxSpiCtw0 {
             ucckph: match mode.phase {
@@ -176,59 +175,80 @@ impl<USCI: SpiUsci> SpiConfig<USCI, NoClockSet> {
                 Polarity::IdleHigh => true,
             },
             ucmsb: msb_first,
-            uc7bit: false,
-            ucmst: true,
             ucsync: true,
-            ucstem: true,
             ucswrst: true,
-            ucmode: Ucmode::FourPinSPI0, // overwritten by `configure_with_software_cs()`
-            ucssel: Ucssel::Smclk, // overwritten by `use_smclk/aclk()`
+            // UCSTEM = 1 isn't useful for us, since the STE acts like a CS pin in this case, but 
+            // it asserts and de-asserts after each byte automatically, and unfortunately 
+            // ehal::SpiBus requires support for multi-byte transactions. 
+            ucstem: false, 
+            uc7bit: false, // Not supported
+            ..Default::default()
         };
 
-        SpiConfig {
-            usci,
-            prescaler: 0,
-            ctlw0,
-            _phantom: PhantomData,
-        }
+        Self { usci, ctlw0, prescaler: 0, _phantom: PhantomData }
     }
-
-    /// Configures this peripheral to use smclk
-    #[inline]
-    pub fn use_smclk(mut self, _smclk: &Smclk, clk_divisor: u16) -> SpiConfig<USCI, ClockSet>{
-        self.ctlw0.ucssel = Ucssel::Smclk;
-        self.prescaler = clk_divisor;
+    /// This device will act as a slave on the SPI bus.
+    pub fn as_slave(mut self) -> SpiConfig<USCI, Slave> {
+        self.ctlw0.ucmst = false;
+        // UCSSEL is 'don't care' in slave mode
         SpiConfig { usci: self.usci, prescaler: self.prescaler, ctlw0: self.ctlw0, _phantom: PhantomData }
     }
-
-    /// Configures this peripheral to use aclk
-    #[inline]
-    pub fn use_aclk(mut self, _aclk: &Aclk, clk_divisor: u16) -> SpiConfig<USCI, ClockSet> {
+    /// This device will act as a master on the SPI bus, deriving SCLK from SMCLK.
+    pub fn as_master_using_smclk(mut self, _smclk: &Smclk, clk_div: u16) -> SpiConfig<USCI, Master> {
+        self.ctlw0.ucmst = true;
+        self.ctlw0.ucssel = Ucssel::Smclk;
+        self.prescaler = clk_div;
+        SpiConfig { usci: self.usci, prescaler: self.prescaler, ctlw0: self.ctlw0, _phantom: PhantomData }
+    }
+    /// This device will act as a master on the SPI bus, deriving SCLK from ACLK.
+    pub fn as_master_using_aclk(mut self, _aclk: &Aclk, clk_div: u16) -> SpiConfig<USCI, Master> {
+        self.ctlw0.ucmst = true;
         self.ctlw0.ucssel = Ucssel::Aclk;
-        self.prescaler = clk_divisor;
+        self.prescaler = clk_div;
         SpiConfig { usci: self.usci, prescaler: self.prescaler, ctlw0: self.ctlw0, _phantom: PhantomData }
     }
 }
-#[allow(private_bounds)]
-impl<USCI: SpiUsci> SpiConfig<USCI, ClockSet> {
-    /// Performs hardware configuration and creates an [SPI *bus*](embedded_hal::spi::SpiBus).
-    /// You must configure and control any chip select pins yourself. 
-    #[inline(always)]
-    pub fn configure<
-        SO: Into<USCI::MISO>,
-        SI: Into<USCI::MOSI>,
-        CLK: Into<USCI::SCLK>,
-    >(
-        mut self,
-        _miso: SO,
-        _mosi: SI,
-        _sclk: CLK
-    ) -> Spi<USCI> {
+impl<USCI: SpiUsci> SpiConfig<USCI, Master> {
+    // Note: Errata USCI50 makes this mode a real pain to implement. Leave out for now. 
+    // /// For an SPI bus with more than one master. 
+    // /// The STE pin is used by the other master to turn SCLK and MOSI high impedance, so the other master can talk on the bus.
+    // pub fn multi_master_bus<MOSI, MISO, SCLK, STE>(mut self, _miso: MISO, _mosi: MOSI, _sclk: SCLK, _ste: STE, ste_pol: StePolarity) -> Spi<USCI> 
+    // where MOSI: Into<USCI::MOSI>, MISO: Into<USCI::MISO>, SCLK: Into<USCI::SCLK>, STE: Into<USCI::STE> {
+    //     // TODO: UCMODE
+    //     self.configure_hw();
+    //     Spi(PhantomData)
+    // }
+    /// For an SPI bus with a single master. 
+    /// SCLK and MOSI are always outputs. The STE pin is not required.
+    pub fn single_master_bus<MOSI, MISO, SCLK>(mut self, _miso: MISO, _mosi: MOSI, _sclk: SCLK) -> Spi<USCI>
+    where MOSI: Into<USCI::MOSI>, MISO: Into<USCI::MISO>, SCLK: Into<USCI::SCLK> {
         self.ctlw0.ucmode = Ucmode::ThreePinSPI;
         self.configure_hw();
         Spi{ usci: self.usci }
     }
-
+}
+impl<USCI: SpiUsci> SpiConfig<USCI, Slave> {
+    /// For an SPI bus with more than one slave. 
+    /// The STE pin is used to turn MISO high impedance, so other slaves can talk on the bus.
+    pub fn shared_bus<MOSI, MISO, SCLK, STE>(mut self, _miso: MISO, _mosi: MOSI, _sclk: SCLK, _ste: STE, ste_pol: StePolarity) -> SpiSlave<USCI> 
+    where MOSI: Into<USCI::MOSI>, MISO: Into<USCI::MISO>, SCLK: Into<USCI::SCLK>, STE: Into<USCI::STE> {
+        self.ctlw0.ucmode = match ste_pol {
+            StePolarity::EnabledWhenHigh => Ucmode::FourPinSPI1,
+            StePolarity::EnabledWhenLow  => Ucmode::FourPinSPI0,
+        };
+        self.configure_hw();
+        SpiSlave{ usci: self.usci }
+    }
+    /// For an SPI bus where this device is the only slave.
+    /// MOSI is always an output. 
+    pub fn exclusive_bus<MOSI, MISO, SCLK>(mut self, _miso: MISO, _mosi: MOSI, _sclk: SCLK) -> SpiSlave<USCI> 
+    where MOSI: Into<USCI::MOSI>, MISO: Into<USCI::MISO>, SCLK: Into<USCI::SCLK> {
+        self.ctlw0.ucmode = Ucmode::ThreePinSPI;
+        self.configure_hw();
+        SpiSlave{ usci: self.usci }
+    }
+}
+impl<USCI: SpiUsci, ROLE> SpiConfig<USCI, ROLE> {
     #[inline]
     fn configure_hw(&self) {
         self.usci.ctw0_set_rst();
@@ -242,6 +262,14 @@ impl<USCI: SpiUsci> SpiConfig<USCI, ClockSet> {
         self.usci.clear_transmit_interrupt();
         self.usci.clear_receive_interrupt();
     }
+}
+
+/// The polarity of the STE pin.
+pub enum StePolarity {
+    /// This device is enabled when STE is high.
+    EnabledWhenHigh = 0b01,
+    /// This device is enabled when STE is low.
+    EnabledWhenLow = 0b10,
 }
 
 macro_rules! spi_common {
@@ -339,7 +367,6 @@ pub enum SpiVector {
 
 /// Represents a group of pins configured for SPI communication
 pub struct Spi<USCI: SpiUsci>{usci: USCI}
-
 impl<USCI: SpiUsci> Spi<USCI> {
     spi_common!();
     
@@ -351,6 +378,24 @@ impl<USCI: SpiUsci> Spi<USCI> {
         self.usci.set_spi_mode(mode);
         self.usci.ie_wr(intrs);
         self.usci.ctw0_clear_rst();
+    }
+}
+
+/// An eUSCI peripheral that has been configured into an SPI slave.
+pub struct SpiSlave<USCI: SpiUsci>{usci: USCI}
+impl<USCI: SpiUsci> SpiSlave<USCI> {
+    spi_common!();
+
+    /// Try to read from the Rx buffer. Returns `nb::WouldBlock` if the buffer is empty.
+    #[inline(always)]
+    pub fn read(&mut self) -> nb::Result<u8, SpiErr> {
+        self.recv_byte()
+    }
+
+    /// Try to write a byte into the Tx buffer. Returns `nb::WouldBlock` if the buffer is still full. Returns immediately.
+    #[inline(always)]
+    pub fn write(&mut self, byte: u8) -> nb::Result<(), Infallible> {
+        self.send_byte(byte)
     }
 }
 

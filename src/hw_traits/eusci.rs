@@ -24,7 +24,7 @@ macro_rules! reg_struct {
         }
     ) => {
         $(#[$attr:meta])*
-        #[derive(Copy, Clone)]
+        #[derive(Copy, Clone, Default)]
         pub struct $struct_name {
             $($(pub $bool_name : bool, $(#[$f_attr])*)*)?
             $($(pub $val_name : $val_type , $(#[$e_attr])*)*)?
@@ -42,23 +42,28 @@ macro_rules! reg_struct {
     };
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub enum Ucssel {
     Uclk = 0,
     Aclk = 1,
+    #[default]
     Smclk = 2,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub enum Ucmode {
+    #[default]
     ThreePinSPI = 0,
+    /// 0b01
     FourPinSPI1 = 1,
+    /// 0b10
     FourPinSPI0 = 2,
     I2CMode = 3,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub enum Ucglit {
+    #[default]
     Max50ns = 0,
     Max25ns = 1,
     Max12_5ns = 2,
@@ -66,9 +71,10 @@ pub enum Ucglit {
 }
 
 /// Clock low timeout select
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub enum Ucclto {
     /// Disable clock low time-out counter
+    #[default]
     Ucclto00b = 0,
     /// 135000 MODCLK cycles (approximately 28 ms)
     Ucclto01b = 1,
@@ -80,10 +86,11 @@ pub enum Ucclto {
 
 /// Automatic STOP condition generation. In slave mode, only settings 00b and 01b
 /// are available.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub enum Ucastp {
     /// No automatic STOP generation. The STOP condition is generated after
     /// the user sets the UCTXSTP bit. The value in UCBxTBCNT is a don't care.
+    #[default]
     Ucastp00b = 0,
     /// UCBCNTIFG is set when the byte counter reaches the threshold defined in
     /// UCBxTBCNT
