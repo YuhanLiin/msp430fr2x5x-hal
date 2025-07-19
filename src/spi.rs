@@ -27,7 +27,7 @@ use crate::{
     gpio::{Alternate1, Pin, Pin0, Pin1, Pin2, Pin3, Pin4, Pin5, Pin6, Pin7, P1, P4}, 
     hw_traits::eusci::{EusciSPI, Ucmode, Ucssel, UcxSpiCtw0},
 };
-use core::marker::PhantomData;
+use core::{convert::Infallible, marker::PhantomData};
 use msp430fr2355 as pac;
 use nb::Error::WouldBlock;
 
@@ -309,7 +309,7 @@ impl<USCI: SpiUsci> Spi<USCI> {
         }
     }
 
-    fn send_byte(&mut self, word: u8) -> nb::Result<(), SpiErr> {
+    fn send_byte(&mut self, word: u8) -> nb::Result<(), Infallible> {
         if self.usci.transmit_flag() {
             self.usci.txbuf_wr(word);
             Ok(())
@@ -324,6 +324,11 @@ impl<USCI: SpiUsci> Spi<USCI> {
 pub enum SpiErr {
     /// Data in the recieve buffer was overwritten before it was read. The contained data is the new contents of the recieve buffer.
     Overrun(u8),
+}
+impl From<Infallible> for SpiErr {
+    fn from(value: Infallible) -> Self {
+        match value {}
+    }
 }
 
 mod ehal1 {
@@ -420,7 +425,7 @@ mod ehal_nb1 {
         }
     
         fn write(&mut self, word: u8) -> nb::Result<(), Self::Error> {
-            self.send_byte(word)
+            self.send_byte(word).map_err(map_infallible)
         }
     }
 }
@@ -437,11 +442,19 @@ mod ehal02 {
         }
 
         fn send(&mut self, word: u8) -> nb::Result<(), Self::Error> {
-            self.send_byte(word)
+            self.send_byte(word).map_err(map_infallible)
         }
     }
 
     // Implementing FullDuplex above gets us a blocking write and transfer implementation for free
     impl<USCI: SpiUsci> embedded_hal_02::blocking::spi::write::Default<u8> for Spi<USCI> {}
     impl<USCI: SpiUsci> embedded_hal_02::blocking::spi::transfer::Default<u8> for Spi<USCI> {}
+}
+
+// Unfortunately the compiler can't always automatically infer this, even though we already have From<Infallible> for SpiErr
+fn map_infallible<E>(err: nb::Error<Infallible>) -> nb::Error<E> {
+    match err {
+        WouldBlock => WouldBlock,
+        nb::Error::Other(e) => match e {},
+    }
 }
