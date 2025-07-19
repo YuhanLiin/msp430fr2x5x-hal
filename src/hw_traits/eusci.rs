@@ -326,6 +326,9 @@ pub trait EusciSPI: Steal {
 
     fn txbuf_wr(&self, val: u8);
 
+    fn ie_rd(&self) -> u16;
+    fn ie_wr(&self, reg: u16);
+
     fn set_transmit_interrupt(&self);
 
     fn clear_transmit_interrupt(&self);
@@ -428,6 +431,16 @@ macro_rules! eusci_impl {
             #[inline(always)]
             fn txbuf_wr(&self, val: u8) {
                 self.$ucxtxbuf().write(|w| unsafe { w.uctxbuf().bits(val) });
+            }
+
+            #[inline(always)]
+            fn ie_rd(&self) -> u16 {
+                self.$ucxie().read().bits()
+            }
+            
+            #[inline(always)]
+            fn ie_wr(&self, reg: u16) {
+                self.$ucxie().write(|w| unsafe{ w.bits(reg) })
             }
 
             #[inline(always)]

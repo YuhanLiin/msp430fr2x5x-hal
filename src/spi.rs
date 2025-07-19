@@ -293,14 +293,6 @@ impl<USCI: SpiUsci> Spi<USCI> {
         Ok(self.usci.rxbuf_rd())
     }
 
-    #[inline(always)]
-    /// Change the SPI mode
-    pub fn change_mode(&mut self, mode: Mode) {
-        self.usci.ctw0_set_rst();
-        self.usci.set_spi_mode(mode);
-        self.usci.ctw0_clear_rst();
-    }
-
     fn recv_byte(&mut self) -> nb::Result<u8, SpiErr> {
         if self.usci.receive_flag() {
             if self.usci.overrun_flag() {
@@ -321,6 +313,16 @@ impl<USCI: SpiUsci> Spi<USCI> {
         } else {
             Err(WouldBlock)
         }
+    }
+    
+    #[inline(always)]
+    /// Change the SPI mode. This requires resetting the peripheral, which also sets TXIFG and clears RXIFG, UCOE, and UCFE.
+    pub fn change_mode(&mut self, mode: Mode) {
+        let intrs = self.usci.ie_rd();
+        self.usci.ctw0_set_rst();
+        self.usci.set_spi_mode(mode);
+        self.usci.ie_wr(intrs);
+        self.usci.ctw0_clear_rst();
     }
 }
 
