@@ -299,7 +299,7 @@ impl<USCI: SpiUsci> Spi<USCI> {
     fn recv_byte(&mut self) -> nb::Result<u8, SpiErr> {
         if self.usci.receive_flag() {
             if self.usci.overrun_flag() {
-                Err(nb::Error::Other(SpiErr::OverrunError(self.usci.rxbuf_rd())))
+                Err(nb::Error::Other(SpiErr::Overrun(self.usci.rxbuf_rd())))
             }
             else {
                 Ok(self.usci.rxbuf_rd())
@@ -321,11 +321,9 @@ impl<USCI: SpiUsci> Spi<USCI> {
 
 /// SPI transmit/receive errors
 #[derive(Clone, Copy, Debug)]
-#[non_exhaustive]
 pub enum SpiErr {
     /// Data in the recieve buffer was overwritten before it was read. The contained data is the new contents of the recieve buffer.
-    OverrunError(u8),
-    // In future the framing error bit UCFE may appear here. Right now it's unimplemented.
+    Overrun(u8),
 }
 
 mod ehal1 {
@@ -336,7 +334,7 @@ mod ehal1 {
     impl Error for SpiErr {
         fn kind(&self) -> embedded_hal::spi::ErrorKind {
             match self {
-                SpiErr::OverrunError(_) => embedded_hal::spi::ErrorKind::Overrun,
+                SpiErr::Overrun(_) => embedded_hal::spi::ErrorKind::Overrun,
             }
         }
     }
