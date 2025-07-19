@@ -219,14 +219,14 @@ impl<USCI: SpiUsci> SpiConfig<USCI, ClockSet> {
         SI: Into<USCI::MOSI>,
         CLK: Into<USCI::SCLK>,
     >(
-        &mut self,
+        mut self,
         _miso: SO,
         _mosi: SI,
         _sclk: CLK
     ) -> Spi<USCI> {
         self.ctlw0.ucmode = Ucmode::ThreePinSPI;
         self.configure_hw();
-        Spi(PhantomData)
+        Spi{ usci: self.usci }
     }
 
     #[inline]
@@ -245,35 +245,31 @@ impl<USCI: SpiUsci> SpiConfig<USCI, ClockSet> {
 }
 
 /// Represents a group of pins configured for SPI communication
-pub struct Spi<USCI: SpiUsci>(PhantomData<USCI>);
+pub struct Spi<USCI: SpiUsci>{usci: USCI}
 
 impl<USCI: SpiUsci> Spi<USCI> {
     /// Enable Rx interrupts, which fire when a byte is ready to be read
     #[inline(always)]
     pub fn set_rx_interrupt(&mut self) {
-        let usci = unsafe { USCI::steal() };
-        usci.set_receive_interrupt();
+        self.usci.set_receive_interrupt();
     }
 
     /// Disable Rx interrupts, which fire when a byte is ready to be read
     #[inline(always)]
     pub fn clear_rx_interrupt(&mut self) {
-        let usci = unsafe { USCI::steal() };
-        usci.clear_receive_interrupt();
+        self.usci.clear_receive_interrupt();
     }
 
     /// Enable Tx interrupts, which fire when the transmit buffer is empty
     #[inline(always)]
     pub fn set_tx_interrupt(&mut self) {
-        let usci = unsafe { USCI::steal() };
-        usci.set_transmit_interrupt();
+        self.usci.set_transmit_interrupt();
     }
 
     /// Disable Tx interrupts, which fire when the transmit buffer is empty
     #[inline(always)]
     pub fn clear_tx_interrupt(&mut self) {
-        let usci = unsafe { USCI::steal() };
-        usci.clear_transmit_interrupt();
+        self.usci.clear_transmit_interrupt();
     }
 
     /// Writes raw value to Tx buffer with no checks for validity
@@ -281,8 +277,7 @@ impl<USCI: SpiUsci> Spi<USCI> {
     /// May clobber unsent data still in the buffer
     #[inline(always)]
     pub unsafe fn write_no_check(&mut self, val: u8) {
-        let usci = unsafe { USCI::steal() };
-        usci.txbuf_wr(val)
+        self.usci.txbuf_wr(val)
     }
 
     #[inline(always)]
@@ -290,28 +285,24 @@ impl<USCI: SpiUsci> Spi<USCI> {
     /// # Safety
     /// May read duplicate data
     pub unsafe fn read_no_check(&mut self) -> u8 {
-        let usci = unsafe { USCI::steal() };
-        usci.rxbuf_rd()
+        self.usci.rxbuf_rd()
     }
 
     #[inline(always)]
     /// Change the SPI mode
     pub fn change_mode(&mut self, mode: Mode) {
-        let usci = unsafe { USCI::steal() };
-        usci.ctw0_set_rst();
-        usci.set_spi_mode(mode);
-        usci.ctw0_clear_rst();
+        self.usci.ctw0_set_rst();
+        self.usci.set_spi_mode(mode);
+        self.usci.ctw0_clear_rst();
     }
 
     fn recv_byte(&mut self) -> nb::Result<u8, SpiErr> {
-        let usci = unsafe { USCI::steal() };
-        
-        if usci.receive_flag() {
-            if usci.overrun_flag() {
-                Err(nb::Error::Other(SpiErr::OverrunError(usci.rxbuf_rd())))
+        if self.usci.receive_flag() {
+            if self.usci.overrun_flag() {
+                Err(nb::Error::Other(SpiErr::OverrunError(self.usci.rxbuf_rd())))
             }
             else {
-                Ok(usci.rxbuf_rd())
+                Ok(self.usci.rxbuf_rd())
             }
         } else {
             Err(WouldBlock)
@@ -319,9 +310,8 @@ impl<USCI: SpiUsci> Spi<USCI> {
     }
 
     fn send_byte(&mut self, word: u8) -> nb::Result<(), SpiErr> {
-        let usci = unsafe { USCI::steal() };
-        if usci.transmit_flag() {
-            usci.txbuf_wr(word);
+        if self.usci.transmit_flag() {
+            self.usci.txbuf_wr(word);
             Ok(())
         } else {
             Err(WouldBlock)
@@ -416,8 +406,7 @@ mod ehal1 {
         fn flush(&mut self) -> Result<(), Self::Error> {
             // I would usually do this by checking the UCBUSY bit, but 
             // it seems to be missing from the (SPI version of the) PAC...
-            let usci = unsafe { USCI::steal() };
-            while !usci.transmit_flag() {}
+            while !self.usci.transmit_flag() {}
             Ok(())
         }
     }
