@@ -312,8 +312,31 @@ macro_rules! spi_common {
                 Err(WouldBlock)
             }
         }
+
+        /// Get the source of the interrupt currently being serviced.
+        #[inline]
+        pub fn interrupt_source(&mut self) -> SpiVector {
+            match self.usci.iv_rd() {
+                0 => SpiVector::None,
+                2 => SpiVector::RxBufferFull,
+                4 => SpiVector::TxBufferEmpty, 
+                _ => unsafe { core::hint::unreachable_unchecked() }, 
+            }
+        }
     };
 }
+
+/// Possible sources for an eUSCI SPI interrupt
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum SpiVector {
+    /// No interrupt is currently being serviced.
+    None = 0,
+    /// The interrupt was caused by the Rx buffer being full.
+    RxBufferFull = 2,
+    /// The interrupt was caused by the Tx buffer being empty.
+    TxBufferEmpty = 4,
+}
+
 /// Represents a group of pins configured for SPI communication
 pub struct Spi<USCI: SpiUsci>{usci: USCI}
 
