@@ -341,6 +341,8 @@ pub trait EusciSPI: Steal {
     fn overrun_flag(&self) -> bool;
 
     fn iv_rd(&self) -> u16;
+
+    fn is_busy(&self) -> bool;
 }
 
 pub trait UartUcxStatw {
@@ -355,7 +357,7 @@ pub trait SpiStatw {
     fn uclisten(&self) -> bool;
     fn ucfe(&self) -> bool;
     fn ucoe(&self) -> bool;
-    // fn ucbusy1(&self) -> bool;
+    fn ucbusy(&self) -> bool;
 }
 
 pub trait I2CUcbIfgOut {
@@ -483,6 +485,10 @@ macro_rules! eusci_impl {
             fn iv_rd(&self) -> u16 {
                 self.$ucxiv().read().uciv().bits()
             }
+
+            fn is_busy(&self) -> bool {
+                self.$ucxstatw().read().ucbusy()
+            }
         }
 
         impl SpiStatw for $StatwSpi {
@@ -501,10 +507,13 @@ macro_rules! eusci_impl {
                 self.ucoe().bit()
             }
 
-            // #[inline(always)]
-            // fn ucbusy1(&self) -> bool{
-            //     self.ucbusy().bit()
-            // }
+            #[inline(always)]
+            fn ucbusy(&self) -> bool{
+                // TODO: Update the PAC 
+                // The PAC is currently missing the UCBUSY bit in the SPI version of this register
+                const UCBUSY_MASK: u16 = (1<<0);
+                (self.bits() & UCBUSY_MASK) > 0
+            }
         }
     };
 }

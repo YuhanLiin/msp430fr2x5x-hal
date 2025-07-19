@@ -407,9 +407,7 @@ mod ehal1 {
         }
     
         fn flush(&mut self) -> Result<(), Self::Error> {
-            // I would usually do this by checking the UCBUSY bit, but 
-            // it seems to be missing from the (SPI version of the) PAC...
-            while !self.usci.transmit_flag() {}
+            while self.usci.is_busy() {}
             Ok(())
         }
     }
