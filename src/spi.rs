@@ -244,76 +244,81 @@ impl<USCI: SpiUsci> SpiConfig<USCI, ClockSet> {
     }
 }
 
+macro_rules! spi_common {
+    () => {
+        /// Enable Rx interrupts, which fire when a byte is ready to be read
+        #[inline(always)]
+        pub fn set_rx_interrupt(&mut self) {
+            self.usci.set_receive_interrupt();
+        }
+
+        /// Disable Rx interrupts, which fire when a byte is ready to be read
+        #[inline(always)]
+        pub fn clear_rx_interrupt(&mut self) {
+            self.usci.clear_receive_interrupt();
+        }
+
+        /// Enable Tx interrupts, which fire when the transmit buffer is empty
+        #[inline(always)]
+        pub fn set_tx_interrupt(&mut self) {
+            self.usci.set_transmit_interrupt();
+        }
+
+        /// Disable Tx interrupts, which fire when the transmit buffer is empty
+        #[inline(always)]
+        pub fn clear_tx_interrupt(&mut self) {
+            self.usci.clear_transmit_interrupt();
+        }
+
+        /// Write a byte into the Tx buffer, without checking if the Tx buffer is empty. Returns immediately.
+        /// Useful if you already know the buffer is empty (e.g. a Tx interrupt was triggered)
+        /// # Safety
+        /// May clobber previous unsent data if the TXIFG bit is not set.
+        #[inline(always)]
+        pub unsafe fn write_unchecked(&mut self, val: u8) {
+            self.usci.txbuf_wr(val)
+        }
+
+        /// Read the byte in the Rx buffer, without checking if the Rx buffer is ready.
+        /// Useful when you already know the buffer is ready (e.g. an Rx interrupt was triggered).
+        /// # Safety
+        /// May read invalid data if RXIFG bit is not ready.
+        #[inline]
+        pub unsafe fn read_unchecked(&mut self) -> Result<u8, SpiErr> {
+            if self.usci.overrun_flag() {
+                return Err(SpiErr::Overrun(self.usci.rxbuf_rd()));
+            }
+            Ok(self.usci.rxbuf_rd())
+        }
+
+        fn recv_byte(&mut self) -> nb::Result<u8, SpiErr> {
+            if self.usci.receive_flag() {
+                if self.usci.overrun_flag() {
+                    Err(nb::Error::Other(SpiErr::Overrun(self.usci.rxbuf_rd())))
+                }
+                else {
+                    Ok(self.usci.rxbuf_rd())
+                }
+            } else {
+                Err(WouldBlock)
+            }
+        }
+
+        fn send_byte(&mut self, word: u8) -> nb::Result<(), Infallible> {
+            if self.usci.transmit_flag() {
+                self.usci.txbuf_wr(word);
+                Ok(())
+            } else {
+                Err(WouldBlock)
+            }
+        }
+    };
+}
 /// Represents a group of pins configured for SPI communication
 pub struct Spi<USCI: SpiUsci>{usci: USCI}
 
 impl<USCI: SpiUsci> Spi<USCI> {
-    /// Enable Rx interrupts, which fire when a byte is ready to be read
-    #[inline(always)]
-    pub fn set_rx_interrupt(&mut self) {
-        self.usci.set_receive_interrupt();
-    }
-
-    /// Disable Rx interrupts, which fire when a byte is ready to be read
-    #[inline(always)]
-    pub fn clear_rx_interrupt(&mut self) {
-        self.usci.clear_receive_interrupt();
-    }
-
-    /// Enable Tx interrupts, which fire when the transmit buffer is empty
-    #[inline(always)]
-    pub fn set_tx_interrupt(&mut self) {
-        self.usci.set_transmit_interrupt();
-    }
-
-    /// Disable Tx interrupts, which fire when the transmit buffer is empty
-    #[inline(always)]
-    pub fn clear_tx_interrupt(&mut self) {
-        self.usci.clear_transmit_interrupt();
-    }
-
-    /// Write a byte into the Tx buffer, without checking if the Tx buffer is empty. Returns immediately.
-    /// Useful if you already know the buffer is empty (e.g. a Tx interrupt was triggered)
-    /// # Safety
-    /// May clobber previous unsent data if the TXIFG bit is not set.
-    #[inline(always)]
-    pub unsafe fn write_unchecked(&mut self, val: u8) {
-        self.usci.txbuf_wr(val)
-    }
-
-    /// Read the byte in the Rx buffer, without checking if the Rx buffer is ready.
-    /// Useful when you already know the buffer is ready (e.g. an Rx interrupt was triggered).
-    /// # Safety
-    /// May read invalid data if RXIFG bit is not ready.
-    #[inline]
-    pub unsafe fn read_unchecked(&mut self) -> Result<u8, SpiErr> {
-        if self.usci.overrun_flag() {
-            return Err(SpiErr::Overrun(self.usci.rxbuf_rd()));
-        }
-        Ok(self.usci.rxbuf_rd())
-    }
-
-    fn recv_byte(&mut self) -> nb::Result<u8, SpiErr> {
-        if self.usci.receive_flag() {
-            if self.usci.overrun_flag() {
-                Err(nb::Error::Other(SpiErr::Overrun(self.usci.rxbuf_rd())))
-            }
-            else {
-                Ok(self.usci.rxbuf_rd())
-            }
-        } else {
-            Err(WouldBlock)
-        }
-    }
-
-    fn send_byte(&mut self, word: u8) -> nb::Result<(), Infallible> {
-        if self.usci.transmit_flag() {
-            self.usci.txbuf_wr(word);
-            Ok(())
-        } else {
-            Err(WouldBlock)
-        }
-    }
+    spi_common!();
     
     #[inline(always)]
     /// Change the SPI mode. This requires resetting the peripheral, which also sets TXIFG and clears RXIFG, UCOE, and UCFE.
