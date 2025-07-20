@@ -1,26 +1,43 @@
 //! SPI
 //! 
-//! Peripherals eUSCI_A0, eUSCI_A1, eUSCI_B0 and eUSCI_B1 can be used for SPI communication.
-//! Currently there is only support for the MSP430 to act as the master.
+//! Peripherals eUSCI_A0, eUSCI_A1, eUSCI_B0 and eUSCI_B1 can be used for SPI communication as either a master or slave device.
 //!
-//! Begin by calling [`SpiConfig::new()`]. Once configured an [`Spi`] will be returned. 
+//! Begin by calling [`SpiConfig::new()`]. Once configured either an [`Spi`] or [`SpiSlave`] will be returned. 
 //!
-//! Note that even if you are only using the legacy embedded-hal 0.2.7 trait implementations, configuration of the SPI bus uses the embedded-hal 1.0 versions of types (e.g. [`Mode`]).
+//! Note that even if you are only using the legacy embedded-hal 0.2.7 trait implementations, configuration of the SPI bus 
+//! uses the embedded-hal 1.0 versions of types (e.g. [`Mode`]).
 //! 
-//! [`Spi`] implements the embedded-hal [`SpiBus`](embedded_hal::spi::SpiBus) trait. 
+//! # [`Spi`]
+//! The SPI peripheral can be configured as a master device by calling one of the 
+//! [`as_master()`](SpiConfig::as_master_using_smclk) methods during configuration.
 //! 
-//! [`Spi`] also provides a non-blocking implementation through [`embedded-hal-nb`](embedded_hal_nb)'s 
-//! [`FullDuplex`](embedded_hal_nb::spi::FullDuplex) trait.
+//! [`Spi`] implements the embedded-hal [`SpiBus`](embedded_hal::spi::SpiBus) trait, which provides a simple blocking interface.
+//! A non-blocking implementation is also available through [`embedded-hal-nb`](embedded_hal_nb)'s 
+//! [`FullDuplex`](embedded_hal_nb::spi::FullDuplex) trait. 
+//! Standalone methods are also provided for directly writing to the Tx and Rx buffers for interrupt-based implementations. 
+//! 
+//! # [`SpiSlave`]
+//! The SPI peripheral can be configured as a slave device by calling [`as_slave()`](SpiConfig::as_slave) during configuration.
+//! 
+//! [`SpiSlave`] supports sharing the bus with other slave devices by calling the [`shared_bus()`](SpiConfig::shared_bus) method 
+//! during configuration. In this mode the STE pin controls whether the MISO pin is an output or a high-impedance pin, allowing 
+//! other slaves to use the MISO bus when this device is not selected. The polarity of the STE pin is configurable to either 
+//! active high or active low.
+//! If the bus is used exclusively by this device then the [`exclusive_bus()`](SpiConfig::exclusive_bus) configuration method 
+//! can be used, which allows the STE pin to be used for other purposes. In this mode the MISO pin will remain an output pin at 
+//! all times.
 //!
+//! [`SpiSlave`] provides non-blocking methods that can be used for polling or interrupt-based implementations.
+//! It does not implement either of the embedded-hal traits. 
+//! 
 //! Pins used:
-//!
-//! eUSCI_A0: {MISO: `P1.7`, MOSI: `P1.6`, SCLK: `P1.5`}.
-//!
-//! eUSCI_A1: {MISO: `P4.3`, MOSI: `P4.2`, SCLK: `P4.1`}.
-//!
-//! eUSCI_B0: {MISO: `P1.3`, MOSI: `P1.2`, SCLK: `P1.1`}.
-//!
-//! eUSCI_B1: {MISO: `P4.7`, MOSI: `P4.6`, SCLK: `P4.5`}.
+//! 
+//! |          |  MISO  |  MOSI  |  SCLK  |  STE  |
+//! |:--------:|:------:|:------:|:------:|:-----:|
+//! | eUSCI_A0 | `P1.6` | `P1.7` | `P1.5` | `P1.4`|
+//! | eUSCI_A1 | `P4.2` | `P4.3` | `P4.1` | `P4.0`|
+//! | eUSCI_B0 | `P1.3` | `P1.2` | `P1.1` | `P1.0`|
+//! | eUSCI_B1 | `P4.7` | `P4.6` | `P4.5` | `P4.4`|
 use crate::{
     clock::{Aclk, Smclk}, 
     gpio::{Alternate1, Pin, Pin0, Pin1, Pin2, Pin3, Pin4, Pin5, Pin6, Pin7, P1, P4}, 
@@ -84,66 +101,66 @@ macro_rules! impl_spi_pin {
     };
 }
 
-/// SPI MISO pin for eUSCI A0
+/// SPI MISO pin for eUSCI A0 (P1.6)
 pub struct UsciA0MISOPin;
 impl_spi_pin!(UsciA0MISOPin, P1, Pin6);
 
-/// SPI MOSI pin for eUSCI A0
+/// SPI MOSI pin for eUSCI A0 (P1.7)
 pub struct UsciA0MOSIPin;
 impl_spi_pin!(UsciA0MOSIPin, P1, Pin7);
 
-/// SPI SCLK pin for eUSCI A0
+/// SPI SCLK pin for eUSCI A0 (P1.5)
 pub struct UsciA0SCLKPin;
 impl_spi_pin!(UsciA0SCLKPin, P1, Pin5);
 
-/// SPI STE pin for eUSCI A0
+/// SPI STE pin for eUSCI A0 (P1.4)
 pub struct UsciA0STEPin;
 impl_spi_pin!(UsciA0STEPin, P1, Pin4);
 
-/// SPI MISO pin for eUSCI A1
+/// SPI MISO pin for eUSCI A1 (P4.2)
 pub struct UsciA1MISOPin;
 impl_spi_pin!(UsciA1MISOPin, P4, Pin2);
 
-/// SPI MOSI pin for eUSCI A1
+/// SPI MOSI pin for eUSCI A1 (P4.3)
 pub struct UsciA1MOSIPin;
 impl_spi_pin!(UsciA1MOSIPin, P4, Pin3);
 
-/// SPI SCLK pin for eUSCI A1
+/// SPI SCLK pin for eUSCI A1 (P4.1)
 pub struct UsciA1SCLKPin;
 impl_spi_pin!(UsciA1SCLKPin, P4, Pin1);
-/// SPI STE pin for eUSCI A1
+/// SPI STE pin for eUSCI A1 (P4.0)
 pub struct UsciA1STEPin;
 impl_spi_pin!(UsciA1STEPin, P4, Pin0);
 
-/// SPI MISO pin for eUSCI B0
+/// SPI MISO pin for eUSCI B0 (P1.3)
 pub struct UsciB0MISOPin;
 impl_spi_pin!(UsciB0MISOPin, P1, Pin3);
 
-/// SPI MOSI pin for eUSCI B0
+/// SPI MOSI pin for eUSCI B0 (P1.2)
 pub struct UsciB0MOSIPin;
 impl_spi_pin!(UsciB0MOSIPin, P1, Pin2);
 
-/// SPI SCLK pin for eUSCI B0
+/// SPI SCLK pin for eUSCI B0 (P1.1)
 pub struct UsciB0SCLKPin;
 impl_spi_pin!(UsciB0SCLKPin, P1, Pin1);
 
-/// SPI STE pin for eUSCI B0
+/// SPI STE pin for eUSCI B0 (P1.0)
 pub struct UsciB0STEPin;
 impl_spi_pin!(UsciB0STEPin, P1, Pin0);
 
-/// SPI MISO pin for eUSCI B1
+/// SPI MISO pin for eUSCI B1 (P4.7)
 pub struct UsciB1MISOPin;
 impl_spi_pin!(UsciB1MISOPin, P4, Pin7);
 
-/// SPI MOSI pin for eUSCI B1
+/// SPI MOSI pin for eUSCI B1 (P4.6)
 pub struct UsciB1MOSIPin;
 impl_spi_pin!(UsciB1MOSIPin, P4, Pin6);
 
-/// SPI SCLK pin for eUSCI B1
+/// SPI SCLK pin for eUSCI B1 (P4.5)
 pub struct UsciB1SCLKPin;
 impl_spi_pin!(UsciB1SCLKPin, P4, Pin5);
 
-/// SPI STE pin for eUSCI B1
+/// SPI STE pin for eUSCI B1 (P4.4)
 pub struct UsciB1STEPin;
 impl_spi_pin!(UsciB1STEPin, P4, Pin4);
 
