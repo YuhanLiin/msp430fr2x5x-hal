@@ -20,7 +20,7 @@ use crate::hw_traits::eusci::I2CUcbIfgOut;
 use crate::{
     gpio::{Alternate1, Pin, Pin2, Pin3, Pin6, Pin7, P1, P4},
     hw_traits::eusci::{
-        EUsciI2C, Ucastp, UcbCtlw0, UcbCtlw1, UcbI2coa, UcbIFG, UcbIe, Ucclto, Ucglit, Ucmode,
+        EUsciI2C, Ucastp, UcbCtlw0, UcbCtlw1, UcbI2coa, Ucclto, Ucglit, Ucmode,
         Ucssel,
     },
     pac,
@@ -67,29 +67,7 @@ impl From<TransmissionMode> for bool {
     }
 }
 
-/// Configure the automatic glitch filter on the SDA and SCL lines
-#[derive(Clone, Copy)]
-pub enum GlitchFilter {
-    ///Pulses of maximum 50-ns length are filtered.
-    Max50ns = 0,
-    ///Pulses of maximum 25-ns length are filtered.
-    Max25ns = 1,
-    ///Pulses of maximum 12.5-ns length are filtered.
-    Max12_5ns = 2,
-    ///Pulses of maximum 6.25-ns length are filtered.
-    Max6_25ns = 3,
-}
-
-impl From<GlitchFilter> for Ucglit {
-    fn from(f: GlitchFilter) -> Ucglit {
-        match f {
-            GlitchFilter::Max50ns => Ucglit::Max50ns,
-            GlitchFilter::Max25ns => Ucglit::Max25ns,
-            GlitchFilter::Max12_5ns => Ucglit::Max12_5ns,
-            GlitchFilter::Max6_25ns => Ucglit::Max6_25ns,
-        }
-    }
-}
+pub use crate::hw_traits::eusci::Ucglit as GlitchFilter;
 
 ///Struct used to configure a I2C bus
 pub struct I2cConfig<USCI: I2cUsci, STATE> {
@@ -103,8 +81,6 @@ pub struct I2cConfig<USCI: I2cUsci, STATE> {
     i2coa1: UcbI2coa,
     i2coa2: UcbI2coa,
     i2coa3: UcbI2coa,
-    ie: UcbIe,
-    ifg: UcbIFG,
     _phantom: PhantomData<STATE>,
 }
 
@@ -171,93 +147,42 @@ pub struct NoClockSet;
 /// Typestate for an I2C bus configuration with a clock source selected
 pub struct ClockSet;
 
+macro_rules! return_self_config {
+    ($self: ident) => {
+        I2cConfig {
+            usci:    $self.usci,
+            divisor: $self.divisor,
+            ctlw0:   $self.ctlw0,
+            ctlw1:   $self.ctlw1,
+            i2coa0:  $self.i2coa0,
+            i2coa1:  $self.i2coa1,
+            i2coa2:  $self.i2coa2,
+            i2coa3:  $self.i2coa3,
+            _phantom: PhantomData,
+        }
+    };
+}
+
 impl<USCI: I2cUsci> I2cConfig<USCI, NoClockSet> {
     /// Create a new configuration for setting up a EUSCI peripheral in I2C master mode
     pub fn new(usci: USCI, deglitch_time: GlitchFilter) -> I2cConfig<USCI, NoClockSet> {
         let ctlw0 = UcbCtlw0 {
-            uca10: false,
-            ucsla10: false,
-            ucmm: false,
             ucmst: true,
             ucsync: true,
-            uctxack: false,
-            uctr: false,
-            uctxnack: false,
-            uctxstp: false,
-            uctxstt: false,
             ucswrst: true,
             ucmode: Ucmode::I2CMode,
-            ucssel: Ucssel::Smclk, // overwritten by `use_smclk/uclk/aclk()`
+            ..Default::default()
         };
 
         let ctlw1 = UcbCtlw1 {
-            ucetxint: false,
-            ucstpnack: false,
-            ucswack: false,
-            ucclto: Ucclto::Ucclto00b,
-            ucastp: Ucastp::Ucastp00b,
-            ucglit: deglitch_time.into(),
+            ucglit: deglitch_time,
+            ..Default::default()
         };
 
-        let i2coa0 = UcbI2coa {
-            ucgcen: false,
-            ucoaen: false,
-            i2coa0: 0,
-        };
-
-        let i2coa1 = UcbI2coa {
-            ucgcen: false,
-            ucoaen: false,
-            i2coa0: 0,
-        };
-
-        let i2coa2 = UcbI2coa {
-            ucgcen: false,
-            ucoaen: false,
-            i2coa0: 0,
-        };
-
-        let i2coa3 = UcbI2coa {
-            ucgcen: false,
-            ucoaen: false,
-            i2coa0: 0,
-        };
-
-        let ie = UcbIe {
-            ucbit9ie: false,
-            uctxie3: false,
-            ucrxie3: false,
-            uctxie2: false,
-            ucrxie2: false,
-            uctxie1: false,
-            ucrxie1: false,
-            uccltoie: false,
-            ucbcntie: false,
-            ucnackie: false,
-            ucalie: false,
-            ucstpie: false,
-            ucsttie: false,
-            uctxie0: false,
-            ucrxie0: false,
-        };
-
-        let ifg = UcbIFG {
-            ucbit9ifg: false,
-            uctxifg3: false,
-            ucrxifg3: false,
-            uctxifg2: false,
-            ucrxifg2: false,
-            uctxifg1: false,
-            ucrxifg1: false,
-            uccltoifg: false,
-            ucbcntifg: false,
-            ucnackifg: false,
-            ucalifg: false,
-            ucstpifg: false,
-            ucsttifg: false,
-            uctxifg0: false,
-            ucrxifg0: false,
-        };
+        let i2coa0 = UcbI2coa::default();
+        let i2coa1 = UcbI2coa::default();
+        let i2coa2 = UcbI2coa::default();
+        let i2coa3 = UcbI2coa::default();
 
         I2cConfig {
             usci,
@@ -268,8 +193,6 @@ impl<USCI: I2cUsci> I2cConfig<USCI, NoClockSet> {
             i2coa1,
             i2coa2,
             i2coa3,
-            ie,
-            ifg,
             _phantom: PhantomData,
         }
     }
@@ -279,19 +202,7 @@ impl<USCI: I2cUsci> I2cConfig<USCI, NoClockSet> {
     pub fn use_smclk(mut self, _smclk: &Smclk, clk_divisor: u16) -> I2cConfig<USCI, ClockSet> {
         self.ctlw0.ucssel = Ucssel::Smclk;
         self.divisor = clk_divisor;
-        I2cConfig {
-            usci: self.usci,
-            divisor: self.divisor,
-            ctlw0: self.ctlw0,
-            ctlw1: self.ctlw1,
-            i2coa0: self.i2coa0,
-            i2coa1: self.i2coa1,
-            i2coa2: self.i2coa2,
-            i2coa3: self.i2coa3,
-            ie: self.ie,
-            ifg: self.ifg,
-            _phantom: PhantomData,
-        }
+        return_self_config!(self)
     }
 
     /// Configures this peripheral to use ACLK
@@ -299,38 +210,14 @@ impl<USCI: I2cUsci> I2cConfig<USCI, NoClockSet> {
     pub fn use_aclk(mut self, _aclk: &Aclk, clk_divisor: u16) -> I2cConfig<USCI, ClockSet> {
         self.ctlw0.ucssel = Ucssel::Aclk;
         self.divisor = clk_divisor;
-        I2cConfig {
-            usci: self.usci,
-            divisor: self.divisor,
-            ctlw0: self.ctlw0,
-            ctlw1: self.ctlw1,
-            i2coa0: self.i2coa0,
-            i2coa1: self.i2coa1,
-            i2coa2: self.i2coa2,
-            i2coa3: self.i2coa3,
-            ie: self.ie,
-            ifg: self.ifg,
-            _phantom: PhantomData,
-        }
+        return_self_config!(self)
     }
     /// Configures this peripheral to use UCLK
     #[inline]
     pub fn use_uclk<Pin: Into<USCI::ExternalClockPin> >(mut self, _uclk: Pin, clk_divisor: u16) -> I2cConfig<USCI, ClockSet> {
         self.ctlw0.ucssel = Ucssel::Uclk;
         self.divisor = clk_divisor;
-        I2cConfig {
-            usci: self.usci,
-            divisor: self.divisor,
-            ctlw0: self.ctlw0,
-            ctlw1: self.ctlw1,
-            i2coa0: self.i2coa0,
-            i2coa1: self.i2coa1,
-            i2coa2: self.i2coa2,
-            i2coa3: self.i2coa3,
-            ie: self.ie,
-            ifg: self.ifg,
-            _phantom: PhantomData,
-        }
+        return_self_config!(self)
     }
 }
 
@@ -357,8 +244,8 @@ impl<USCI: I2cUsci> I2cConfig<USCI, ClockSet> {
         self.usci.i2coa_wr(1, &self.i2coa1);
         self.usci.i2coa_wr(2, &self.i2coa2);
         self.usci.i2coa_wr(3, &self.i2coa3);
-        self.usci.ie_wr(&self.ie);
-        self.usci.ifg_wr(&self.ifg);
+        self.usci.ie_wr(0);
+        self.usci.ifg_rst();
 
         self.usci.brw_wr(self.divisor);
         self.usci.tbcnt_wr(0);
