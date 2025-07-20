@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased - 2025-XX-XX
 
+- Add SPI slave support. Modify SPI configuration and `SpiErr`.
+- Fix SPI flushing bug.
 - Add support for Smart Analog Combo and Enhanced Comparator modules (MSP430FR23xx only)
 - Add support for reading from / writing to backup memory and information memory
 - Add support for hardware CRC module

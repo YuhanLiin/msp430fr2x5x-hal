@@ -3,7 +3,6 @@
 
 // This example uses the non-blocking interface from embedded-hal-nb, with a software controlled CS pin.
 
-use embedded_hal_nb::spi::FullDuplex;
 use embedded_hal::{digital::OutputPin, spi::MODE_0};
 use embedded_hal::delay::DelayNs;
 use msp430_rt::entry;
@@ -36,10 +35,13 @@ fn main() -> ! {
         .freeze(&mut fram);
 
     let mut spi = SpiConfig::new(periph.E_USCI_A0, MODE_0, true)
-        .use_smclk(&smclk, 16) // 8MHz / 16 = 500kHz
-        .configure(miso, mosi, sck);
+        .as_master_using_smclk(&smclk, 16) // 8MHz / 16 = 500kHz
+        .single_master_bus(miso, mosi, sck);
 
     loop {
+        // Non-blocking interface available through embedded-hal-nb
+        use embedded_hal_nb::spi::FullDuplex;
+
         cs.set_low().ok();
 
         // Blocking send. Sends out data on the MOSI line
