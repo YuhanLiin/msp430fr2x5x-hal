@@ -66,12 +66,12 @@ fn main() -> ! {
     // there are other slaves on the bus. On an exclusive bus MISO is always an output.
     // On a shared bus the STE pin is used to control whether this slave's MISO is an output or high impedance pin.
     let mut spi_slave = SpiConfig::new(periph.E_USCI_A0, MODE_0, true)
-        .as_slave()
+        .to_slave()
         .shared_bus(sl_miso, sl_mosi, sl_sclk, sl_ste, StePolarity::EnabledWhenLow);
 
     // Configure another as an SPI master to drive the bus.
     let mut spi = SpiConfig::new(periph.E_USCI_B1, MODE_0, true)
-        .as_master_using_smclk(&smclk, 800) // 8MHz / 80 = 100kHz
+        .to_master_using_smclk(&smclk, 800) // 8MHz / 80 = 100kHz
         .single_master_bus(miso, mosi, sclk);
 
     critical_section::with(|cs| {

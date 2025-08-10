@@ -205,20 +205,20 @@ impl<USCI: SpiUsci> SpiConfig<USCI, RoleNotSet> {
         Self { usci, ctlw0, prescaler: 0, _phantom: PhantomData }
     }
     /// This device will act as a slave on the SPI bus.
-    pub fn as_slave(mut self) -> SpiConfig<USCI, Slave> {
+    pub fn to_slave(mut self) -> SpiConfig<USCI, Slave> {
         self.ctlw0.ucmst = false;
         // UCSSEL is 'don't care' in slave mode
         SpiConfig { usci: self.usci, prescaler: self.prescaler, ctlw0: self.ctlw0, _phantom: PhantomData }
     }
     /// This device will act as a master on the SPI bus, deriving SCLK from SMCLK.
-    pub fn as_master_using_smclk(mut self, _smclk: &Smclk, clk_div: u16) -> SpiConfig<USCI, Master> {
+    pub fn to_master_using_smclk(mut self, _smclk: &Smclk, clk_div: u16) -> SpiConfig<USCI, Master> {
         self.ctlw0.ucmst = true;
         self.ctlw0.ucssel = Ucssel::Smclk;
         self.prescaler = clk_div;
         SpiConfig { usci: self.usci, prescaler: self.prescaler, ctlw0: self.ctlw0, _phantom: PhantomData }
     }
     /// This device will act as a master on the SPI bus, deriving SCLK from ACLK.
-    pub fn as_master_using_aclk(mut self, _aclk: &Aclk, clk_div: u16) -> SpiConfig<USCI, Master> {
+    pub fn to_master_using_aclk(mut self, _aclk: &Aclk, clk_div: u16) -> SpiConfig<USCI, Master> {
         self.ctlw0.ucmst = true;
         self.ctlw0.ucssel = Ucssel::Aclk;
         self.prescaler = clk_div;

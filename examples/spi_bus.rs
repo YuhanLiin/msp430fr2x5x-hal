@@ -37,7 +37,7 @@ fn main() -> ! {
     // Multi-master mode allows another master to control whether this device's SCK 
     // and MOSI pins are outputs or high impedance via the STE pin.
     let mut spi = SpiConfig::new(periph.E_USCI_A0, MODE_0, true)
-        .as_master_using_smclk(&smclk, 16) // 8MHz / 16 = 500kHz
+        .to_master_using_smclk(&smclk, 16) // 8MHz / 16 = 500kHz
         .single_master_bus(miso, mosi, sck);
 
     loop {
