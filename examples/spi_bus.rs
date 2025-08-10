@@ -1,16 +1,14 @@
 #![no_main]
 #![no_std]
 
-// This example uses the non-blocking interface from embedded-hal-nb, with a software controlled CS pin.
+// This example uses the SpiBus embedded-hal interface, with a software controlled CS pin.
 
-use embedded_hal_nb::spi::FullDuplex;
 use embedded_hal::{digital::OutputPin, spi::MODE_0};
 use embedded_hal::delay::DelayNs;
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
     clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv}, fram::Fram, gpio::Batch, pmm::Pmm, spi::SpiConfig, watchdog::Wdt
 };
-use nb::block;
 use panic_msp430 as _;
 
 #[entry]
@@ -35,28 +33,31 @@ fn main() -> ! {
         .aclk_vloclk()
         .freeze(&mut fram);
 
+    // In single master mode SCK and MOSI are always outputs.
+    // Multi-master mode allows another master to control whether this device's SCK 
+    // and MOSI pins are outputs or high impedance via the STE pin.
     let mut spi = SpiConfig::new(periph.E_USCI_A0, MODE_0, true)
-        .use_smclk(&smclk, 16) // 8MHz / 16 = 500kHz
-        .configure(miso, mosi, sck);
+        .to_master_using_smclk(&smclk, 16) // 8MHz / 16 = 500kHz
+        .single_master_bus(miso, mosi, sck);
 
     loop {
+        // Blocking interface available through embedded-hal trait
+        use embedded_hal::spi::SpiBus;
+
+        // Perform the following transaction:
+        // Send: 0x12, 0x00,    0x00,    0x34,    0x56,
+        // Recv: N/A,  recv[0], recv[1], recv[2], N/A
+        let mut recv = [0; 3];
         cs.set_low().ok();
 
-        // Blocking send. Sends out data on the MOSI line
-        // Sending is infallible, besides `nb::WouldBlock` when the bus is busy.
-        block!(spi.write(0b10101010)).unwrap();
-
-        // Writing on MOSI also shifts in data on MISO - read from the hardware buffer with `.read()`.
-        // Every successful `.write()` call should be followed by a `.read()`.
-        // You should handle errors here rather than unwrapping
-        let _ = block!(spi.read()).unwrap();
-
-        // This concludes the first byte of an SPI transaction.
+        // These methods do return errors, but because we haven't used the non-blocking  
+        // API (from embedded-hal-nb) or interrupts the Rx buffer should never overrun because  
+        // the blocking interface automatically reads after every write. 
+        spi.write(&[0x12]).unwrap();
+        spi.read(&mut recv[0..2]).unwrap();
+        spi.transfer(&mut recv[2..], &[0x34, 0x56]).unwrap();
         
-        // Multi-byte transactions are performed by calling the methods repeatedly:
-        block!(spi.write(0xFF)).unwrap();
-        let _ = block!(spi.read()).unwrap();
-
+        spi.flush().unwrap();
         cs.set_high().ok();
 
         delay.delay_ms(1000);
