@@ -10,6 +10,8 @@ use msp430fr2x5x_hal::{
 };
 use panic_msp430 as _;
 
+// The LED on P1.0 should flash rapidly
+
 #[entry]
 fn main() -> ! {
     let periph = msp430fr2355::Peripherals::take().unwrap();
