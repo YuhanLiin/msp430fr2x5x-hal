@@ -113,7 +113,7 @@ pub fn request_lpm4() {
     set_sr_bits::<LPM4>();
 }
 
-/// Enter Low Power Mode 3.5 (LPM3.5) and enable interrupts.
+/// Enter Low Power Mode 3.5 (LPM3.5).
 ///
 /// In LPM3.5 everything except the backup memory, VLOCLK, and the RTC are disabled. The only enabled interrupts are from the RTC, I/O pins, the RST pin, or a power cycle.
 ///
@@ -157,7 +157,7 @@ fn lpm3_5<MODE: WatchdogSelect>(wdt: Wdt<MODE>, svs: SvsState) -> ! {
     enter_lpmx_5(wdt, svs, regs)
 }
 
-/// Enter Low Power Mode 4.5 (LPM4.5) and enable interrupts.
+/// Enter Low Power Mode 4.5 (LPM4.5).
 ///
 /// In LPM4.5 *everything* is disabled. The only available interrupt sources are from I/O pins, the RST pin, or a power cycle.
 ///
