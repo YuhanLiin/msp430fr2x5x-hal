@@ -65,6 +65,7 @@ pub mod ecomp;
 pub mod bak_mem;
 pub mod info_mem;
 pub mod crc;
+pub mod lpm;
 
 mod hw_traits;
 mod util;
