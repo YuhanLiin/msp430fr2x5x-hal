@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust_toolchain: [nightly, nightly-2022-03-01]
+        rust_toolchain: [nightly, nightly-2024-09-01]
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
@@ -43,7 +43,7 @@ jobs:
           args: --examples --features embedded-hal-02
       
       - name: Build MSRV examples
-        if: matrix.rust_toolchain == 'nightly-2022-03-01'
+        if: matrix.rust_toolchain == 'nightly-2024-09-01'
         shell: bash
         run: |
           for ex in examples/*.rs; do

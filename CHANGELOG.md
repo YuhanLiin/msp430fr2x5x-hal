@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Derive `Debug` and `Copy` for `RecvError`.
 
 ### Changes
+- MSRV updated to nightly-2023-09-01 (1.82) due to `msp430-rt` 0.4.1.
 - Gate embedded-hal 0.2.7 implementations behind `embedded-hal-02` feature.
 - Expose functionality from the traits dropped between eh-0.2.7 and eh-1.0 (ADC, timers, RTC, watchdog, etc.) as methods on structs instead.
 - The SPI struct has been renamed from `SpiBus` to `Spi` to avoid naming conflicts with the new embedded-hal 1.0 trait `SpiBus`.

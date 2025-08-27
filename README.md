@@ -4,7 +4,7 @@
 
 # Minimum Supported Rust Version (MSRV)
 
-This crate requires the `nightly` toolchain to compile, currently targetting `nightly-2022-03-01` (Rust 1.61) or later. It might compile with older versions but that may change in any new patch release.
+This crate requires the `nightly` toolchain to compile, currently targetting `nightly-2024-09-01` (Rust 1.82) or later. It might compile with older versions but that may change in any new patch release.
 
 # License
 
