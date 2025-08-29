@@ -20,6 +20,20 @@ use panic_msp430 as _;
 
 static P2IV: Mutex<RefCell<Option< PxIV<P2> >>> = Mutex::new(RefCell::new(None));
 
+macro_rules! init_port_as_pulldowns {
+    ($port: expr) => {
+        Batch::new($port)
+            .config_pin0(|p| p.pulldown())
+            .config_pin1(|p| p.pulldown())
+            .config_pin2(|p| p.pulldown())
+            .config_pin3(|p| p.pulldown())
+            .config_pin4(|p| p.pulldown())
+            .config_pin5(|p| p.pulldown())
+            .config_pin6(|p| p.pulldown())
+            .config_pin7(|p| p.pulldown())
+    };
+}
+
 // P1.0 should toggle when P2.3 is pressed
 #[entry]
 fn main() -> ! {
@@ -30,32 +44,18 @@ fn main() -> ! {
 
     // Floating input pins consume a *huge* amount of power (relatively speaking).
     // Set unused pins to outputs or enable their pull resistors.
-    let p1 = Batch::new(periph.P1)
+    let p1 = init_port_as_pulldowns!(periph.P1)
         .config_pin0(|p| p.to_output())
-        .config_pin1(|p| p.pulldown())
-        .config_pin2(|p| p.pulldown())
-        .config_pin3(|p| p.pulldown())
-        .config_pin4(|p| p.pulldown())
-        .config_pin5(|p| p.pulldown())
-        .config_pin6(|p| p.pulldown())
-        .config_pin7(|p| p.pulldown())
         .split(&pmm);
     let mut red_led = p1.pin0;
 
-    let p2 = Batch::new(periph.P2)
-        .config_pin0(|p| p.pulldown())
-        .config_pin1(|p| p.pulldown())
-        .config_pin2(|p| p.pulldown())
+    let p2 = init_port_as_pulldowns!(periph.P2)
         .config_pin3(|p| p.pullup())
-        .config_pin4(|p| p.pulldown())
-        .config_pin5(|p| p.pulldown())
-        .config_pin6(|p| p.pulldown())
-        .config_pin7(|p| p.pulldown())
         .split(&pmm);
     let mut button = p2.pin3;
     let p2iv = p2.pxiv;
 
-    init_unused_gpio(periph.P3, periph.P4, periph.P5, periph.P6);
+    init_unused_gpio(periph.P3, periph.P4, periph.P5, periph.P6, &pmm);
 
     with(|cs| {
         P2IV.borrow_ref_mut(cs).replace(p2iv);
@@ -86,16 +86,11 @@ fn PORT2() {
 }
 
 /// Enable pulldowns on unused ports to massively reduce power usage.
-fn init_unused_gpio(p3: P3, p4: P4, p5: P5, p6: P6) {
-    p3.p3ren.write(|w| unsafe { w.bits(0xFF) });
-    p4.p4ren.write(|w| unsafe { w.bits(0xFF) });
-    p5.p5ren.write(|w| unsafe { w.bits(0xFF) });
-    p6.p6ren.write(|w| unsafe { w.bits(0xFF) }); 
-
-    p3.p3out.write(|w| unsafe { w.bits(0x00) });
-    p4.p4out.write(|w| unsafe { w.bits(0x00) });
-    p5.p5out.write(|w| unsafe { w.bits(0x00) });
-    p6.p6out.write(|w| unsafe { w.bits(0x00) });
+fn init_unused_gpio(p3: P3, p4: P4, p5: P5, p6: P6, pmm: &Pmm) {
+    init_port_as_pulldowns!(p3).split(pmm);
+    init_port_as_pulldowns!(p4).split(pmm);
+    init_port_as_pulldowns!(p5).split(pmm);
+    init_port_as_pulldowns!(p6).split(pmm);
 }
 
 // The compiler will emit calls to the abort() compiler intrinsic if debug assertions are

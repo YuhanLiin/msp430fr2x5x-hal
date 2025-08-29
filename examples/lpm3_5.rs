@@ -10,6 +10,19 @@ use msp430fr2x5x_hal::{ bak_mem::BackupMemory, clock::VLOCLK, gpio::Batch, lpm::
 };
 use panic_msp430 as _;
 
+macro_rules! init_port_as_pulldowns {
+    ($port: expr) => {
+        Batch::new($port)
+            .config_pin0(|p| p.pulldown())
+            .config_pin1(|p| p.pulldown())
+            .config_pin2(|p| p.pulldown())
+            .config_pin3(|p| p.pulldown())
+            .config_pin4(|p| p.pulldown())
+            .config_pin5(|p| p.pulldown())
+            .config_pin6(|p| p.pulldown())
+            .config_pin7(|p| p.pulldown())
+    };
+}
 
 // The RTC will wake the board every second. LED state is stored in and loaded from the backup memory.
 // When programming with mspdebug you need to unplug and replug the board for the example to work, for some reason. 
@@ -23,19 +36,12 @@ fn main() -> ! {
     
     // Floating input pins consume a *huge* amount of energy (relatively speaking).
     // Set unused pins to outputs or enable their pull resistors.
-    let port1 = Batch::new(periph.P1)
+    let port1 = init_port_as_pulldowns!(periph.P1)
         .config_pin0(|p| p.to_output())
-        .config_pin1(|p| p.pulldown())
-        .config_pin2(|p| p.pulldown())
-        .config_pin3(|p| p.pulldown())
-        .config_pin4(|p| p.pulldown())
-        .config_pin5(|p| p.pulldown())
-        .config_pin6(|p| p.pulldown())
-        .config_pin7(|p| p.pulldown())
         .split(&pmm);
     let mut red_led = port1.pin0;
 
-    init_unused_gpio(periph.P2, periph.P3, periph.P4, periph.P5, periph.P6);
+    init_unused_gpio(periph.P2, periph.P3, periph.P4, periph.P5, periph.P6, &pmm);
 
     // If this reset was a wake up from LPMx.5...
     if periph.SYS.sysrstiv.read().sysrstiv().is_lpm5wu() {
@@ -70,18 +76,12 @@ fn main() -> ! {
 }
 
 /// Enable pulldowns on unused ports to massively reduce power usage.
-fn init_unused_gpio(p2: P2, p3: P3, p4: P4, p5: P5, p6: P6) {
-    p2.p2ren.write(|w| unsafe { w.bits(0xFF) });
-    p3.p3ren.write(|w| unsafe { w.bits(0xFF) });
-    p4.p4ren.write(|w| unsafe { w.bits(0xFF) });
-    p5.p5ren.write(|w| unsafe { w.bits(0xFF) });
-    p6.p6ren.write(|w| unsafe { w.bits(0xFF) }); 
-
-    p2.p2out.write(|w| unsafe { w.bits(0x00) });
-    p3.p3out.write(|w| unsafe { w.bits(0x00) });
-    p4.p4out.write(|w| unsafe { w.bits(0x00) });
-    p5.p5out.write(|w| unsafe { w.bits(0x00) });
-    p6.p6out.write(|w| unsafe { w.bits(0x00) });
+fn init_unused_gpio(p2: P2, p3: P3, p4: P4, p5: P5, p6: P6, pmm: &Pmm) {
+    init_port_as_pulldowns!(p2).split(pmm);
+    init_port_as_pulldowns!(p3).split(pmm);
+    init_port_as_pulldowns!(p4).split(pmm);
+    init_port_as_pulldowns!(p5).split(pmm);
+    init_port_as_pulldowns!(p6).split(pmm);
 }
 
 // Note: In this case we don't need an ISR when waking from LPMx.5, since power on disables interrupts
