@@ -2,7 +2,6 @@
 #![no_std]
 #![feature(abi_msp430_interrupt)]
 #![feature(asm_experimental_arch)]
-#![feature(let_else)]
 #![feature(naked_functions)]
 
 // NOTE: Historically there was no way to return the CPU to active mode after entering a low power mode, 

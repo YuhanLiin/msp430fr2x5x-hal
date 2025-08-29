@@ -1,7 +1,6 @@
 #![no_main]
 #![no_std]
 #![feature(abi_msp430_interrupt)]
-#![feature(let_else)]
 
 // This example demonstrates an SPI slave using interrupts. 
 // Another eUSCI peripheral is configured as an SPI master to drive the bus.

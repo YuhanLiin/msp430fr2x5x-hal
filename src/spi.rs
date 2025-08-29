@@ -550,6 +550,5 @@ mod ehal02 {
 fn map_infallible<E>(err: nb::Error<Infallible>) -> nb::Error<E> {
     match err {
         WouldBlock => WouldBlock,
-        nb::Error::Other(e) => match e {},
     }
 }

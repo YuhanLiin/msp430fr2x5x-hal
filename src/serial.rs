@@ -632,10 +632,8 @@ mod emb_io {
         /// not block, so this function may still block in subsequent calls.
         fn write_all(&mut self, mut buf: &[u8]) -> Result<(), Self::Error> {
             while !buf.is_empty() {
-                match self.write(buf) {
-                    Ok(n) => buf = &buf[n..],
-                    Err(e) => return Err(e),
-                }
+                let Ok(n) = self.write(buf);
+                buf = &buf[n..];
             }
             Ok(())
         }

@@ -36,11 +36,7 @@
 #![feature(asm_experimental_arch)]
 
 #![allow(stable_features)] // Feature flags used on older compiler versions
-#![feature(derive_default_enum)]
-#![feature(exclusive_range_pattern)]
 #![feature(const_option)]
-#![feature(nonzero_ops)]
-#![feature(asm_const)]
 
 #![deny(missing_docs)]
 
