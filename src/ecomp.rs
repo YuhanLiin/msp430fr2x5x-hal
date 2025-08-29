@@ -1,34 +1,34 @@
-//! Enhanced Comparator (eCOMP) 
-//! 
+//! Enhanced Comparator (eCOMP)
+//!
 //! The enhanced comparator peripheral consists of a comparator with configurable inputs - including
-//! a pair of GPIO pins, a low power 1.2V reference, the outputs of two separate Smart Analog Combo 
-//! (SAC) amplifiers, and a 6-bit DAC. The comparator output can be read by software and/or routed 
-//! to a GPIO pin. 
-//! 
+//! a pair of GPIO pins, a low power 1.2V reference, the outputs of two separate Smart Analog Combo
+//! (SAC) amplifiers, and a 6-bit DAC. The comparator output can be read by software and/or routed
+//! to a GPIO pin.
+//!
 //! The comparator has a pair of inputs. In normal operation, when the positive input is larger than
 //! the negative input the output is high, otherwise it is low. This behaviour can be inverted by
-//! selecting the inverted output polarity mode. The comparator also features a selectable power mode 
-//! ('high speed' or 'low power'), configurable hysteresis levels and an optional, variable-strength 
-//! analog low pass filter on the output. 
-//! 
-//! The internal DAC contains dual input buffers, where either buffer can be set as the input value 
-//! to the DAC. The buffer selection can either be done by software (software mode), 
-//! or selected automatically by the output value of the comparator (hardware mode). 
-//! The voltage reference of the DAC can be chosen as either VCC or the internal shared reference 
+//! selecting the inverted output polarity mode. The comparator also features a selectable power mode
+//! ('high speed' or 'low power'), configurable hysteresis levels and an optional, variable-strength
+//! analog low pass filter on the output.
+//!
+//! The internal DAC contains dual input buffers, where either buffer can be set as the input value
+//! to the DAC. The buffer selection can either be done by software (software mode),
+//! or selected automatically by the output value of the comparator (hardware mode).
+//! The voltage reference of the DAC can be chosen as either VCC or the internal shared reference
 //! (provided it has been previously configured).
-//! 
+//!
 //! Interrupts can be triggered on rising, falling, or both edges of the comparator output.
-//! 
+//!
 //! See the simplified diagram below:
-//! 
+//!
 #![doc= include_str!("../docs/ecomp.svg")]
-//! 
+//!
 //! Begin configuration by calling [`ECompConfig::begin()`], which returns two configuration objects: One for the
-//! eCOMP's internal DAC: [`ComparatorDacConfig`], and the other for the comparator itself: [`ComparatorConfig`]. 
+//! eCOMP's internal DAC: [`ComparatorDacConfig`], and the other for the comparator itself: [`ComparatorConfig`].
 //! If the DAC is not used then it need not be configured.
-//! 
+//!
 //! Linked pins and peripherals:
-//! 
+//!
 //! |        | SACp | SACn | COMPx.0 | COMPx.1 | COMPxOut |
 //! |:------:|:----:|:----:|:-------:|:-------:|:--------:|
 //! | eCOMP0 | SAC0 | SAC1 | `P1.0`  | `P1.1`  | `P2.0`   |
@@ -128,12 +128,12 @@ pub enum PositiveInput<'a, COMP: ECompPeriph> {
     COMPx_1(COMP::COMPx_1),
     /// Internal 1.2V reference
     _1V2,
-    /// Output of amplifier SAC0 for eCOMP0, SAC2 for eCOMP1. 
-    /// 
+    /// Output of amplifier SAC0 for eCOMP0, SAC2 for eCOMP1.
+    ///
     /// Requires a reference to ensure that it has been configured.
     OAxO(&'a COMP::SACp),
     /// This eCOMP's internal 6-bit DAC
-    /// 
+    ///
     /// Requires a reference to ensure that it has been configured.
     Dac(&'a dyn CompDacPeriph<COMP>),
 }
@@ -160,7 +160,7 @@ pub enum NegativeInput<'a, COMP: ECompPeriph> {
     COMPx_1(COMP::COMPx_1),
     /// Internal 1.2V reference
     _1V2,
-    /// Output of amplifier SAC1 for eCOMP0, SAC3 for eCOMP1. 
+    /// Output of amplifier SAC1 for eCOMP0, SAC3 for eCOMP1.
     OAxO(&'a COMP::SACn),
     /// This eCOMP's internal 6-bit DAC
     Dac(&'a dyn CompDacPeriph<COMP>),
@@ -182,7 +182,7 @@ impl<COMP: ECompPeriph> From<NegativeInput<'_, COMP >> for u8 {
 pub struct ComparatorDacConfig<COMP>(PhantomData<COMP>);
 impl<COMP: ECompPeriph> ComparatorDacConfig<COMP> {
     /// Initialise the DAC in this eCOMP peripheral in software dual buffering mode.
-    /// 
+    ///
     /// The DAC value is determined by one of two buffers. In software mode this is selectable at will.
     #[inline(always)]
     pub fn new_sw_dac(self, vref: DacVRef, buf: BufferSel) -> ComparatorDac<COMP, SwDualBuffer> {
@@ -190,7 +190,7 @@ impl<COMP: ECompPeriph> ComparatorDacConfig<COMP> {
         ComparatorDac { reg: PhantomData, mode: PhantomData, vref_lifetime: PhantomData }
     }
     /// Initialise the DAC in this eCOMP peripheral in hardware dual buffering mode.
-    /// 
+    ///
     /// The DAC value is determined by one of two buffers. In hardware mode the comparator output value selects the buffer.
     #[inline(always)]
     pub fn new_hw_dac(self, vref: DacVRef) -> ComparatorDac<COMP, HwDualBuffer> {
@@ -251,7 +251,7 @@ impl From<DacVRef<'_>> for bool {
     #[inline(always)]
     fn from(value: DacVRef) -> Self {
         match value {
-            DacVRef::Vcc            => false,
+            DacVRef::Vcc         => false,
             DacVRef::Internal(_) => true,
         }
     }
@@ -275,10 +275,10 @@ impl From<BufferSel> for bool {
     }
 }
 
-/// Possible hysteresis value for an eCOMP comparator. Larger hysteresis values require a larger voltage 
-/// difference between the input signals before a comparator output transition occurs. 
-/// 
-/// Larger values reduce spurious output transitions when the two inputs are very close together, effectively 
+/// Possible hysteresis value for an eCOMP comparator. Larger hysteresis values require a larger voltage
+/// difference between the input signals before a comparator output transition occurs.
+///
+/// Larger values reduce spurious output transitions when the two inputs are very close together, effectively
 /// making the comparator less sensitive - both to noise but also to the input signals themselves.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Hysteresis {
@@ -296,12 +296,12 @@ pub enum Hysteresis {
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum PowerMode {
     /// eCOMP0: 1us @ 24 uA.
-    /// 
+    ///
     /// eCOMP1: 100ns @ 162 uA
     HighSpeed,
-    /// eCOMP0: 3.2us @ 1.6uA. 
-    /// 
-    /// eCOMP1: 320ns @ 10uA 
+    /// eCOMP0: 3.2us @ 1.6uA.
+    ///
+    /// eCOMP1: 320ns @ 10uA
     LowPower,
 }
 impl From<PowerMode> for bool {
@@ -315,8 +315,8 @@ impl From<PowerMode> for bool {
 }
 
 /// The possible values for the strength of the low pass filter in the eCOMP module.
-/// 
-/// Higher values will more aggressively filter out high-frequency components from the output, 
+///
+/// Higher values will more aggressively filter out high-frequency components from the output,
 /// but also delays the output signal.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum FilterStrength {
@@ -329,7 +329,7 @@ pub enum FilterStrength {
     /// Typical delay of 3600 ns (in high speed mode).
     VeryHigh    = 0b11,
     /// Do not use the low pass filter.
-    Off         = 0b100, 
+    Off         = 0b100,
 }
 
 /// Output polarity of the comparator

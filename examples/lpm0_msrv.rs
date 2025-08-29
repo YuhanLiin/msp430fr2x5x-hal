@@ -4,10 +4,10 @@
 #![feature(asm_experimental_arch)]
 #![feature(naked_functions)]
 
-// NOTE: Historically there was no way to return the CPU to active mode after entering a low power mode, 
+// NOTE: Historically there was no way to return the CPU to active mode after entering a low power mode,
 // the MSP restores the CPU to active mode during an interrupt but turns it off afterwards.
 
-// A feature was recently added to msp430-rt to allow the CPU to return to active mode, but it depends on Rust 1.88. 
+// A feature was recently added to msp430-rt to allow the CPU to return to active mode, but it depends on Rust 1.88.
 // For compatibility with the MSRV of this crate we showcase the old implementation here, with all work being done inside the interrupt.
 // For the more flexible new version, see lpm0.rs
 
@@ -44,7 +44,7 @@ macro_rules! init_port_as_pulldowns {
 #[entry]
 fn main() -> ! {
     let periph = msp430fr2355::Peripherals::take().unwrap();
-    
+
     let _wdt = Wdt::constrain(periph.WDT_A);
     let pmm = Pmm::new(periph.PMM);
 
@@ -71,9 +71,9 @@ fn main() -> ! {
     button.select_falling_edge_trigger().enable_interrupts();
 
     unsafe { enable_interrupts() };
-    
+
     // Since no peripherals were configured to use SMCLK / ACLK we could just as well enter LPM3 / LPM4 here
-    enter_lpm0(); 
+    enter_lpm0();
 
     loop {}
 }

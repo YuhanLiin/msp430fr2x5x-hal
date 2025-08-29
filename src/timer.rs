@@ -276,7 +276,7 @@ impl<T: TimerPeriph> Timer<T> {
     }
 
     #[inline]
-    /// Clears the timer, sets the count, and starts the timer in upcounting mode. 
+    /// Clears the timer, sets the count, and starts the timer in upcounting mode.
     pub fn start(&mut self, count: u16) {
         let timer = unsafe { T::steal() };
         timer.stop();
@@ -359,32 +359,32 @@ impl<T: CapCmp<C>, C> SubTimer<T, C> {
 
 #[cfg(feature = "embedded-hal-02")]
 mod ehal02 {
-    use embedded_hal_02::timer::{Cancel, CountDown, Periodic};
     use super::*;
+    use embedded_hal_02::timer::{Cancel, CountDown, Periodic};
 
     impl<T: TimerPeriph + CapCmp<CCR0>> CountDown for Timer<T> {
         type Time = u16;
-    
+
         #[inline]
         fn start<U: Into<Self::Time>>(&mut self, count: U) {
             self.start(count.into())
         }
-    
+
         #[inline]
         fn wait(&mut self) -> nb::Result<(), void::Void> {
             self.wait().map_err(|_| nb::Error::WouldBlock)
         }
     }
-    
+
     impl<T: TimerPeriph + CapCmp<CCR0>> Cancel for Timer<T> {
         type Error = void::Void;
-    
+
         #[inline(always)]
         fn cancel(&mut self) -> Result<(), Self::Error> {
             self.pause();
             Ok(())
         }
     }
-    
+
     impl<T: TimerPeriph> Periodic for Timer<T> {}
 }

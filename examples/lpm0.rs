@@ -38,7 +38,7 @@ macro_rules! init_port_as_pulldowns {
 #[entry]
 fn main() -> ! {
     let periph = msp430fr2355::Peripherals::take().unwrap();
-    
+
     let _wdt = Wdt::constrain(periph.WDT_A);
     let pmm = Pmm::new(periph.PMM);
 
@@ -64,10 +64,10 @@ fn main() -> ! {
     button.select_falling_edge_trigger().enable_interrupts();
 
     unsafe { enable_interrupts() };
-    
+
     loop {
         // Since no peripherals were configured to use SMCLK / ACLK we could just as well enter LPM3 / LPM4 here
-        enter_lpm0(); 
+        enter_lpm0();
         red_led.toggle().ok();
 
         for _ in 0..15_000 { // Debouncing

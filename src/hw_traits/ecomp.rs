@@ -1,30 +1,30 @@
-use msp430fr2355::{E_COMP0, E_COMP1, P1, P2, SAC0, SAC1, SAC2, SAC3};
+use super::Steal;
 use crate::{
     ecomp::{ComparatorDac, BufferSel, DacVRef, FilterStrength, Hysteresis, NegativeInput, OutputPolarity, PositiveInput, PowerMode}, 
     gpio::{Alternate2, Floating, Input, Output, Pin, Pin0, Pin1, Pin4, Pin5}, sac::Amplifier
 };
-use super::Steal;
+use msp430fr2355::{E_COMP0, E_COMP1, P1, P2, SAC0, SAC1, SAC2, SAC3};
 
 #[allow(non_camel_case_types)]
 pub trait ECompPeriph: Steal {
     /// COMPx.0 - One of the two GPIO inputs that can be fed into either comparator input.
-    /// 
+    ///
     /// For COMP0 this is P1.0, COMP1 has P2.5.
     type COMPx_0;
     /// COMPx.1 - One of the two GPIO inputs that can be fed into either comparator input.
-    /// 
+    ///
     /// For COMP0 this is P1.1, COMP1 has P2.4.
     type COMPx_1;
-    /// The GPIO pin that can connect to the comparator output. 
-    /// 
+    /// The GPIO pin that can connect to the comparator output.
+    ///
     /// For COMP0 this is P2.0, for COMP1 this is P2.1.
     type COMPx_Out;
     /// The Smart Analog Combo peripheral that is accessible from the positive comparator input:
-    /// 
+    ///
     /// SAC0 for COMP0, SAC2 for COMP1.
     type SACp;
     /// The Smart Analog Combo peripheral that is accessible from the negative comparator input:
-    /// 
+    ///
     /// SAC1 for COMP0, SAC3 for COMP1.
     type SACn;
     fn cpxdacctl(enable: bool, vref: DacVRef, buf_mode: DacBufferMode, buf: BufferSel);
@@ -42,13 +42,13 @@ pub trait ECompPeriph: Steal {
 }
 
 // Marker trait for an eCOMP DAC. Since the DAC has a typestate (hardware/software double buffer)
-// we can't just say `type CompDac = ComparatorDac<COMP>` 
+// we can't just say `type CompDac = ComparatorDac<COMP>`
 pub trait CompDacPeriph<COMP: ECompPeriph> {}
 impl<COMP: ECompPeriph, MODE> CompDacPeriph<COMP> for ComparatorDac<'_, COMP, MODE> {}
 
 /// Possible eCOMP DAC dual buffer modes
 pub enum DacBufferMode {
-    /// In hardware mode the DAC count is determined by either CPDACBUF1 or CPDACBUF2, 
+    /// In hardware mode the DAC count is determined by either CPDACBUF1 or CPDACBUF2,
     /// based on the output value of the comparator
     Hardware,
     /// In software mode the DAC count can be switched between CPDACBUF1 and CPDACBUF2 by software
@@ -64,12 +64,12 @@ impl From<DacBufferMode> for bool {
 }
 
 macro_rules! impl_ecomp {
-    ($COMP: ident, 
-        $inPP: ident, $inPp: ident, 
-        $inNP: ident, $inNp: ident, 
+    ($COMP: ident,
+        $inPP: ident, $inPp: ident,
+        $inNP: ident, $inNp: ident,
         $outP: ident, $outp: ident,
         $SACp: ty, $SACn: ty,
-        $cpctl0: ident, $cpctl1: ident, 
+        $cpctl0: ident, $cpctl1: ident,
         $cpdacctl: ident, $cpdacdata: ident,
         $cpint: ident, $cpiv: ident ) => {
         impl Steal for $COMP {
@@ -87,7 +87,7 @@ macro_rules! impl_ecomp {
 
             #[inline(always)]
             fn cpxdacctl(enable: bool, vref: DacVRef, buf_mode: DacBufferMode, buf: BufferSel) {
-                unsafe{
+                unsafe {
                     let comp = $COMP::steal();
                     comp.$cpdacctl.modify(|_, w| w
                         .cpdacen().bit(enable)
@@ -99,35 +99,35 @@ macro_rules! impl_ecomp {
             }
             #[inline(always)]
             fn set_buf1_val(buf: u8) {
-                unsafe{
+                unsafe {
                     let comp = $COMP::steal();
                     comp.$cpdacdata.modify(|_, w| w.cpdacbuf1().bits(buf));
                 }
             }
             #[inline(always)]
             fn set_buf2_val(buf: u8) {
-                unsafe{
+                unsafe {
                     let comp = $COMP::steal();
                     comp.$cpdacdata.modify(|_, w| w.cpdacbuf2().bits(buf));
                 }
             }
             #[inline(always)]
             fn select_buffer(sel: BufferSel) {
-                unsafe{
+                unsafe {
                     let comp = $COMP::steal();
                     comp.$cpdacctl.modify(|_, w| w.cpdacsw().bit(sel.into()));
                 }
             }
             #[inline(always)]
             fn set_dac_buffer_mode(mode: DacBufferMode) {
-                unsafe{
+                unsafe {
                     let comp = $COMP::steal();
                     comp.$cpdacctl.modify(|_, w| w.cpdacbufs().bit(mode.into()));
                 }
             }
             #[inline(always)]
             fn cpxctl0(pos_in: PositiveInput<$COMP>, neg_in: NegativeInput<$COMP>) {
-                unsafe{
+                unsafe {
                     let comp = $COMP::steal();
                     comp.$cpctl0.modify(|_, w| w
                         .cppen().set_bit()
@@ -139,7 +139,7 @@ macro_rules! impl_ecomp {
             }
             #[inline(always)]
             fn configure_comparator(pol: OutputPolarity, pwr: PowerMode, hstr: Hysteresis, fltr: FilterStrength) {
-                unsafe{
+                unsafe {
                     let comp = $COMP::steal();
                     comp.$cpctl1.modify(|_, w| w
                         .cphsel().bits(hstr as u8)

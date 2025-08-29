@@ -27,8 +27,8 @@ fn main() -> ! {
     // Configure the DAC within SAC0. Let's use the internal voltage reference too.
     let vref = pmm.enable_internal_reference(ReferenceVoltage::_1V5).unwrap();
     let mut dac = dac_config.configure(VRef::Internal(&vref), LoadTrigger::Immediate);
-    
-    // To see the DAC output on a GPIO pin, we must set the SAC amplifier into buffer mode and set the DAC as the buffer input 
+
+    // To see the DAC output on a GPIO pin, we must set the SAC amplifier into buffer mode and set the DAC as the buffer input
     let _amp = amp_config.buffer(PositiveInput::Dac(&dac), PowerMode::LowPower)
         .output_pin(p1_1);
 

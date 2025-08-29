@@ -60,11 +60,11 @@ pub use msp430fr2355::pmm::pmmctl0::SVSHE_A as SvsState;
 // Status register:
 // SCG1 SCG0 OSC_OFF CPU_OFF GIE N Z C
 // 7    6    5       4       3   2 1 0
-const SCG1:    u8 = 1<<7;
-const SCG0:    u8 = 1<<6;
-const OSC_OFF: u8 = 1<<5;
-const CPU_OFF: u8 = 1<<4;
-const GIE:     u8 = 1<<3;
+const SCG1:    u8 = 1 << 7;
+const SCG0:    u8 = 1 << 6;
+const OSC_OFF: u8 = 1 << 5;
+const CPU_OFF: u8 = 1 << 4;
+const GIE:     u8 = 1 << 3;
 
 /// For each set bit in the bitmask, set the corresponding bit in the status register.
 #[inline(always)]
@@ -141,7 +141,8 @@ fn lpm3_5<MODE: WatchdogSelect>(wdt: Wdt<MODE>, svs: SvsState) -> ! {
 
     // If LF XT crystal is not in use, reset everything, otherwise reset everything but XIN, XOUT
     const MASK: u8 = (1 << 6) | (1 << 7);
-    let lfxt_in_use = (regs.P2.p2sel1.read().bits() & MASK == MASK) && (regs.P2.p2sel0.read().bits() & MASK == 0);
+    let lfxt_in_use =
+        (regs.P2.p2sel1.read().bits() & MASK == MASK) && (regs.P2.p2sel0.read().bits() & MASK == 0);
     if lfxt_in_use {
         // Reset everything except for XIN and XOUT
         unsafe {
@@ -219,8 +220,7 @@ fn enter_lpmx_5<MODE: WatchdogSelect>(mut wdt: Wdt<MODE>, svs: SvsState, regs: P
     if interrupts_were_enabled {
         const LPMX_5: u8 = SCG1 | SCG0 | OSC_OFF | CPU_OFF | GIE;
         set_sr_bits::<LPMX_5>();
-    }
-    else {
+    } else {
         const LPMX_5: u8 = SCG1 | SCG0 | OSC_OFF | CPU_OFF;
         set_sr_bits::<LPMX_5>();
     }

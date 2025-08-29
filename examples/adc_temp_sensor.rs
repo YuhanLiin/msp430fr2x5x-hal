@@ -25,7 +25,7 @@ fn main() -> ! {
     let mut led = port1.pin0.to_output();
 
     // ADC setup.
-    // Temp sensor needs >= 30 us sample time. 
+    // Temp sensor needs >= 30 us sample time.
     // MODCLK is < ~4.6MHz, so 256 cycles / 4.6 MHz = 55 us sample time.
     let mut adc = AdcConfig::new(
         ClockDivider::_1,
@@ -46,7 +46,7 @@ fn main() -> ! {
 
         // Equation 11 gives us this equation for calculating temperature from the temp sensor voltage:
         // T = 0.00355 × (V_t – V_30C) + 30C, and V_30C = 788 mV (Table 5-10).
-		// Note integer division, so multiply first (beware overflow!), divide last to maximise accuracy
+        // Note integer division, so multiply first (beware overflow!), divide last to maximise accuracy
         let temp_celcius = (((355 * (reading_mv as i32 - 788)) + 30_000) / 1000) as i16;
 
         // Turn on LED if temp between 20 and 25C

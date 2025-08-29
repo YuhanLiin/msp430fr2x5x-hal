@@ -3,10 +3,10 @@
 #![feature(abi_msp430_interrupt)]
 #![feature(asm_experimental_arch)]
 
-// This examples enters LPM4.5, then when a button on P2.3 is pressed the system wakes and flashes the red LED. 
+// This examples enters LPM4.5, then when a button on P2.3 is pressed the system wakes and flashes the red LED.
 
 use embedded_hal::digital::*;
-use msp430::{asm::nop};
+use msp430::asm::nop;
 use msp430_rt::entry;
 use msp430fr2355::{P3, P4, P5, P6};
 use msp430fr2x5x_hal::{gpio::Batch, lpm::{enter_lpm4_5, SvsState}, pmm::Pmm, watchdog::Wdt};
@@ -57,7 +57,7 @@ fn main() -> ! {
     }
     // Otherwise it was a regular reset. Prepare to enter LPM4.5.
     else {
-        // Configure P2.3 for interrupts 
+        // Configure P2.3 for interrupts
         let mut button = port2.pin3;
         button.select_falling_edge_trigger().enable_interrupts();
 

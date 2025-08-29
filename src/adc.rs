@@ -1,25 +1,25 @@
 //! Analog to Digital Converter (ADC)
 //!
-//! Begin configuration by calling [`AdcConfig::new()`] or [`::default()`](AdcConfig::default()). 
+//! Begin configuration by calling [`AdcConfig::new()`] or [`::default()`](AdcConfig::default()).
 //! Once fully configured an [`Adc`] will be returned.
-//! 
-//! [`Adc`] can read from a channel by calling [`read_count()`](Adc::read_count()) to return an ADC count. 
-//! 
-//! The [`count_to_mv()`](Adc::count_to_mv()) method is available to convert an ADC count to a voltage in millivolts, 
-//! given a reference voltage. 
-//! 
-//! As a convenience, [`read_voltage_mv()`](Adc::read_voltage_mv()) combines [`read_count()`](Adc::read_count()) and 
+//!
+//! [`Adc`] can read from a channel by calling [`read_count()`](Adc::read_count()) to return an ADC count.
+//!
+//! The [`count_to_mv()`](Adc::count_to_mv()) method is available to convert an ADC count to a voltage in millivolts,
+//! given a reference voltage.
+//!
+//! As a convenience, [`read_voltage_mv()`](Adc::read_voltage_mv()) combines [`read_count()`](Adc::read_count()) and
 //! [`count_to_mv()`](Adc::count_to_mv()).
-//! 
+//!
 //! Currently the only supported ADC voltage reference is `AVCC`, the operating voltage of the MSP430.
-//! 
-//! [`read_count()`](Adc::read_count()) takes a reference to the GPIO pin corresponding to the relevant ADC channel 
+//!
+//! [`read_count()`](Adc::read_count()) takes a reference to the GPIO pin corresponding to the relevant ADC channel
 //! to ensure it's been correctly configured. The ADC may read from any of the following pins:
 //!
 //! P1.0 - P1.7 (channels 0 to 7), P5.0 - P5.3 (channels 8 to 11).
-//! 
-//! ADC channels 12 to 15 are not associated with external pins, so instead channels 12 and 13 can be read by passing a 
-//! reference to [`InternalVRef`] or [`InternalTempSensor`] respectively. Channels 14 and 15 require no prior 
+//!
+//! ADC channels 12 to 15 are not associated with external pins, so instead channels 12 and 13 can be read by passing a
+//! reference to [`InternalVRef`] or [`InternalTempSensor`] respectively. Channels 14 and 15 require no prior
 //! configuration, so the two functions below provide a reference that can be used to read from these channels.
 
 use crate::{clock::{Aclk, Smclk}, gpio::*, pmm::{InternalTempSensor, InternalVRef}};
@@ -63,7 +63,7 @@ pub trait Channel<ADC> {
 }
 
 /// How many ADCCLK cycles the ADC's sample-and-hold stage will last for.
-/// 
+///
 /// Default: 8 cycles
 #[derive(Default, Copy, Clone, PartialEq, Eq)]
 pub enum SampleTime {
@@ -104,7 +104,7 @@ impl SampleTime {
 }
 
 /// How much the ADC input clock will be divided by after being divided by the predivider
-/// 
+///
 /// Default: Divide by 1
 #[derive(Default, Copy, Clone, PartialEq, Eq)]
 pub enum ClockDivider {
@@ -153,7 +153,7 @@ impl ClockSource {
 }
 
 /// How much the ADC input clock will be divided by prior to being divided by the ADC clock divider
-/// 
+///
 /// Default: Divide by 1
 #[derive(Default, Copy, Clone, PartialEq, Eq)]
 pub enum Predivider {
@@ -174,7 +174,7 @@ impl Predivider {
 }
 
 /// The output resolution of the ADC conversion. Also determines how many ADCCLK cycles the conversion step takes.
-/// 
+///
 /// Default: 10-bit resolution
 #[derive(Default, Copy, Clone, PartialEq, Eq)]
 pub enum Resolution {
@@ -195,7 +195,7 @@ impl Resolution {
 }
 
 /// Selects the drive capability of the ADC reference buffer, which can increase the maximum sampling speed at the cost of increased power draw.
-/// 
+///
 /// Default: 200ksps
 #[derive(Default, Copy, Clone, PartialEq, Eq)]
 pub enum SamplingRate {
@@ -242,7 +242,7 @@ impl_adc_channel_pin!(P5, Pin1, 9);
 impl_adc_channel_pin!(P5, Pin2, 10);
 impl_adc_channel_pin!(P5, Pin3, 11);
 
-// A few ADC channels don't correspond to pins. 
+// A few ADC channels don't correspond to pins.
 macro_rules! impl_adc_channel_extra {
     ($type: ty, $channel: literal ) => {
         impl Channel<Adc> for $type {
@@ -255,11 +255,10 @@ macro_rules! impl_adc_channel_extra {
     };
 }
 
-
 impl_adc_channel_extra!(InternalTempSensor<'_>, 12);
 impl_adc_channel_extra!(InternalVRef, 13);
 
-// Users needn't deal with the structs themselves so it just adds noise to the docs. We instead document the functions below. 
+// Users needn't deal with the structs themselves so it just adds noise to the docs. We instead document the functions below.
 #[doc(hidden)]
 pub struct AdcVssChannel;
 impl_adc_channel_extra!(AdcVssChannel, 14);
@@ -280,9 +279,9 @@ pub struct NoClockSet;
 pub struct ClockSet(ClockSource);
 
 /// Configuration object for an ADC.
-/// 
+///
 /// Currently the only supported voltage reference is AVCC.
-/// 
+///
 /// The default configuration is based on the default register values:
 /// - Predivider = 1 and clock divider = 1
 /// - 10-bit resolution
@@ -306,13 +305,13 @@ pub struct AdcConfig<STATE> {
 // Only implement Default for NoClockSet
 impl Default for AdcConfig<NoClockSet> {
     fn default() -> Self {
-        Self { 
+        Self {
             state: NoClockSet,
-            clock_divider: Default::default(), 
-            predivider: Default::default(), 
-            resolution: Default::default(), 
-            sampling_rate: Default::default(), 
-            sample_time: Default::default(), 
+            clock_divider: Default::default(),
+            predivider: Default::default(),
+            resolution: Default::default(),
+            sampling_rate: Default::default(),
+            sample_time: Default::default(),
         }
     }
 }
@@ -336,36 +335,36 @@ impl AdcConfig<NoClockSet> {
         }
     }
     /// Configure the ADC to use SMCLK
-    pub fn use_smclk(self, _smclk: &Smclk) -> AdcConfig<ClockSet>{
-        AdcConfig { 
+    pub fn use_smclk(self, _smclk: &Smclk) -> AdcConfig<ClockSet> {
+        AdcConfig {
             state: ClockSet(ClockSource::SmClk),
-            clock_divider: self.clock_divider, 
-            predivider: self.predivider, 
-            resolution: self.resolution, 
-            sampling_rate: self.sampling_rate, 
-            sample_time: self.sample_time, 
+            clock_divider: self.clock_divider,
+            predivider: self.predivider,
+            resolution: self.resolution,
+            sampling_rate: self.sampling_rate,
+            sample_time: self.sample_time,
         }
     }
     /// Configure the ADC to use ACLK
-    pub fn use_aclk(self, _aclk: &Aclk) -> AdcConfig<ClockSet>{
-        AdcConfig { 
+    pub fn use_aclk(self, _aclk: &Aclk) -> AdcConfig<ClockSet> {
+        AdcConfig {
             state: ClockSet(ClockSource::AClk),
-            clock_divider: self.clock_divider, 
-            predivider: self.predivider, 
-            resolution: self.resolution, 
-            sampling_rate: self.sampling_rate, 
-            sample_time: self.sample_time, 
+            clock_divider: self.clock_divider,
+            predivider: self.predivider,
+            resolution: self.resolution,
+            sampling_rate: self.sampling_rate,
+            sample_time: self.sample_time,
         }
     }
     /// Configure the ADC to use MODCLK
-    pub fn use_modclk(self) -> AdcConfig<ClockSet>{
-        AdcConfig { 
+    pub fn use_modclk(self) -> AdcConfig<ClockSet> {
+        AdcConfig {
             state: ClockSet(ClockSource::ModClk),
-            clock_divider: self.clock_divider, 
-            predivider: self.predivider, 
-            resolution: self.resolution, 
-            sampling_rate: self.sampling_rate, 
-            sample_time: self.sample_time, 
+            clock_divider: self.clock_divider,
+            predivider: self.predivider,
+            resolution: self.resolution,
+            sampling_rate: self.sampling_rate,
+            sample_time: self.sample_time,
         }
     }
 }
@@ -380,7 +379,7 @@ impl AdcConfig<ClockSet> {
 
         let adcssel = self.state.0.adcssel();
         let adcdiv = self.clock_divider.adcdiv();
-        adc_reg.adcctl1.write(|w| {w
+        adc_reg.adcctl1.write(|w| { w
             .adcssel().bits(adcssel)
             .adcshp().adcshp_1()
             .adcdiv().bits(adcdiv)
@@ -475,7 +474,7 @@ impl Adc {
     }
 
     /// Convert an ADC count to a voltage value in millivolts.
-    /// 
+    ///
     /// `ref_voltage_mv` is the reference voltage of the ADC in millivolts.
     pub fn count_to_mv(&self, count: u16, ref_voltage_mv: u16) -> u16 {
         use crate::pac::adc::adcctl2::ADCRES_A;
@@ -491,7 +490,7 @@ impl Adc {
     /// Begins a single ADC conversion if one isn't already underway, enabling the ADC in the process.
     ///
     /// If the result is ready it is returned as a voltage in millivolts based on `ref_voltage_mv`, otherwise returns `WouldBlock`.
-    /// 
+    ///
     /// If you instead want a raw count you should use the `.read_count()` method.
     pub fn read_voltage_mv<PIN: Channel<Self, ID = u8>>(&mut self, pin: &mut PIN, ref_voltage_mv: u16) -> nb::Result<u16, Infallible> {
         self.read_count(pin).map(|count| self.count_to_mv(count, ref_voltage_mv))
@@ -508,8 +507,8 @@ fn disable_adc_reg(adc: &mut ADC) {
 
 #[cfg(feature = "embedded-hal-02")]
 mod ehal02 {
-    use embedded_hal_02::adc::{Channel, OneShot};
     use super::*;
+    use embedded_hal_02::adc::{Channel, OneShot};
 
     impl<PIN> OneShot<Adc, u16, PIN> for Adc
     where

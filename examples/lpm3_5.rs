@@ -6,7 +6,14 @@
 use embedded_hal::digital::*;
 use msp430_rt::entry;
 use msp430fr2355::{P2, P3, P4, P5, P6};
-use msp430fr2x5x_hal::{ bak_mem::BackupMemory, clock::VLOCLK, gpio::Batch, lpm::{enter_lpm3_5, enter_lpm3_5_unchecked, SvsState}, pmm::Pmm, rtc::{Rtc, RtcDiv}, watchdog::Wdt
+use msp430fr2x5x_hal::{
+    bak_mem::BackupMemory,
+    clock::VLOCLK,
+    gpio::Batch,
+    lpm::{enter_lpm3_5, enter_lpm3_5_unchecked, SvsState},
+    pmm::Pmm,
+    rtc::{Rtc, RtcDiv},
+    watchdog::Wdt,
 };
 use panic_msp430 as _;
 
@@ -25,15 +32,15 @@ macro_rules! init_port_as_pulldowns {
 }
 
 // The RTC will wake the board every second. LED state is stored in and loaded from the backup memory.
-// When programming with mspdebug you need to unplug and replug the board for the example to work, for some reason. 
+// When programming with mspdebug you need to unplug and replug the board for the example to work, for some reason.
 // Programming via Uniflash or Code Composer Studio works fine.
 #[entry]
 fn main() -> ! {
     let periph = msp430fr2355::Peripherals::take().unwrap();
-    
+
     let wdt = Wdt::constrain(periph.WDT_A);
     let pmm = Pmm::new(periph.PMM);
-    
+
     // Floating input pins consume a *huge* amount of energy (relatively speaking).
     // Set unused pins to outputs or enable their pull resistors.
     let port1 = init_port_as_pulldowns!(periph.P1)
@@ -46,14 +53,14 @@ fn main() -> ! {
     // If this reset was a wake up from LPMx.5...
     if periph.SYS.sysrstiv.read().sysrstiv().is_lpm5wu() {
         // Toggle the LED.
-        // I/O registers have their values reset coming out of LPMx.5, 
+        // I/O registers have their values reset coming out of LPMx.5,
         // so we have to store state in the backup memory.
         let bak_mem = BackupMemory::as_u8s(periph.BKMEM);
 
         let old_value = bak_mem[0] == 1;
         red_led.set_state(old_value.into()).ok();
 
-        let new_value = if old_value {0} else {1};
+        let new_value = if old_value { 0 } else { 1 };
         bak_mem[0] = new_value;
 
         // Clear RTC interrupt flag

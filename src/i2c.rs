@@ -3,10 +3,10 @@
 //! Peripherals eUSCI_B0 and eUSCI_B1 can be used for I2C communication.
 //!
 //! Begin by calling [`I2cConfig::new()`]. Once configured an [`I2cBus`] will be returned.
-//! 
-//! [`I2cBus`] implements the blocking embedded_hal [`I2c`](embedded_hal::i2c::I2c) trait. 
+//!
+//! [`I2cBus`] implements the blocking embedded_hal [`I2c`](embedded_hal::i2c::I2c) trait.
 //! Passing a `u8` address to these methods uses 7-bit addressing, passing a `u16` uses 10-bit addressing.
-//! 
+//!
 //! Pins used:
 //!
 //! eUSCI_B0: {SCL: `P1.3`, SDA: `P1.2`}. `P1.1` can optionally be used as an external clock source.
@@ -30,7 +30,7 @@ use embedded_hal::i2c::{AddressMode, SevenBitAddress, TenBitAddress};
 use msp430::asm;
 
 /// Enumerates the two I2C addressing modes: 7-bit and 10-bit.
-/// 
+///
 /// Used internally by the HAL.
 #[derive(Clone, Copy)]
 pub enum AddressingMode {
@@ -279,18 +279,19 @@ impl<USCI: I2cUsci> I2cConfig<USCI, NoClockSet> {
     pub fn use_smclk(mut self, _smclk: &Smclk, clk_divisor: u16) -> I2cConfig<USCI, ClockSet> {
         self.ctlw0.ucssel = Ucssel::Smclk;
         self.divisor = clk_divisor;
-        I2cConfig{ 
-            usci: self.usci, 
-            divisor: self.divisor, 
-            ctlw0: self.ctlw0, 
-            ctlw1: self.ctlw1, 
-            i2coa0: self.i2coa0, 
-            i2coa1: self.i2coa1, 
-            i2coa2: self.i2coa2, 
-            i2coa3: self.i2coa3, 
-            ie: self.ie, 
-            ifg: self.ifg, 
-            _phantom: PhantomData }
+        I2cConfig {
+            usci: self.usci,
+            divisor: self.divisor,
+            ctlw0: self.ctlw0,
+            ctlw1: self.ctlw1,
+            i2coa0: self.i2coa0,
+            i2coa1: self.i2coa1,
+            i2coa2: self.i2coa2,
+            i2coa3: self.i2coa3,
+            ie: self.ie,
+            ifg: self.ifg,
+            _phantom: PhantomData,
+        }
     }
 
     /// Configures this peripheral to use ACLK
@@ -298,36 +299,38 @@ impl<USCI: I2cUsci> I2cConfig<USCI, NoClockSet> {
     pub fn use_aclk(mut self, _aclk: &Aclk, clk_divisor: u16) -> I2cConfig<USCI, ClockSet> {
         self.ctlw0.ucssel = Ucssel::Aclk;
         self.divisor = clk_divisor;
-        I2cConfig{ 
-            usci: self.usci, 
-            divisor: self.divisor, 
-            ctlw0: self.ctlw0, 
-            ctlw1: self.ctlw1, 
-            i2coa0: self.i2coa0, 
-            i2coa1: self.i2coa1, 
-            i2coa2: self.i2coa2, 
-            i2coa3: self.i2coa3, 
-            ie: self.ie, 
-            ifg: self.ifg, 
-            _phantom: PhantomData }
+        I2cConfig {
+            usci: self.usci,
+            divisor: self.divisor,
+            ctlw0: self.ctlw0,
+            ctlw1: self.ctlw1,
+            i2coa0: self.i2coa0,
+            i2coa1: self.i2coa1,
+            i2coa2: self.i2coa2,
+            i2coa3: self.i2coa3,
+            ie: self.ie,
+            ifg: self.ifg,
+            _phantom: PhantomData,
+        }
     }
     /// Configures this peripheral to use UCLK
     #[inline]
     pub fn use_uclk<Pin: Into<USCI::ExternalClockPin> >(mut self, _uclk: Pin, clk_divisor: u16) -> I2cConfig<USCI, ClockSet> {
         self.ctlw0.ucssel = Ucssel::Uclk;
         self.divisor = clk_divisor;
-        I2cConfig{ 
-            usci: self.usci, 
-            divisor: self.divisor, 
-            ctlw0: self.ctlw0, 
-            ctlw1: self.ctlw1, 
-            i2coa0: self.i2coa0, 
-            i2coa1: self.i2coa1, 
-            i2coa2: self.i2coa2, 
-            i2coa3: self.i2coa3, 
-            ie: self.ie, 
-            ifg: self.ifg, 
-            _phantom: PhantomData }
+        I2cConfig {
+            usci: self.usci,
+            divisor: self.divisor,
+            ctlw0: self.ctlw0,
+            ctlw1: self.ctlw1,
+            i2coa0: self.i2coa0,
+            i2coa1: self.i2coa1,
+            i2coa2: self.i2coa2,
+            i2coa3: self.i2coa3,
+            ie: self.ie,
+            ifg: self.ifg,
+            _phantom: PhantomData,
+        }
     }
 }
 
@@ -340,7 +343,7 @@ impl<USCI: I2cUsci> I2cConfig<USCI, ClockSet> {
         _sda: D,
     ) -> I2cBus<USCI> {
         self.configure_regs();
-        I2cBus{ usci: self.usci }
+        I2cBus { usci: self.usci }
     }
 
     /// Performs hardware configuration
@@ -397,7 +400,7 @@ impl<USCI: I2cUsci> I2cBus<USCI> {
 
         // Clear any flags from previous transactions
         usci.ifg_rst();
-        
+
         usci.i2csa_wr(address);
 
         if send_start {
@@ -478,7 +481,7 @@ impl<USCI: I2cUsci> I2cBus<USCI> {
                     break;
                 }
             }
-        } 
+        }
 
         if send_stop {
             usci.transmit_stop();
@@ -495,7 +498,7 @@ impl<USCI: I2cUsci> I2cBus<USCI> {
 
     /// Checks whether a slave with the specified address is present on the I2C bus.
     /// Sends a zero-byte write and records whether the slave sends an ACK or not.
-    /// 
+    ///
     /// A u8 address will use the 7-bit addressing mode, a u16 address uses 10-bit addressing.
     // If we add more I2C error variants this fn should be changed to return a Result<bool, I2cErr>
     pub fn is_slave_present<TenOrSevenBit>(&mut self, address: TenOrSevenBit) -> bool 
@@ -521,7 +524,7 @@ impl<USCI: I2cUsci> I2cBus<USCI> {
 // Trait to link embedded-hal types to our addressing mode enum.
 // Since SevenBitAddress and TenBitAddress are just aliases for u8 and u16 in both ehal 1.0 and 0.2.7, this works for both!
 /// A trait marking types that can be used as I2C addresses. Namely `u8` for 7-bit addresses and `u16` for 10-bit addresses.
-/// 
+///
 /// Used internally by the HAL.
 pub trait AddressType: AddressMode + Into<u16> + Copy {
     /// Return the `AddressingMode` that relates to this type: `SevenBit` for `u8`, `TenBit` for `u16`.
@@ -539,8 +542,8 @@ impl AddressType for TenBitAddress {
 }
 
 mod ehal1 {
-    use embedded_hal::i2c::{Error, ErrorKind, ErrorType, I2c, Operation, NoAcknowledgeSource};
     use super::*;
+    use embedded_hal::i2c::{Error, ErrorKind, ErrorType, I2c, NoAcknowledgeSource, Operation};
 
     impl Error for I2CErr {
         fn kind(&self) -> ErrorKind {
@@ -558,11 +561,11 @@ mod ehal1 {
     where TenOrSevenBit: AddressType {
         fn transaction(&mut self, address: TenOrSevenBit, ops: &mut [Operation<'_>]) -> Result<(), Self::Error> {
             self.set_addressing_mode(TenOrSevenBit::addr_type());
-            
+
             let mut prev_discr = None;
             let len = ops.len();
             for (i, op) in ops.iter_mut().enumerate() {
-                // Send a start if this is the first operation, 
+                // Send a start if this is the first operation,
                 // or if the previous operation was a different type (e.g. Read and Write)
                 let send_start = match prev_discr {
                     None => true,
@@ -570,7 +573,7 @@ mod ehal1 {
                 };
                 // Send a stop only if this is the last operation
                 let send_stop = i == (len - 1);
-                
+
                 match op {
                     Operation::Read(ref mut items) => {
                         self.set_transmission_mode(TransmissionMode::Receive);

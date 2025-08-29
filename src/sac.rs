@@ -5,13 +5,13 @@
 //! conditioning for either the input or output path.
 //!
 //! Only available on the MSP430FR235x.
-//! 
-//! There are four SAC modules, forming two pairs (SAC0 and SAC2, SAC1 and SAC3). 
-//! The amplifiers in each pair can be fed the output of the other (e.g. SAC0 may use the output of SAC2, 
-//! and SAC2 may use the output of SAC0). Both amplifiers can be fed into the respective 
+//!
+//! There are four SAC modules, forming two pairs (SAC0 and SAC2, SAC1 and SAC3).
+//! The amplifiers in each pair can be fed the output of the other (e.g. SAC0 may use the output of SAC2,
+//! and SAC2 may use the output of SAC0). Both amplifiers can be fed into the respective
 //! enhanced comparator module (eCOMP) - SAC0 and SAC2 into eCOMP0, and SAC1 and SAC3 into eCOMP1.
-//! 
-//! Each SAC can be put into one of four modes: 
+//!
+//! Each SAC can be put into one of four modes:
 //! - An open-loop operational amplifier (no internal feedback):
 #![allow(rustdoc::bare_urls)] // SVG files trigger false positives
 #![doc= include_str!("../docs/sac_open_loop.svg")]
@@ -21,31 +21,31 @@
 #![doc= include_str!("../docs/sac_noninverting.svg")]
 //! - A unity-gain buffer / voltage follower:
 #![doc= include_str!("../docs/sac_buffer.svg")]
-//! 
+//!
 //! In all modes the positive input to the amplifier can be connected to:
 //! - The external pin OA+,
 //! - An internal 12-bit DAC,
 //! - The output of the paired SAC opamp.
-//! 
+//!
 //! In the open-loop or inverting configuration, the negative input of the amplifier can be connected to:
 //! - The external pin OA-,
 //! - The output of the paired SAC opamp.
-//! 
-//! The output of the amplifier can either be routed to the external pin OAO, 
+//!
+//! The output of the amplifier can either be routed to the external pin OAO,
 //! or used internally with the enhanced comparator module.
-//! 
-//! To begin configuration, call [`SacConfig::begin()`]. This returns configuration objects for the DAC 
+//!
+//! To begin configuration, call [`SacConfig::begin()`]. This returns configuration objects for the DAC
 //! and for the amplifier. If the DAC is not used then it need not be configured.
-//! 
+//!
 //! Pins used:
-//! 
+//!
 //! |        |   OA+  |  OA--  |   OAO   |
 //! |:------:|:------:|:------:|:-------:|
 //! | SAC0   | `P1.3` | `P1.2` | `P1.1`  |
 //! | SAC1   | `P1.7` | `P1.6` | `P1.5`  |
 //! | SAC2   | `P3.3` | `P3.2` | `P3.1`  |
 //! | SAC3   | `P3.7` | `P3.6` | `P3.5`  |
-//! 
+//!
 
 use core::marker::PhantomData;
 use msp430fr2355::TB2;
@@ -115,8 +115,8 @@ impl From<VRef<'_>> for bool {
 
 /// The Digital to Analog Converter (DAC) inside this Smart Analog Combo (SAC) module.
 #[derive(Debug)]
-pub struct Dac<'a, SAC: SacPeriph>{
-    sac: PhantomData<SAC>, 
+pub struct Dac<'a, SAC: SacPeriph> {
+    sac: PhantomData<SAC>,
     vref_lifetime: PhantomData<VRef<'a>>, // If we use the internal reference, ensure it stays enabled for the life of the DAC.
 }
 impl<SAC: SacPeriph> Dac<'_, SAC> {
@@ -165,7 +165,7 @@ impl<SAC:SacPeriph> AmpConfig<NoModeSet, SAC> {
         AmpConfig{ mode: PhantomData, reg: PhantomData }
     }
 }
-impl<SAC:SacPeriph> AmpConfig<ModeSet, SAC> {
+impl<SAC: SacPeriph> AmpConfig<ModeSet, SAC> {
     /// Route the output of the amplifier to the GPIO pin
     #[inline(always)]
     pub fn output_pin(self, _output_pin: impl Into<SAC::OutputPin>) -> Amplifier<SAC> {
@@ -186,7 +186,7 @@ pub enum PositiveInput<'a, SAC: SacPeriph> {
     ExtPin(SAC::PosInputPin),
     /// Use the SAC's Internal DAC as the amplifier's non-inverting input
     Dac(&'a Dac<'a, SAC>),
-    /// Use the output of the paired SAC amplifier as this amplifier's non-inverting input. 
+    /// Use the output of the paired SAC amplifier as this amplifier's non-inverting input.
     /// It is your responsibility to ensure this amplifier has been configured.
     // We can't require a reference to this Amplifier, as they could both refer to the other which would be impossible to instantiate
     PairedOpamp,

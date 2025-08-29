@@ -30,10 +30,10 @@ pub enum NSel {
 
 #[derive(Debug, Copy, Clone)]
 pub enum MSel {
-    Inverting       = 0b00, 
-    Follower        = 0b01, 
-    NonInverting    = 0b10, 
-    Cascade         = 0b11,
+    Inverting    = 0b00,
+    Follower     = 0b01,
+    NonInverting = 0b10,
+    Cascade      = 0b11,
 }
 
 macro_rules! impl_sac_periph {
@@ -51,7 +51,7 @@ macro_rules! impl_sac_periph {
             type OutputPin   = Pin<$port, $outp, Alternate3<Input<Floating>>>;
             #[inline(always)]
             fn configure_sacoa(psel: u8, nsel: NSel, pm: PowerMode) {
-                unsafe{
+                unsafe {
                     let sac = $SAC::steal();
                     sac.$sacXoa.write(|w| w
                         .nsel().bits(nsel as u8)

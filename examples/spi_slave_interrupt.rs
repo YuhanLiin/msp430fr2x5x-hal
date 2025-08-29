@@ -2,23 +2,23 @@
 #![no_std]
 #![feature(abi_msp430_interrupt)]
 
-// This example demonstrates an SPI slave using interrupts. 
+// This example demonstrates an SPI slave using interrupts.
 // Another eUSCI peripheral is configured as an SPI master to drive the bus.
 // P6.6 (green LED) should turn on and stay on
-// P1.0 (red LED) should blink with each sent SPI transaction 
+// P1.0 (red LED) should blink with each sent SPI transaction
 
 // Connect:
-// P1.7 <--> P4.6, 
-// P1.6 <--> P4.7, 
+// P1.7 <--> P4.6,
+// P1.6 <--> P4.7,
 // P1.5 <--> P4.5,
 // P1.4 <--> P4.4
 
 use core::cell::RefCell;
 
 use critical_section::Mutex;
+use embedded_hal::delay::DelayNs;
 use embedded_hal::digital::{OutputPin, StatefulOutputPin};
 use embedded_hal::spi::{SpiBus, MODE_0};
-use embedded_hal::delay::DelayNs;
 use msp430_rt::entry;
 use msp430fr2355::{interrupt, E_USCI_A0};
 use msp430fr2x5x_hal::spi::{SpiConfig, SpiErr, SpiSlave, StePolarity};
@@ -36,15 +36,13 @@ fn main() -> ! {
     let _wdt = Wdt::constrain(periph.WDT_A);
 
     let pmm = Pmm::new(periph.PMM);
-    let p1 = Batch::new(periph.P1)
-        .split(&pmm);
+    let p1 = Batch::new(periph.P1).split(&pmm);
     let sl_mosi = p1.pin7.to_alternate1();
     let sl_miso = p1.pin6.to_alternate1();
     let sl_sclk = p1.pin5.to_alternate1();
     let sl_ste  = p1.pin4.to_alternate1();
 
-    let p4 = Batch::new(periph.P4)
-        .split(&pmm);
+    let p4 = Batch::new(periph.P4).split(&pmm);
     let mosi = p4.pin6.to_alternate1();
     let miso = p4.pin7.to_alternate1();
     let sclk = p4.pin5.to_alternate1();
@@ -60,7 +58,7 @@ fn main() -> ! {
         .aclk_vloclk()
         .freeze(&mut fram);
 
-    // Configure a peripheral as an SPI slave. 
+    // Configure a peripheral as an SPI slave.
     // It can be configured for either a shared or exclusive bus depending on whether
     // there are other slaves on the bus. On an exclusive bus MISO is always an output.
     // On a shared bus the STE pin is used to control whether this slave's MISO is an output or high impedance pin.
@@ -83,9 +81,9 @@ fn main() -> ! {
     loop {
         let mut recv_buf = [0; 4];
         let send_buf = [12, 14, 0xFF];
-        
+
         ste.set_low().ok(); // Enable slave MISO
-        
+
         // Can return Err, but both error types aren't relevant here.
         let _ = spi.transfer(&mut recv_buf, &send_buf);
         let _ = spi.flush();

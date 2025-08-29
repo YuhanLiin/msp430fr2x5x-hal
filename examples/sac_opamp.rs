@@ -33,10 +33,10 @@ fn main() -> ! {
     // As-is the opamp behaves as a comparator - if the positive input (P1.3) is larger than the negative input (P1.2) the output (P1.1) goes high, otherwise its low.
 
     // We can make a voltage follower by shorting P1.2 (-ve in) to P1.1 (output). The voltage of P1.1/P1.2 will equal the voltage presented to P1.3 (+ve in).
-    
-    // A non-inverting amplifier can be made by placing a resistor (i.e. 10k) between P1.1 and P1.2, and another (10k) between P1.2 and GND. The output (P1.1) 
+
+    // A non-inverting amplifier can be made by placing a resistor (i.e. 10k) between P1.1 and P1.2, and another (10k) between P1.2 and GND. The output (P1.1)
     // will be double the voltage presented to P1.3.
-    loop { 
+    loop {
         msp430::asm::nop();
     }
 }
