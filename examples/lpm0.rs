@@ -69,6 +69,10 @@ fn main() -> ! {
         // Since no peripherals were configured to use SMCLK / ACLK we could just as well enter LPM3 / LPM4 here
         enter_lpm0(); 
         red_led.toggle().ok();
+
+        for _ in 0..15_000 { // Debouncing
+            asm::nop();
+        }
     }
 }
 
@@ -78,9 +82,7 @@ fn PORT2() {
     with(|cs| {
         let Some(ref mut p2iv) = *P2IV.borrow_ref_mut(cs) else {return};
         if let GpioVector::Pin3Isr = p2iv.get_interrupt_vector() {
-            for _ in 0..15_000 { // Debouncing
-                asm::nop();
-            }
+            // Button pressed
         }
     });
 }
