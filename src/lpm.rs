@@ -93,7 +93,7 @@ pub fn enter_lpm0() {
 /// Power draw in LPM3: Approx 1.4 uA.
 #[inline(always)]
 pub fn request_lpm3() {
-    const LPM3: u8 = SCG1 + SCG0 + CPU_OFF;
+    const LPM3: u8 = SCG1 | SCG0 | CPU_OFF;
     set_sr_bits::<LPM3>();
 }
 
@@ -109,7 +109,7 @@ pub fn request_lpm3() {
 /// Power draw in LPM4: Approx 820 nA.
 #[inline(always)]
 pub fn request_lpm4() {
-    const LPM4: u8 = SCG1 + SCG0 + OSC_OFF + CPU_OFF;
+    const LPM4: u8 = SCG1 | SCG0 | OSC_OFF | CPU_OFF;
     set_sr_bits::<LPM4>();
 }
 
@@ -140,7 +140,7 @@ fn lpm3_5<MODE: WatchdogSelect>(wdt: Wdt<MODE>, svs: SvsState) -> ! {
     let regs = unsafe { crate::pac::Peripherals::conjure() };
 
     // If LF XT crystal is not in use, reset everything, otherwise reset everything but XIN, XOUT
-    const MASK: u8 = (1 << 6) + (1 << 7);
+    const MASK: u8 = (1 << 6) | (1 << 7);
     let lfxt_in_use = (regs.P2.p2sel1.read().bits() & MASK == MASK) && (regs.P2.p2sel0.read().bits() & MASK == 0);
     if lfxt_in_use {
         // Reset everything except for XIN and XOUT
@@ -217,11 +217,11 @@ fn enter_lpmx_5<MODE: WatchdogSelect>(mut wdt: Wdt<MODE>, svs: SvsState, regs: P
     unsafe{ pmmctl0_h.write_volatile(0); }
 
     if interrupts_were_enabled {
-        const LPMX_5: u8 = SCG1 + SCG0 + OSC_OFF + CPU_OFF + GIE;
+        const LPMX_5: u8 = SCG1 | SCG0 | OSC_OFF | CPU_OFF | GIE;
         set_sr_bits::<LPMX_5>();
     }
     else {
-        const LPMX_5: u8 = SCG1 + SCG0 + OSC_OFF + CPU_OFF;
+        const LPMX_5: u8 = SCG1 | SCG0 | OSC_OFF | CPU_OFF;
         set_sr_bits::<LPMX_5>();
     }
 
