@@ -223,9 +223,9 @@ impl Wdt<IntervalMode> {
 
 #[cfg(feature = "embedded-hal-02")]
 mod ehal02 {
+    use super::*;
     use embedded_hal_02::timer::{Cancel, CountDown, Periodic};
     use embedded_hal_02::watchdog::{Watchdog, WatchdogDisable, WatchdogEnable};
-    use super::*;
 
     impl Watchdog for Wdt<WatchdogMode> {
         #[inline]

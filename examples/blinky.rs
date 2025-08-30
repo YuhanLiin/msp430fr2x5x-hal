@@ -1,7 +1,7 @@
 #![no_main]
 #![no_std]
 
-use embedded_hal::{digital::*, delay::DelayNs};
+use embedded_hal::{delay::DelayNs, digital::*};
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
     clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv},

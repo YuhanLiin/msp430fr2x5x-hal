@@ -1,24 +1,24 @@
 //! Serial UART
 //!
 //! The peripherals E_USCI_A0 and E_USCI_A1 can be used as serial UARTs.
-//! 
+//!
 //! Begin configuration by calling [`SerialConfig::new()`]. After configuration, [`Rx`] and/or [`Tx`] structs are produced by
 //! providing the corresponding GPIO pins.
 //!
-//! The [`Tx`] and [`Rx`] structs are used to send and receive bytes via serial. They implement both [`embedded-io`](embedded_io)'s 
+//! The [`Tx`] and [`Rx`] structs are used to send and receive bytes via serial. They implement both [`embedded-io`](embedded_io)'s
 //! serial traits (which are buffer-based, blocking), and the single-byte-based non-blocking [`embedded-hal-nb`](embedded_hal_nb::serial) version.
-//! 
-//! As the MSP430 has only a single byte buffer, `embedded-io`'s buffer-based traits can be a bit unwieldy - 
-//! [`emb_io::Write::write`](embedded_io::Write::write) and [`emb_io::Read::read`](embedded_io::Read::read) will 
-//! always only send or recieve a single byte, despite taking slices as inputs. 
-//! 
-//! For reading or writing single bytes it is recommended to use `embedded-hal-nb`'s 
-//! [`emb_hal_nb::Read::read`](embedded_hal_nb::serial::Read::read) and 
+//!
+//! As the MSP430 has only a single byte buffer, `embedded-io`'s buffer-based traits can be a bit unwieldy -
+//! [`emb_io::Write::write`](embedded_io::Write::write) and [`emb_io::Read::read`](embedded_io::Read::read) will
+//! always only send or recieve a single byte, despite taking slices as inputs.
+//!
+//! For reading or writing single bytes it is recommended to use `embedded-hal-nb`'s
+//! [`emb_hal_nb::Read::read`](embedded_hal_nb::serial::Read::read) and
 //! [`emb_hal_nb::Write::write`](embedded_hal_nb::serial::Write::write) ([`nb::block`] can be used to make them blocking).
-//! 
-//! For writing multiple bytes, embedded_io's [`Write::write_all`](embedded_io::Write::write_all) and 
+//!
+//! For writing multiple bytes, embedded_io's [`Write::write_all`](embedded_io::Write::write_all) and
 //! [`Read::read_exact`](embedded_io::Read::read_exact) methods are useful.
-//! 
+//!
 
 use crate::clock::{Aclk, Clock, Smclk};
 use crate::gpio::{Alternate1, Pin, Pin1, Pin2, Pin3, Pin5, Pin6, Pin7, P1, P4};
@@ -353,12 +353,11 @@ fn lookup_brs(clk_freq: u32, bps: NonZeroU32) -> u8 {
     let fraction_as_ten_thousandths = if modulo < u32::MAX/10_000 {
         // Most accurate
         ((modulo * 10_000) / bps) as u16
-    }
-    else { 
+    } else {
         // Avoid overflow if modulo is large. Assume modulo < 5_000_000 from datasheet max
         (((modulo * 500) / bps) * 20) as u16
     };
-    
+
     // See Table 22-4 from MSP430FR4xx and MSP430FR2xx family user's guide (Rev. I)
     match fraction_as_ten_thousandths {
         0..529     => 0x00,
@@ -564,10 +563,10 @@ pub enum RecvError {
 }
 
 mod emb_io {
+    use super::*;
     use embedded_io::{Error, ErrorType, Read, ReadReady, Write, WriteReady};
     use nb::block;
-    use super::*;
-    
+
     impl<USCI: SerialUsci> ErrorType for Rx<USCI> { type Error = RecvError; }
     impl Error for RecvError {
         fn kind(&self) -> embedded_io::ErrorKind {
@@ -602,19 +601,19 @@ mod emb_io {
         /// Due to errata USCI42, UCTXCPTIFG will fire every time a byte is done transmitting,
         /// even if there's still more buffered. Thus, the implementation uses UCTXIFG instead. When
         /// `flush()` completes, the Tx buffer will be empty but the FIFO may still be sending.
-        /// 
+        ///
         /// As the error type is `Infallible`, this can be safely unwrapped.
         #[inline]
         fn flush(&mut self) -> Result<(), Self::Error> {
             block!(self.flush())
         }
-    
+
         #[inline]
         /// This function sends only **THE FIRST** byte in the buffer, blocking until the writer is ready to accept, then returns `Ok(1)`.
         /// If you want to send the entire buffer use `write_all()` instead.
         ///
         /// If `buf` is length zero, `write` returns `Ok(0)` without blocking.
-        /// 
+        ///
         /// As the error type is `Infallible`, this can be safely unwrapped.
         fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error> {
             if buf.is_empty() { return Ok(0) }
@@ -632,10 +631,8 @@ mod emb_io {
         /// not block, so this function may still block in subsequent calls.
         fn write_all(&mut self, mut buf: &[u8]) -> Result<(), Self::Error> {
             while !buf.is_empty() {
-                match self.write(buf) {
-                    Ok(n) => buf = &buf[n..],
-                    Err(e) => return Err(e),
-                }
+                let Ok(n) = self.write(buf);
+                buf = &buf[n..];
             }
             Ok(())
         }
@@ -652,8 +649,8 @@ mod emb_io {
 }
 
 mod ehal_nb1 {
-    use embedded_hal_nb::serial::{Error, ErrorType, ErrorKind, Read, Write};
     use super::*;
+    use embedded_hal_nb::serial::{Error, ErrorKind, ErrorType, Read, Write};
 
     impl Error for RecvError {
         fn kind(&self) -> ErrorKind {
@@ -695,12 +692,12 @@ mod ehal_nb1 {
 
 #[cfg(feature = "embedded-hal-02")]
 mod ehal02 {
-    use embedded_hal_02::serial::{Read, Write};
     use super::*;
+    use embedded_hal_02::serial::{Read, Write};
 
     impl<USCI: SerialUsci> Read<u8> for Rx<USCI> {
         type Error = RecvError;
-    
+
         #[inline]
         /// Check if Rx interrupt flag is set. If so, try reading the received byte and clear the flag.
         /// Otherwise return `WouldBlock`. May return errors caused by data corruption or

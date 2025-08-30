@@ -53,7 +53,7 @@ fn main() -> ! {
         .split(p4.pin3.to_alternate1(), p4.pin2.to_alternate1());
 
         led.set_high().ok();
-        // embedded_io contains methods for writing with buffers 
+        // embedded_io contains methods for writing with buffers
         embedded_io::Write::write_all(&mut tx, b"HELLO\n").ok();
         loop {
             // embedded_hal_nb contains non-blocking methods for writing single bytes

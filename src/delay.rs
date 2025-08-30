@@ -20,8 +20,8 @@ impl SysDelay {
 }
 
 mod ehal1 {
-    use embedded_hal::delay::DelayNs;
     use super::*;
+    use embedded_hal::delay::DelayNs;
 
     impl DelayNs for SysDelay {
         #[inline]
@@ -48,8 +48,8 @@ mod ehal1 {
 
 #[cfg(feature = "embedded-hal-02")]
 mod ehal02 {
-    use embedded_hal_02::blocking::delay::DelayMs;
     use super::*;
+    use embedded_hal_02::blocking::delay::DelayMs;
 
     macro_rules! impl_delay {
         ($typ: ty) => {
@@ -65,11 +65,11 @@ mod ehal02 {
             }
         };
     }
-    
+
     impl_delay!(u8);
     impl_delay!(u16);
     impl_delay!(u32);
-    
+
     // A delay implementation for the default literal type to allow calls like `delay_ms(100)`
     // Negative durations are treated as zero.
     impl_delay!(i32);

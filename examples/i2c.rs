@@ -32,26 +32,26 @@ fn main() -> ! {
     let mut i2c = I2cConfig::new(periph.E_USCI_B1, GlitchFilter::Max50ns)
         .use_smclk(&smclk, 80) // 8MHz / 80 = 100kHz
         .configure(scl, sda);
-    
+
     loop {
         // Below are examples of the various I2C methods provided for writing to / reading from the bus.
         // 7- and 10-bit addressing modes are controlled by passing the address as either a u8 or a u16.
-        
+
         let mut is_ok = true;
 
-        // Check if anything with this address is present on the bus by 
+        // Check if anything with this address is present on the bus by
         // sending a zero-byte write and listening for an ACK.
         if !i2c.is_slave_present(0x29_u8) {
             is_ok = false;
         }
-        
+
         // Blocking write. Write two bytes (length of buffer) to address 0x12.
         // If a NACK is recieved the transmission is aborted.
-        let wr_res = i2c.write(0x12_u8, &[(1<<7) + (0b01 << 5), 0b11]);
+        let wr_res = i2c.write(0x12_u8, &[(1 << 7) + (0b01 << 5), 0b11]);
         if wr_res.is_err() {
             is_ok = false;
         }
-        
+
         // Blocking read. Read one byte from address 0x12.
         // Each byte recieved is automatically ACKed, except for the last one which is NACKed.
         let mut recv = [0];
@@ -59,7 +59,7 @@ fn main() -> ! {
         if rd_res.is_err() {
             is_ok = false;
         }
-        
+
         // Do a write then a read within one transaction.
         // Commonly used to read a specific register from the slave.
         // There is no 'stop' between the write and read, only a repeated start.

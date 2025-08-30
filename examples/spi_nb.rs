@@ -3,8 +3,7 @@
 
 // This example uses the non-blocking interface from embedded-hal-nb, with a software controlled CS pin.
 
-use embedded_hal::{digital::OutputPin, spi::MODE_0};
-use embedded_hal::delay::DelayNs;
+use embedded_hal::{delay::DelayNs, digital::OutputPin, spi::MODE_0};
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
     clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv}, fram::Fram, gpio::Batch, pmm::Pmm, spi::SpiConfig, watchdog::Wdt
@@ -20,12 +19,11 @@ fn main() -> ! {
     let _wdt = Wdt::constrain(periph.WDT_A);
 
     let pmm = Pmm::new(periph.PMM);
-    let p1 = Batch::new(periph.P1)
-        .split(&pmm);
-    let mosi = p1.pin7.to_alternate1();
-    let miso = p1.pin6.to_alternate1();
-    let sck  = p1.pin5.to_alternate1();
-    let mut cs   = p1.pin4.to_output();
+    let p1 = Batch::new(periph.P1).split(&pmm);
+    let mosi   = p1.pin7.to_alternate1();
+    let miso   = p1.pin6.to_alternate1();
+    let sck    = p1.pin5.to_alternate1();
+    let mut cs = p1.pin4.to_output();
     cs.set_high().ok();
 
     let (smclk, _aclk, mut delay) = ClockConfig::new(periph.CS)
@@ -54,7 +52,7 @@ fn main() -> ! {
         let _ = block!(spi.read()).unwrap();
 
         // This concludes the first byte of an SPI transaction.
-        
+
         // Multi-byte transactions are performed by calling the methods repeatedly:
         block!(spi.write(0xFF)).unwrap();
         let _ = block!(spi.read()).unwrap();

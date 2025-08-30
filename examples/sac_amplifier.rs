@@ -27,10 +27,14 @@ fn main() -> ! {
     let (_dac_config, amp_config) = SacConfig::begin(periph.SAC0);
 
     // Set the Smart Analog Combo to a non-inverting amplifier with a gain of 5. The voltage at P1.3 will be multiplied by 5 and output on P1.1
-    let _amp = amp_config.noninverting_amplifier(PositiveInput::ExtPin(p1_3), NoninvertingGain::_5, PowerMode::HighPerformance)
+    let _amp = amp_config
+        .noninverting_amplifier(
+            PositiveInput::ExtPin(p1_3),
+            NoninvertingGain::_5,
+            PowerMode::HighPerformance)
         .output_pin(p1_1);
-    
-    loop { 
+
+    loop {
         asm::nop();
     }
 }

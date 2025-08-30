@@ -149,7 +149,7 @@ impl<SRC: RtcClockSrc> Rtc<SRC> {
     #[inline]
     /// Resumes counting from the previous value.
     pub fn resume(&mut self) {
-        unsafe{
+        unsafe {
             self.periph
                 .rtcctl
                 .set_bits(|w| w.rtcss().variant(SRC::CLK_SRC))
@@ -159,9 +159,9 @@ impl<SRC: RtcClockSrc> Rtc<SRC> {
 
 #[cfg(feature = "embedded-hal-02")]
 mod ehal02 {
+    use super::*;
     use embedded_hal_02::timer::{Cancel, CountDown, Periodic};
     use void::Void;
-    use super::*;
 
     impl<SRC: RtcClockSrc> CountDown for Rtc<SRC> {
         type Time = u16;

@@ -1,9 +1,9 @@
 //! Information Memory.
 //! 512 bytes of non-volatile memory.
-//! 
-//! Access the information memory by calling one of the `InfoMemory::as_x()` methods, 
+//!
+//! Access the information memory by calling one of the `InfoMemory::as_x()` methods,
 //! which disables write protection and directly provides a reference to the information memory as an array.
-//! 
+//!
 
 use msp430fr2355::SYS;
 
@@ -44,7 +44,7 @@ impl InfoMemory {
     as_x!(as_u32s,  [u32; 128]);
     as_x!(as_u64s,  [u64;  64]);
     as_x!(as_u128s, [u128; 32]);
-    
+
     as_x!(as_i8s,   [i8;  512]);
     as_x!(as_i16s,  [i16; 256]);
     as_x!(as_i32s,  [i32; 128]);
@@ -52,9 +52,8 @@ impl InfoMemory {
     as_x!(as_i128s, [i128; 32]);
 }
 
-
 impl System {
-    /// Access the SYS register. 
+    /// Access the SYS register.
     /// Note: If the DFWP bit is re-enabled the information memory will not be writable.
     #[inline(always)]
     pub fn with(&mut self, f: impl FnOnce(&mut SYS)) {

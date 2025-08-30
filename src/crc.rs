@@ -9,7 +9,7 @@
 //!
 //! The CRC-CCITT standard assumes that bit 0 of each byte is the Most Significant bit (MSb).
 //! This runs counter to most microcontroller architectures (including the MSP430), where bit 0 is the Least Significant bit (LSb).
-//! To account for this, the MSP430 has bit-reversal hardware which can reverse the order of bits in CRC inputs or outputs. The functions 
+//! To account for this, the MSP430 has bit-reversal hardware which can reverse the order of bits in CRC inputs or outputs. The functions
 //! that reverse the bit order are suffixed with `_lsb`, whereas the functions that do not reverse the bit order end in `_msb`.
 //!
 //! Unless you have recieved already bit-reversed values from an external source, or have bit-reversed them yourself, you probably want to use the `_lsb`  

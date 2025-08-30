@@ -8,7 +8,7 @@ use msp430fr2x5x_hal::{
     fram::Fram,
     gpio::Batch,
     pmm::Pmm,
-    pwm::{Pwm, PwmParts7, PwmPeriph, TimerConfig},
+    pwm::{PwmParts7, TimerConfig},
     watchdog::Wdt,
 };
 use panic_msp430 as _;

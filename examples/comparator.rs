@@ -1,11 +1,13 @@
 #![no_main]
 #![no_std]
 
-
 use embedded_hal::digital::*;
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
-    ecomp::{ECompConfig, FilterStrength, Hysteresis, NegativeInput, OutputPolarity, PositiveInput, PowerMode}, gpio::Batch, pmm::Pmm, watchdog::Wdt
+    ecomp::{ECompConfig, FilterStrength, Hysteresis, NegativeInput, OutputPolarity, PositiveInput, PowerMode},
+    gpio::Batch,
+    pmm::Pmm,
+    watchdog::Wdt,
 };
 use panic_msp430 as _;
 
@@ -26,13 +28,13 @@ fn main() -> ! {
     let (_dac_conf, comp_conf) = ECompConfig::begin(periph.E_COMP0);
 
     let mut comparator = comp_conf.configure(
-        PositiveInput::_1V2, 
-        NegativeInput::COMPx_1(port1.pin1.to_alternate2()),
-        OutputPolarity::Noninverted,
-        PowerMode::LowPower,
-        Hysteresis::Off,
-        FilterStrength::Off
-    ).no_output_pin();
+            PositiveInput::_1V2,
+            NegativeInput::COMPx_1(port1.pin1.to_alternate2()),
+            OutputPolarity::Noninverted,
+            PowerMode::LowPower,
+            Hysteresis::Off,
+            FilterStrength::Off,
+        ).no_output_pin();
 
     // If P1.1 is less than 1.2V then LED turns on
     loop {

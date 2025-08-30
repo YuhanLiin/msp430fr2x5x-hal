@@ -444,10 +444,10 @@ macro_rules! eusci_impl {
             fn ie_rd(&self) -> u16 {
                 self.$ucxie().read().bits()
             }
-            
+
             #[inline(always)]
             fn ie_wr(&self, reg: u16) {
-                self.$ucxie().write(|w| unsafe{ w.bits(reg) })
+                self.$ucxie().write(|w| unsafe { w.bits(reg) })
             }
 
             #[inline(always)]
@@ -528,10 +528,10 @@ macro_rules! eusci_impl {
             }
 
             #[inline(always)]
-            fn ucbusy(&self) -> bool{
-                // TODO: Update the PAC 
+            fn ucbusy(&self) -> bool {
+                // TODO: Update the PAC
                 // The PAC is currently missing the UCBUSY bit in the SPI version of this register
-                const UCBUSY_MASK: u16 = (1<<0);
+                const UCBUSY_MASK: u16 = (1 << 0);
                 (self.bits() & UCBUSY_MASK) > 0
             }
         }

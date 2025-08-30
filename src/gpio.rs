@@ -650,14 +650,14 @@ impl<DIR> ToAlternate3 for Pin<P5, Pin3, DIR> {}
 impl<PIN: PinNum, DIR> ToAlternate1 for Pin<P6, PIN, DIR> {}
 
 mod ehal1 {
+    use super::*;
     use core::convert::Infallible;
     use embedded_hal::digital::{ErrorType, InputPin, OutputPin, StatefulOutputPin};
-    use super::*;
 
     impl<PORT: PortNum, PIN: PinNum, DIR> ErrorType for Pin<PORT, PIN, DIR> {
         type Error = Infallible;
     }
-    
+
     impl<PORT: PortNum, PIN: PinNum, PULL> InputPin for Pin<PORT, PIN, Input<PULL>> {
         #[inline]
         fn is_high(&mut self) -> Result<bool, Self::Error> {
@@ -703,8 +703,8 @@ mod ehal1 {
 
 #[cfg(feature = "embedded-hal-02")]
 mod ehal02 {
-    use embedded_hal_02::digital::v2::{InputPin, OutputPin, StatefulOutputPin, ToggleableOutputPin};
     use super::*;
+    use embedded_hal_02::digital::v2::{InputPin, OutputPin, StatefulOutputPin, ToggleableOutputPin};
 
     impl<PORT: PortNum, PIN: PinNum, PULL> InputPin for Pin<PORT, PIN, Input<PULL>> {
         type Error = void::Void;

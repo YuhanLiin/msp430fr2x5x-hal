@@ -1,37 +1,37 @@
 //! SPI
-//! 
+//!
 //! Peripherals eUSCI_A0, eUSCI_A1, eUSCI_B0 and eUSCI_B1 can be used for SPI communication as either a master or slave device.
 //!
-//! Begin by calling [`SpiConfig::new()`]. Once configured either an [`Spi`] or [`SpiSlave`] will be returned. 
+//! Begin by calling [`SpiConfig::new()`]. Once configured either an [`Spi`] or [`SpiSlave`] will be returned.
 //!
-//! Note that even if you are only using the legacy embedded-hal 0.2.7 trait implementations, configuration of the SPI bus 
+//! Note that even if you are only using the legacy embedded-hal 0.2.7 trait implementations, configuration of the SPI bus
 //! uses the embedded-hal 1.0 versions of types (e.g. [`Mode`]).
-//! 
+//!
 //! # [`Spi`]
-//! The SPI peripheral can be configured as a master device by calling one of the 
+//! The SPI peripheral can be configured as a master device by calling one of the
 //! [`as_master()`](SpiConfig::as_master_using_smclk) methods during configuration.
-//! 
+//!
 //! [`Spi`] implements the embedded-hal [`SpiBus`](embedded_hal::spi::SpiBus) trait, which provides a simple blocking interface.
-//! A non-blocking implementation is also available through [`embedded-hal-nb`](embedded_hal_nb)'s 
-//! [`FullDuplex`](embedded_hal_nb::spi::FullDuplex) trait. 
-//! Standalone methods are also provided for directly writing to the Tx and Rx buffers for interrupt-based implementations. 
-//! 
+//! A non-blocking implementation is also available through [`embedded-hal-nb`](embedded_hal_nb)'s
+//! [`FullDuplex`](embedded_hal_nb::spi::FullDuplex) trait.
+//! Standalone methods are also provided for directly writing to the Tx and Rx buffers for interrupt-based implementations.
+//!
 //! # [`SpiSlave`]
 //! The SPI peripheral can be configured as a slave device by calling [`as_slave()`](SpiConfig::as_slave) during configuration.
-//! 
-//! [`SpiSlave`] supports sharing the bus with other slave devices by calling the [`shared_bus()`](SpiConfig::shared_bus) method 
-//! during configuration. In this mode the STE pin controls whether the MISO pin is an output or a high-impedance pin, allowing 
-//! other slaves to use the MISO bus when this device is not selected. The polarity of the STE pin is configurable to either 
+//!
+//! [`SpiSlave`] supports sharing the bus with other slave devices by calling the [`shared_bus()`](SpiConfig::shared_bus) method
+//! during configuration. In this mode the STE pin controls whether the MISO pin is an output or a high-impedance pin, allowing
+//! other slaves to use the MISO bus when this device is not selected. The polarity of the STE pin is configurable to either
 //! active high or active low.
-//! If the bus is used exclusively by this device then the [`exclusive_bus()`](SpiConfig::exclusive_bus) configuration method 
-//! can be used, which allows the STE pin to be used for other purposes. In this mode the MISO pin will remain an output pin at 
+//! If the bus is used exclusively by this device then the [`exclusive_bus()`](SpiConfig::exclusive_bus) configuration method
+//! can be used, which allows the STE pin to be used for other purposes. In this mode the MISO pin will remain an output pin at
 //! all times.
 //!
 //! [`SpiSlave`] provides non-blocking methods that can be used for polling or interrupt-based implementations.
-//! It does not implement either of the embedded-hal traits. 
-//! 
+//! It does not implement either of the embedded-hal traits.
+//!
 //! Pins used:
-//! 
+//!
 //! |          |  MISO  |  MOSI  |  SCLK  |  STE  |
 //! |:--------:|:------:|:------:|:------:|:-----:|
 //! | eUSCI_A0 | `P1.6` | `P1.7` | `P1.5` | `P1.4`|
@@ -39,8 +39,8 @@
 //! | eUSCI_B0 | `P1.3` | `P1.2` | `P1.1` | `P1.0`|
 //! | eUSCI_B1 | `P4.7` | `P4.6` | `P4.5` | `P4.4`|
 use crate::{
-    clock::{Aclk, Smclk}, 
-    gpio::{Alternate1, Pin, Pin0, Pin1, Pin2, Pin3, Pin4, Pin5, Pin6, Pin7, P1, P4}, 
+    clock::{Aclk, Smclk},
+    gpio::{Alternate1, Pin, Pin0, Pin1, Pin2, Pin3, Pin4, Pin5, Pin6, Pin7, P1, P4},
     hw_traits::eusci::{EusciSPI, Ucmode, Ucssel, UcxSpiCtw0},
 };
 use core::{convert::Infallible, marker::PhantomData};
@@ -172,8 +172,8 @@ pub struct Master;
 pub struct Slave;
 
 /// Configuration object for an eUSCI peripheral being set up for SPI mode.
-pub struct SpiConfig<USCI: SpiUsci, ROLE>{
-    usci: USCI, 
+pub struct SpiConfig<USCI: SpiUsci, ROLE> {
+    usci: USCI,
     ctlw0: UcxSpiCtw0,
     prescaler: u16,
     _phantom: PhantomData<ROLE>,
@@ -194,10 +194,10 @@ impl<USCI: SpiUsci> SpiConfig<USCI, RoleNotSet> {
             ucmsb: msb_first,
             ucsync: true,
             ucswrst: true,
-            // UCSTEM = 1 isn't useful for us, since the STE acts like a CS pin in this case, but 
-            // it asserts and de-asserts after each byte automatically, and unfortunately 
-            // ehal::SpiBus requires support for multi-byte transactions. 
-            ucstem: false, 
+            // UCSTEM = 1 isn't useful for us, since the STE acts like a CS pin in this case, but
+            // it asserts and de-asserts after each byte automatically, and unfortunately
+            // ehal::SpiBus requires support for multi-byte transactions.
+            ucstem: false,
             uc7bit: false, // Not supported
             ..Default::default()
         };
@@ -226,26 +226,26 @@ impl<USCI: SpiUsci> SpiConfig<USCI, RoleNotSet> {
     }
 }
 impl<USCI: SpiUsci> SpiConfig<USCI, Master> {
-    // Note: Errata USCI50 makes this mode a real pain to implement. Leave out for now. 
-    // /// For an SPI bus with more than one master. 
+    // Note: Errata USCI50 makes this mode a real pain to implement. Leave out for now.
+    // /// For an SPI bus with more than one master.
     // /// The STE pin is used by the other master to turn SCLK and MOSI high impedance, so the other master can talk on the bus.
-    // pub fn multi_master_bus<MOSI, MISO, SCLK, STE>(mut self, _miso: MISO, _mosi: MOSI, _sclk: SCLK, _ste: STE, ste_pol: StePolarity) -> Spi<USCI> 
+    // pub fn multi_master_bus<MOSI, MISO, SCLK, STE>(mut self, _miso: MISO, _mosi: MOSI, _sclk: SCLK, _ste: STE, ste_pol: StePolarity) -> Spi<USCI>
     // where MOSI: Into<USCI::MOSI>, MISO: Into<USCI::MISO>, SCLK: Into<USCI::SCLK>, STE: Into<USCI::STE> {
     //     // TODO: UCMODE
     //     self.configure_hw();
     //     Spi(PhantomData)
     // }
-    /// For an SPI bus with a single master. 
+    /// For an SPI bus with a single master.
     /// SCLK and MOSI are always outputs. The STE pin is not required.
     pub fn single_master_bus<MOSI, MISO, SCLK>(mut self, _miso: MISO, _mosi: MOSI, _sclk: SCLK) -> Spi<USCI>
     where MOSI: Into<USCI::MOSI>, MISO: Into<USCI::MISO>, SCLK: Into<USCI::SCLK> {
         self.ctlw0.ucmode = Ucmode::ThreePinSPI;
         self.configure_hw();
-        Spi{ usci: self.usci }
+        Spi { usci: self.usci }
     }
 }
 impl<USCI: SpiUsci> SpiConfig<USCI, Slave> {
-    /// For an SPI bus with more than one slave. 
+    /// For an SPI bus with more than one slave.
     /// The STE pin is used to turn MISO high impedance, so other slaves can talk on the bus.
     pub fn shared_bus<MOSI, MISO, SCLK, STE>(mut self, _miso: MISO, _mosi: MOSI, _sclk: SCLK, _ste: STE, ste_pol: StePolarity) -> SpiSlave<USCI> 
     where MOSI: Into<USCI::MOSI>, MISO: Into<USCI::MISO>, SCLK: Into<USCI::SCLK>, STE: Into<USCI::STE> {
@@ -254,7 +254,7 @@ impl<USCI: SpiUsci> SpiConfig<USCI, Slave> {
             StePolarity::EnabledWhenLow  => Ucmode::FourPinSPI0,
         };
         self.configure_hw();
-        SpiSlave{ usci: self.usci }
+        SpiSlave { usci: self.usci }
     }
     /// For an SPI bus where this device is the only slave.
     /// MOSI is always an output. 
@@ -262,7 +262,7 @@ impl<USCI: SpiUsci> SpiConfig<USCI, Slave> {
     where MOSI: Into<USCI::MOSI>, MISO: Into<USCI::MISO>, SCLK: Into<USCI::SCLK> {
         self.ctlw0.ucmode = Ucmode::ThreePinSPI;
         self.configure_hw();
-        SpiSlave{ usci: self.usci }
+        SpiSlave { usci: self.usci }
     }
 }
 impl<USCI: SpiUsci, ROLE> SpiConfig<USCI, ROLE> {
@@ -340,8 +340,7 @@ macro_rules! spi_common {
             if self.usci.receive_flag() {
                 if self.usci.overrun_flag() {
                     Err(nb::Error::Other(SpiErr::Overrun(self.usci.rxbuf_rd())))
-                }
-                else {
+                } else {
                     Ok(self.usci.rxbuf_rd())
                 }
             } else {
@@ -364,8 +363,8 @@ macro_rules! spi_common {
             match self.usci.iv_rd() {
                 0 => SpiVector::None,
                 2 => SpiVector::RxBufferFull,
-                4 => SpiVector::TxBufferEmpty, 
-                _ => unsafe { core::hint::unreachable_unchecked() }, 
+                4 => SpiVector::TxBufferEmpty,
+                _ => unsafe { core::hint::unreachable_unchecked() },
             }
         }
     };
@@ -386,7 +385,7 @@ pub enum SpiVector {
 pub struct Spi<USCI: SpiUsci>{usci: USCI}
 impl<USCI: SpiUsci> Spi<USCI> {
     spi_common!();
-    
+
     #[inline(always)]
     /// Change the SPI mode. This requires resetting the peripheral, which also sets TXIFG and clears RXIFG, UCOE, and UCFE.
     pub fn change_mode(&mut self, mode: Mode) {
@@ -429,9 +428,9 @@ impl From<Infallible> for SpiErr {
 }
 
 mod ehal1 {
+    use super::*;
     use embedded_hal::spi::{Error, ErrorType, SpiBus};
     use nb::block;
-    use super::*;
 
     impl Error for SpiErr {
         fn kind(&self) -> embedded_hal::spi::ErrorKind {
@@ -454,7 +453,7 @@ mod ehal1 {
             }
             Ok(())
         }
-    
+
         /// Write `words` to the slave, ignoring all the incoming words.
         ///
         /// Returns as soon as the last word is placed in the hardware buffer.
@@ -465,11 +464,11 @@ mod ehal1 {
             }
             Ok(())
         }
-    
+
         /// Write and read simultaneously. `write` is written to the slave on MOSI and
         /// words received on MISO are stored in `read`.
         ///
-        /// If `write` is longer than `read`, then after `read` is full any subsequent incoming words will be discarded. 
+        /// If `write` is longer than `read`, then after `read` is full any subsequent incoming words will be discarded.
         /// If `read` is longer than `write`, then dummy packets of `0x00` are sent until `read` is full.
         fn transfer(&mut self, read: &mut [u8], write: &[u8]) -> Result<(), Self::Error> {
             let mut read_bytes = read.iter_mut();
@@ -491,7 +490,7 @@ mod ehal1 {
             }
             Ok(())
         }
-    
+
         /// Write and read simultaneously. The contents of `words` are
         /// written to the slave, and the received words are stored into the same
         /// `words` buffer, overwriting it.
@@ -502,7 +501,7 @@ mod ehal1 {
             }
             Ok(())
         }
-    
+
         fn flush(&mut self) -> Result<(), Self::Error> {
             while self.usci.is_busy() {}
             Ok(())
@@ -511,14 +510,14 @@ mod ehal1 {
 }
 
 mod ehal_nb1 {
-    use embedded_hal_nb::{nb, spi::FullDuplex};
     use super::*;
+    use embedded_hal_nb::{nb, spi::FullDuplex};
 
     impl<USCI: SpiUsci> FullDuplex<u8> for Spi<USCI> {
         fn read(&mut self) -> nb::Result<u8, Self::Error> {
             self.recv_byte()
         }
-    
+
         fn write(&mut self, word: u8) -> nb::Result<(), Self::Error> {
             self.send_byte(word).map_err(map_infallible)
         }
@@ -527,8 +526,8 @@ mod ehal_nb1 {
 
 #[cfg(feature = "embedded-hal-02")]
 mod ehal02 {
-    use embedded_hal_02::spi::FullDuplex;
     use super::*;
+    use embedded_hal_02::spi::FullDuplex;
 
     impl<USCI: SpiUsci> FullDuplex<u8> for Spi<USCI> {
         type Error = SpiErr;
@@ -550,6 +549,5 @@ mod ehal02 {
 fn map_infallible<E>(err: nb::Error<Infallible>) -> nb::Error<E> {
     match err {
         WouldBlock => WouldBlock,
-        nb::Error::Other(e) => match e {},
     }
 }

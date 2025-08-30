@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust_toolchain: [nightly, nightly-2022-03-01]
+        rust_toolchain: [nightly, nightly-2024-09-01]
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
@@ -35,8 +35,26 @@ jobs:
           override: true
           components: rust-src
 
-      - name: Run cargo build with examples
+      - name: Build all examples
+        if: matrix.rust_toolchain == 'nightly'
         uses: actions-rs/cargo@v1
         with:
           command: build
           args: --examples --features embedded-hal-02
+      
+      - name: Build MSRV examples
+        if: matrix.rust_toolchain == 'nightly-2024-09-01'
+        shell: bash
+        run: |
+          for ex in examples/*.rs; do
+            # Skip examples that rely on non-MSRV features 
+            case "$(basename $ex)" in
+              lpm0.rs)
+                echo "Skipping $ex"
+                ;;
+              *)
+                echo "Building $ex"
+                cargo build --example "$(basename $ex .rs)" --features embedded-hal-02
+                ;;
+            esac
+          done

@@ -53,7 +53,7 @@ impl Pmm {
                     .refvsel().bits(vref as u8)
                     .intrefen().intrefen_1());
                 Some(InternalVRef(vref))
-            },
+            }
         }
     }
 
@@ -70,7 +70,7 @@ impl Pmm {
             false => {
                 unsafe { self.0.pmmctl2.set_bits(|w| w.tsensoren().set_bit()); }
                 Some(InternalTempSensor(PhantomData))
-            },
+            }
         }
     }
 

@@ -1,11 +1,9 @@
 #![no_main]
 #![no_std]
 
-use embedded_hal::{digital::*};
+use embedded_hal::digital::*;
 use msp430_rt::entry;
-use msp430fr2x5x_hal::{
-    bak_mem::BackupMemory, gpio::Batch, pmm::Pmm
-};
+use msp430fr2x5x_hal::{bak_mem::BackupMemory, gpio::Batch, pmm::Pmm};
 use panic_msp430 as _;
 
 // Use the value of backup memory to toggle the red onboard LED. The red LED should flash.
@@ -30,7 +28,7 @@ fn main() -> ! {
 
     // Set the output pin high if nv_mem is a multiple of 10
     led.set_state((bk_mem[0] % 10 == 0).into()).ok();
-    
+
     // Loop until the watchdog resets us
     loop {
         msp430::asm::nop();

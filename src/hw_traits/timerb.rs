@@ -86,7 +86,7 @@ pub trait TimerB: Steal {
     /// Resume a *stopped* timer. Assumes the previous mode was 'stop'.
     /// Atomic, fast.
     fn resume(&self, mode: RunningMode);
-    
+
     /// Change a timer's mode. Non-atomic, slower.
     fn change_mode(&self, mode: Mode);
 
@@ -106,14 +106,14 @@ pub trait TimerB: Steal {
 }
 
 pub enum RunningMode {
-    Up = 0b01, 
-    Continuous = 0b10, 
+    Up = 0b01,
+    Continuous = 0b10,
     UpDown = 0b11,
 }
 pub enum Mode {
     Stop = 0b00,
-    Up = 0b01, 
-    Continuous = 0b10, 
+    Up = 0b01,
+    Continuous = 0b10,
     UpDown = 0b11,
 }
 
