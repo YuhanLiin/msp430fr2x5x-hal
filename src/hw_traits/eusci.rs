@@ -270,6 +270,8 @@ pub trait EUsciI2C: Steal {
     fn i2csa_wr(&self, val: u16);
 
     fn ie_wr(&self, reg: u16);
+    fn ie_set(&self, mask: u16);
+    fn ie_clr(&self, mask: u16);
 
     fn ifg_rd(&self) -> Self::IfgOut;
     fn ifg_wr(&self, reg: u16);
@@ -888,6 +890,15 @@ macro_rules! eusci_b_impl {
             #[inline(always)]
             fn ie_wr(&self, reg: u16) {
                 self.$ucbxie().write(|w| unsafe { w.bits(reg) });
+            }
+
+            #[inline(always)]
+            fn ie_set(&self, mask: u16) {
+                unsafe{ self.$ucbxie().set_bits(|w| w.bits(mask)) };
+            }
+            #[inline(always)]
+            fn ie_clr(&self, mask: u16) {
+                unsafe{ self.$ucbxie().clear_bits(|w| w.bits(mask)) };
             }
 
             #[inline(always)]
