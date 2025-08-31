@@ -246,6 +246,8 @@ pub trait EUsciI2C: Steal {
     fn brw_rd(&self) -> u16;
     fn brw_wr(&self, val: u16);
 
+    fn byte_count(&self) -> u8; 
+
     // Modify only when UCSWRST = 1
     fn tbcnt_rd(&self) -> u16;
     fn tbcnt_wr(&self, val: u16);
@@ -768,6 +770,11 @@ macro_rules! eusci_b_impl {
             #[inline(always)]
             fn brw_wr(&self, val: u16) {
                 self.$ucbxbrw().write(|w| unsafe { w.bits(val) });
+            }
+
+            #[inline(always)]
+            fn byte_count(&self) -> u8 {
+                self.$ucbxstatw().read().ucbcnt().bits()
             }
 
             #[inline(always)]
