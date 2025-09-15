@@ -324,7 +324,6 @@ macro_rules! i2c_masters {
 
             // Clear any flags from previous transactions
             self.usci.ifg_rst();
-
             self.usci.i2csa_wr(address);
 
             if send_start {
@@ -359,28 +358,20 @@ macro_rules! i2c_masters {
             Ok(())
         }
 
-        fn blocking_write_unchecked(&mut self, address: u16, bytes: &[u8], mut send_start: bool, mut send_stop: bool) -> Result<(), $err_type> {
-            // The only way to perform a zero byte write is with a start + stop
-            if bytes.is_empty() {
-                send_start = true;
-                send_stop = true;
-            }
-
+        fn blocking_write_unchecked(&mut self, address: u16, bytes: &[u8], send_start: bool, send_stop: bool) -> Result<(), $err_type> {
             // Clear any flags from previous transactions
             self.usci.ifg_rst();
-
             self.usci.i2csa_wr(address);
+
+            if bytes.is_empty() {
+                return self.zero_byte_write();
+            }
 
             if send_start {
                 self.usci.transmit_start();
             }
 
-            while !self.usci.ifg_rd().uctxifg0() {
-                asm::nop();
-            }
-
             for (idx, &byte) in bytes.iter().enumerate() {
-                self.usci.uctxbuf_wr(byte);
                 loop {
                     let ifg = self.usci.ifg_rd();
                     self.handle_errs(&ifg, idx)?;
@@ -388,18 +379,30 @@ macro_rules! i2c_masters {
                         break;
                     }
                 }
+                self.usci.uctxbuf_wr(byte);
+            }
+            while !self.usci.ifg_rd().uctxifg0() {
+                self.handle_errs(&self.usci.ifg_rd(), bytes.len())?;
             }
 
             if send_stop {
                 self.usci.transmit_stop();
                 while self.usci.uctxstp_rd() {
-                    // This is mainly for catching NACKs in a zero-byte write
-                    if self.usci.ifg_rd().ucnackifg() {
-                        return Err(<$err_type>::GotNACK(bytes.len()));
-                    }
+                    asm::nop();
                 }
             }
+            
+            Ok(())
+        }
 
+        fn zero_byte_write(&mut self) -> Result<(), $err_type> {
+            self.usci.transmit_start();
+            self.usci.transmit_stop();
+            self.usci.uctxbuf_wr(0); // Bus stalls if nothing in Tx, even if a stop is scheduled
+            while self.usci.uctxstt_rd() || self.usci.uctxstp_rd() {
+                self.handle_errs(&self.usci.ifg_rd(), 0)?;
+            }
+            self.handle_errs(&self.usci.ifg_rd(), 0)?;
             Ok(())
         }
 
