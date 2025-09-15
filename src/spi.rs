@@ -9,7 +9,7 @@
 //!
 //! # [`Spi`]
 //! The SPI peripheral can be configured as a master device by calling one of the
-//! [`as_master()`](SpiConfig::as_master_using_smclk) methods during configuration.
+//! [`to_master()`](SpiConfig::to_master_using_smclk) methods during configuration.
 //!
 //! [`Spi`] implements the embedded-hal [`SpiBus`](embedded_hal::spi::SpiBus) trait, which provides a simple blocking interface.
 //! A non-blocking implementation is also available through [`embedded-hal-nb`](embedded_hal_nb)'s
@@ -17,7 +17,7 @@
 //! Standalone methods are also provided for directly writing to the Tx and Rx buffers for interrupt-based implementations.
 //!
 //! # [`SpiSlave`]
-//! The SPI peripheral can be configured as a slave device by calling [`as_slave()`](SpiConfig::as_slave) during configuration.
+//! The SPI peripheral can be configured as a slave device by calling [`to_slave()`](SpiConfig::to_slave) during configuration.
 //!
 //! [`SpiSlave`] supports sharing the bus with other slave devices by calling the [`shared_bus()`](SpiConfig::shared_bus) method
 //! during configuration. In this mode the STE pin controls whether the MISO pin is an output or a high-impedance pin, allowing
