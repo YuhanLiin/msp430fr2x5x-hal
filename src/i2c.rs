@@ -460,11 +460,6 @@ macro_rules! i2c_masters {
             self.usci.set_ucsla10(mode.into())
         }
 
-        #[inline(always)]
-        fn set_transmission_mode(&mut self, mode: TransmissionMode) {
-            self.usci.set_uctr(mode.into())
-        }
-
         fn blocking_read_unchecked(&mut self, address: u16, buffer: &mut [u8], send_start: bool, send_stop: bool) -> Result<(), $err_type> {
             // Hardware doesn't support zero byte reads.
             if buffer.is_empty() { return Ok(()) }
@@ -472,6 +467,7 @@ macro_rules! i2c_masters {
             // Clear any flags from previous transactions
             self.usci.ifg_rst();
             self.usci.i2csa_wr(address);
+            self.usci.set_uctr(TransmissionMode::Receive.into());
 
             if send_start {
                 self.usci.transmit_start();
@@ -509,6 +505,7 @@ macro_rules! i2c_masters {
             // Clear any flags from previous transactions
             self.usci.ifg_rst();
             self.usci.i2csa_wr(address);
+            self.usci.set_uctr(TransmissionMode::Transmit.into());
 
             if bytes.is_empty() {
                 return self.zero_byte_write();
@@ -556,7 +553,7 @@ macro_rules! i2c_masters {
         #[inline]
         fn send_start_unchecked<SevenOrTenBit: AddressType>(&mut self, address: SevenOrTenBit, mode: TransmissionMode) {
             self.set_addressing_mode(SevenOrTenBit::addr_type());
-            self.set_transmission_mode(mode);
+            self.usci.set_uctr(mode.into());
             self.usci.i2csa_wr(address.into());
             self.usci.transmit_start();
         }
@@ -578,7 +575,6 @@ macro_rules! i2c_masters {
         pub fn is_slave_present<TenOrSevenBit>(&mut self, address: TenOrSevenBit) -> Result<bool, $err_type>
         where TenOrSevenBit: AddressType {
             self.set_addressing_mode(TenOrSevenBit::addr_type());
-            self.set_transmission_mode(TransmissionMode::Transmit);
             use $err_type as E;
             match self.blocking_write(address.into(), &[], true, true) {
                 Ok(_) => Ok(true),
@@ -618,9 +614,7 @@ macro_rules! i2c_masters {
         /// blocking write then blocking read
         #[inline]
         fn blocking_write_read(&mut self, address: u16, bytes: &[u8], buffer: &mut [u8]) -> Result<(), $err_type> {
-            self.set_transmission_mode(TransmissionMode::Transmit);
             self.blocking_write(address, bytes, true, false)?;
-            self.set_transmission_mode(TransmissionMode::Receive);
             self.blocking_read(address, buffer, true, true)
                 .map_err(|e| Self::add_nack_count(e, bytes.len()))
         }
@@ -1258,13 +1252,11 @@ mod ehal1 {
 
                         match op {
                             Operation::Read(ref mut items) => {
-                                self.set_transmission_mode(TransmissionMode::Receive);
                                 self.blocking_read(address.into(), items, send_start, send_stop)
                                     .map_err(|e| Self::add_nack_count(e, bytes_sent))?;
                                 bytes_sent += items.len();
                             }
                             Operation::Write(items) => {
-                                self.set_transmission_mode(TransmissionMode::Transmit);
                                 self.blocking_write(address.into(), items, send_start, send_stop)
                                     .map_err(|e| Self::add_nack_count(e, bytes_sent))?;
                                 bytes_sent += items.len();
@@ -1329,7 +1321,6 @@ mod ehal02 {
                 #[inline]
                 fn read(&mut self, address: SevenOrTenBit, buffer: &mut [u8]) -> Result<(), Self::Error> {
                     self.set_addressing_mode(SevenOrTenBit::addr_type());
-                    self.set_transmission_mode(TransmissionMode::Receive);
                     self.blocking_read(address.into(), buffer, true, true)
                 }
             }
@@ -1339,7 +1330,6 @@ mod ehal02 {
                 #[inline]
                 fn write(&mut self, address: SevenOrTenBit, bytes: &[u8]) -> Result<(), Self::Error> {
                     self.set_addressing_mode(SevenOrTenBit::addr_type());
-                    self.set_transmission_mode(TransmissionMode::Transmit);
                     self.blocking_write(address.into(), bytes, true, true)
                 }
             }
