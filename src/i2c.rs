@@ -6,7 +6,7 @@
 //! will be returned.
 //! 
 //! [`I2cSlave`] acts as a slave device on the bus. If the MSP430 is to be the only master on the bus then [`I2cSingleMaster`] 
-//! offers simplified error handling. 
+//! offers simplified error handling. If more than one master is on the bus then [`I2cMultiMaster`] should be used instead.
 //!
 //! In all modes interrupts can be set and cleared using the `set_interrupts()` and `clear_interrupts()` methods alongside
 //! [`I2cInterruptBits`], which provides a user-friendly way to set the register flags.
@@ -33,7 +33,11 @@
 //! A non-blocking or interrupt-based implementation is possible using [`I2cSingleMaster::send_start()`],
 //! [`write_tx_buf()`](I2cSingleMaster::write_tx_buf), [`read_rx_buf()`](I2cSingleMaster::read_rx_buf), and
 //! [`schedule_stop()`](I2cSingleMaster::schedule_stop).
-//!
+//! 
+//! ## [`I2cMultiMaster`]
+//! [`I2cMultiMaster`] acts similarly to [`I2cSingleMaster`], but with the addition of bus arbitration logic.
+//! The MSP430 hardware automatically fails over from master to slave mode when arbitration is lost, so the methods check for this
+//! before performing operations. After losing arbitration [`return_to_master()`](I2cMultiMaster::return_to_master) must be called.
 //! Pins used:
 //!
 //! eUSCI_B0: {SCL: `P1.3`, SDA: `P1.2`}. `P1.1` can optionally be used as an external clock source in master modes.
@@ -186,6 +190,10 @@ impl I2cRole for SingleMaster {}
 pub struct Slave;
 impl I2cRole for Slave {}
 
+/// Typestate for an I2C bus being configured as a master on a bus that has other master devices present.
+pub struct MultiMaster;
+impl I2cRole for MultiMaster {}
+
 macro_rules! return_self_config {
     ($self: ident) => {
         I2cConfig {
@@ -252,6 +260,20 @@ impl<USCI: I2cUsci> I2cConfig<USCI, NoClockSet, NoRoleSet> {
             ucgcen: false, // Not yet implemented
             ucoaen: true,
             i2coa0: own_address.into(),
+        };
+
+        return_self_config!(self)
+    }
+
+    /// Configure this eUSCI peripheral as an I2C master on a bus with other master devices.
+    ///
+    /// The address comparison unit is disabled so this device can't be addressed as a slave,
+    /// though the other masters may still contest the bus.
+    pub fn as_multi_master(mut self) -> I2cConfig<USCI, NoClockSet, MultiMaster> {
+        self.ctlw0 = UcbCtlw0 {
+            ucmst: true,
+            ucmm: true,
+            ..self.ctlw0
         };
 
         return_self_config!(self)
@@ -324,6 +346,7 @@ macro_rules! configure {
 }
 
 configure!(SingleMaster, I2cSingleMaster<USCI>);
+configure!(MultiMaster,  I2cMultiMaster<USCI>);
 configure!(Slave,        I2cSlave<USCI>);
 
 macro_rules! i2c_common {
@@ -638,6 +661,31 @@ macro_rules! i2c_slaves {
     };
 }
 
+macro_rules! i2c_multi {
+    ($err_type: ty) => {
+        /// Manually send a start condition and address byte. Used as part of the non-blocking interface.
+        /// Passing a `u8` address uses 7-bit addressing, a `u16` address uses 10-bit addressing.
+        #[inline]
+        pub fn send_start<SevenOrTenBit: AddressType>(&mut self, address: SevenOrTenBit, mode: TransmissionMode) -> Result<(), $err_type>{
+            self.can_proceed(address.into())?;
+            self.send_start_unchecked(address, mode);
+            Ok(())
+        }
+
+        /// After losing arbitration (or after being addressed as a slave) call this method to return the peripheral to master mode.
+        #[inline(always)]
+        pub fn return_to_master(&mut self) {
+            self.usci.set_master();
+        }
+
+        /// Check whether the device is currently in master mode.
+        #[inline(always)]
+        pub fn is_master(&mut self) -> bool {
+            self.usci.is_master()
+        }
+    };
+}
+
 /// An eUSCI peripheral that has been configured as an I2C master.
 /// This variant offers simplified error handling and ease of use, but is not suitable for use on a multi-master bus.
 pub struct I2cSingleMaster<USCI> {
@@ -688,6 +736,72 @@ impl<USCI: I2cUsci> I2cSingleMaster<USCI> {
                 asm::nop();
             }
             return Err(I2cSingleMasterErr::GotNACK(idx));
+        }
+        Ok(())
+    }
+}
+
+/// An eUSCI peripheral that has been configured as an I2C multi-master.
+/// Multi-masters are capable of sharing an I2C bus with other multi-masters, and may also optionally act as a slave device (depending on configuration).
+pub struct I2cMultiMaster<USCI> {
+    usci: USCI,
+}
+impl<USCI: I2cUsci> I2cMultiMaster<USCI> {
+    i2c_common!();
+    i2c_masters!(I2cMultiMasterErr);
+    i2c_multi!(I2cMultiMasterErr);
+
+    /// Check if the Rx buffer is full, if so read it. Used as part of the non-blocking / interrupt-based interface.
+    ///
+    /// Returns `Err(WouldBlock)` if the buffer is empty,
+    /// `Err(Other(I2cMultiMasterErr))` if any bus conditions occur that would impede regular operation, or
+    /// `Ok(n)` if data was successfully retreived from the Rx buffer.
+    #[inline]
+    pub fn read_rx_buf(&mut self) -> nb::Result<u8, I2cMultiMasterErr> {
+        let ifg = self.usci.ifg_rd();
+        if ifg.ucalifg() {
+            return Err(Other(I2cMultiMasterErr::ArbitrationLost));
+        }
+        self.mst_read_rx_buf(ifg)
+    }
+
+    /// Check if the Tx buffer is empty, if so write to it. Used as part of the non-blocking / interrupt-based interface.
+    /// First checks if the peripheral is still in master mode, if not returns an error.
+    ///
+    /// Returns `Err(WouldBlock)` if the buffer is still full,
+    /// `Err(Other(I2cMultiMasterErr))` if any bus conditions occur that would impede regular operation, or
+    /// `Ok(())` if data was successfully loaded into the Tx buffer.
+    #[inline]
+    pub fn write_tx_buf(&mut self, byte: u8) -> nb::Result<(), I2cMultiMasterErr> {
+        let ifg = self.usci.ifg_rd();
+        if ifg.ucalifg() {
+            return Err(Other(I2cMultiMasterErr::ArbitrationLost));
+        }
+        self.mst_write_tx_buf(byte, ifg)
+    }
+
+    // Test whether a master operation can proceed
+    #[inline(always)]
+    fn can_proceed(&mut self, _address: u16) -> Result<(), I2cMultiMasterErr> {
+        // Multimaster doesn't need to check anything with the address, but it keeps the interface the same so we can abstract it
+        if !self.usci.is_master() {
+            return Err(I2cMultiMasterErr::ArbitrationLost);
+        }
+        Ok(())
+    }
+
+    // Check error flags during Tx / Rx operation
+    #[inline]
+    fn handle_errs(&mut self, ifg: &USCI::IfgOut, idx: usize) -> Result<(), I2cMultiMasterErr> {
+        if ifg.ucnackifg() {
+            self.usci.transmit_stop();
+            while self.usci.uctxstp_rd() {
+                asm::nop();
+            }
+            return Err(I2cMultiMasterErr::GotNACK(idx));
+        }
+        if ifg.ucalifg() {
+            return Err(I2cMultiMasterErr::ArbitrationLost);
         }
         Ok(())
     }
@@ -746,6 +860,24 @@ pub enum I2cSingleMasterErr {
     /// (byte 0 is the address byte, byte 1 is the first data byte, etc.). When using the non-blocking
     /// methods this value counts up from the most recent Start or Repeated Start condition.
     GotNACK(usize),
+    // Other errors like the 'clock low timeout' UCCLTOIFG may appear here in future.
+}
+
+
+/// I2C transmit/receive errors on a multi-master I2C bus.
+#[derive(Clone, Copy, Debug)]
+#[non_exhaustive]
+pub enum I2cMultiMasterErr {
+    /// Received a NACK. The contained value denotes the byte where the NACK occurred.
+    ///
+    /// In the blocking implementation the contained value counts since the initial start condition
+    /// (byte 0 is the address byte, byte 1 is the first data byte, etc.). When using the non-blocking
+    /// methods this value counts up from the most recent Start or Repeated Start condition.
+    GotNACK(usize),
+    /// Another master on the bus talked over us, so the transaction was aborted.
+    /// The peripheral has been forced into slave mode.
+    /// Call [`return_to_master()`](I2cMultiMaster::return_to_master) to resume the master role.
+    ArbitrationLost,
     // Other errors like the 'clock low timeout' UCCLTOIFG may appear here in future.
 }
 
@@ -963,6 +1095,17 @@ mod ehal1 {
             }
         }
     }
+
+    impl_ehal_i2c!(I2cMultiMaster<USCI>, I2cMultiMasterErr);
+    impl Error for I2cMultiMasterErr {
+        fn kind(&self) -> ErrorKind {
+            match self {
+                I2cMultiMasterErr::GotNACK(0)           => ErrorKind::NoAcknowledge(NoAcknowledgeSource::Address),
+                I2cMultiMasterErr::GotNACK(_)           => ErrorKind::NoAcknowledge(NoAcknowledgeSource::Data),
+                I2cMultiMasterErr::ArbitrationLost      => ErrorKind::ArbitrationLoss,
+            }
+        }
+    }
 }
 
 #[cfg(feature = "embedded-hal-02")]
@@ -1010,4 +1153,5 @@ mod ehal02 {
     }
 
     impl_ehal02_i2c!(I2cSingleMaster<USCI>, I2cSingleMasterErr);
+    impl_ehal02_i2c!(I2cMultiMaster<USCI>,  I2cMultiMasterErr);
 }
