@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Additions
 - Add support for low power modes
 - Add SPI slave support. This includes modifying SPI configuration flow and `SpiErr`.
+- Add support for I2C multi-master, slave, and master-slave roles.
 - Add support for Smart Analog Combo and Enhanced Comparator modules (MSP430FR23xx only)
 - Add support for reading from / writing to backup memory and information memory
 - Add support for hardware CRC module
@@ -24,7 +25,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Gate embedded-hal 0.2.7 implementations behind `embedded-hal-02` feature.
 - Expose functionality from the traits dropped between eh-0.2.7 and eh-1.0 (ADC, timers, RTC, watchdog, etc.) as methods on structs instead.
 - The SPI struct has been renamed from `SpiBus` to `Spi` to avoid naming conflicts with the new embedded-hal 1.0 trait `SpiBus`.
-- Ensure crate builds successfully back to `nightly-2022-03-01`.
+- Ensure crate builds successfully back to `nightly-2023-09-01`.
 - Replace public references to `void::Void` with `core::convert::Infallible`.
 
 ### Bugfixes
