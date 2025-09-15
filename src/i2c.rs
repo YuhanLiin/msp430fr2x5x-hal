@@ -2,11 +2,26 @@
 //!
 //! Peripherals eUSCI_B0 and eUSCI_B1 can be used for I2C communication.
 //!
-//! If the MSP430 is to be the only master on the bus then [`I2cSingleMaster`] offers simplified error handling. 
+//! Begin by calling [`I2cConfig::new()`]. Depending on configuration, one of [`I2cSlave`] or [`I2cSingleMaster`]
+//! will be returned.
+//! 
+//! [`I2cSlave`] acts as a slave device on the bus. If the MSP430 is to be the only master on the bus then [`I2cSingleMaster`] 
+//! offers simplified error handling. 
 //!
 //! In all modes interrupts can be set and cleared using the `set_interrupts()` and `clear_interrupts()` methods alongside
 //! [`I2cInterruptBits`], which provides a user-friendly way to set the register flags.
 //! 
+//! ## [`I2cSlave`]
+//! In slave mode the peripheral responds to requests from master devices. The 'own address' is treated as 7-bit should a `u8`
+//! be provided, and 10-bit if a `u16` is provided.
+//! Both polling and interrupt-based methods are available, though interrupt-based is recommended for slave devices, as the slave
+//! can 'fall behind' and lose information if polling is not done frequently enough.
+//!
+//! The interrupt-based interface relies on using [`interrupt_source()`](I2cSlave::interrupt_source()) to determine which event
+//! caused the interrupt. The polling-based implementation instead uses calls to [`poll()`](I2cSlave::poll()) to listen for events.
+//! In either case methods such as [`write_tx_buf()`](I2cSlave::write_tx_buf()) and
+//! [`read_rx_buf()`](I2cSlave::read_rx_buf()) can be used to respond accordingly.
+//!
 //! ## [`I2cSingleMaster`]
 //! Single master mode provides simplified error handling and ergonomics at the cost of being unsuitable for buses with more than one
 //! master - single master mode does not handle bus arbitration, so even if the device is not expected to be addressed as a slave it is not
@@ -25,6 +40,8 @@
 //!
 //! eUSCI_B1: {SCL: `P4.7`, SDA: `P4.6`}. `P4.5` can optionally be used as an external clock source in master modes.
 //!
+
+use core::convert::Infallible;
 
 use crate::clock::{Aclk, Smclk};
 use crate::gpio::{Pin1, Pin5};
@@ -165,6 +182,10 @@ pub trait I2cRole {}
 pub struct SingleMaster;
 impl I2cRole for SingleMaster {}
 
+/// Typestate for an I2C bus being configured as a slave.
+pub struct Slave;
+impl I2cRole for Slave {}
+
 macro_rules! return_self_config {
     ($self: ident) => {
         I2cConfig {
@@ -218,6 +239,20 @@ impl<USCI: I2cUsci> I2cConfig<USCI, NoClockSet, NoRoleSet> {
     /// Configure this eUSCI peripheral as an I2C master on a bus with no other master devices.
     pub fn as_single_master(mut self) -> I2cConfig<USCI, NoClockSet, SingleMaster> {
         self.ctlw0.ucmst = true;
+
+        return_self_config!(self)
+    }
+
+    /// Configure this eUSCI peripheral as an I2C slave.
+    pub fn as_slave<TenOrSevenBit>(mut self, own_address: TenOrSevenBit) -> I2cConfig<USCI, ClockSet, Slave>
+    where TenOrSevenBit: AddressType {
+        self.ctlw0.uca10 = TenOrSevenBit::addr_type().into();
+
+        self.i2coa0 = UcbI2coa {
+            ucgcen: false, // Not yet implemented
+            ucoaen: true,
+            i2coa0: own_address.into(),
+        };
 
         return_self_config!(self)
     }
@@ -289,6 +324,7 @@ macro_rules! configure {
 }
 
 configure!(SingleMaster, I2cSingleMaster<USCI>);
+configure!(Slave,        I2cSlave<USCI>);
 
 macro_rules! i2c_common {
     () => {
@@ -541,6 +577,67 @@ macro_rules! i2c_masters {
     };
 }
 
+macro_rules! i2c_slaves {
+    () => {
+        /// Returns whether the device is currently in receive mode or transmit mode.
+        #[inline(always)]
+        pub fn transmission_mode(&mut self) -> TransmissionMode {
+            match self.usci.is_transmitter() {
+                true  => TransmissionMode::Transmit,
+                false => TransmissionMode::Receive,
+            }
+        }
+        /// Check the I2C bus flags for any events that should be dealt with. Returns `Err(WouldBlock)` if no events have occurred yet, otherwise `Ok(I2cEvent)`.
+        pub fn poll(&mut self) -> nb::Result<I2cEvent, Infallible> {
+            if self.usci.stop_received() {
+                self.usci.clear_start_stop_flags();
+                return Ok(I2cEvent::Stop);
+            }
+
+            match (self.usci.start_received(), self.usci.rxifg0_rd(), self.usci.is_transmitter() & self.usci.txifg0_rd()) {
+                (true,  true,  false) => {
+                    self.usci.clear_start_flag();
+                    Ok(I2cEvent::WriteStart)
+                },
+                (true,  false, true ) => {
+                    self.usci.clear_start_flag();
+                    Ok(I2cEvent::ReadStart)
+                },
+                (false, true,  false) => Ok(I2cEvent::Write),
+                (false, false, true ) => Ok(I2cEvent::Read),
+                // Rx buffer filled, then repeated start then Tx buffer empty. (Can't be reverse because empty Tx buf stalls the bus).
+                (true,  true,  true ) => Ok(I2cEvent::OverrunWrite), // Don't clear the start flag yet.
+                // Start flag but no Rx / Tx events yet. Don't clear the flag yet.
+                (_,     false, false) => Err(WouldBlock),
+                // I don't believe this is ever reachable.
+                (false, true,  true ) => unreachable!(), // TODO: Test and replace with unchecked
+            }
+        }
+
+        /// Check whether the device is currently being addressed as a slave.
+        #[inline(always)]
+        pub fn is_being_addressed(&mut self) -> bool {
+            !self.usci.is_master() && self.usci.ifg_rd().ucsttifg()
+        }
+
+        #[inline]
+        fn sl_write_tx_buf(&mut self, byte: u8) -> nb::Result<(), Infallible> {
+            if !self.usci.ifg_rd().uctxifg0() {
+                return Err(WouldBlock);
+            }
+            self.usci.uctxbuf_wr(byte);
+            Ok(())
+        }
+        #[inline]
+        fn sl_read_rx_buf(&mut self) -> nb::Result<u8, Infallible> {
+            if !self.usci.ifg_rd().ucrxifg0() {
+                return Err(WouldBlock);
+            }
+            Ok(self.usci.ucrxbuf_rd())
+        }
+    };
+}
+
 /// An eUSCI peripheral that has been configured as an I2C master.
 /// This variant offers simplified error handling and ease of use, but is not suitable for use on a multi-master bus.
 pub struct I2cSingleMaster<USCI> {
@@ -596,6 +693,49 @@ impl<USCI: I2cUsci> I2cSingleMaster<USCI> {
     }
 }
 
+/// An eUSCI peripheral that has been configured as an I2C slave.
+pub struct I2cSlave<USCI> {
+    usci: USCI,
+}
+impl<USCI: I2cUsci> I2cSlave<USCI> {
+    i2c_common!();
+    i2c_slaves!();
+
+    /// Read the Rx buffer without checking if it's ready.
+    /// Useful in cases where you already know the Rx buffer is ready (e.g. an Rx interrupt occurred).
+    /// Used as part of the non-blocking / interrupt-based interface.
+    /// # Safety
+    /// If the buffer is not ready then the data will be invalid.
+    #[inline(always)]
+    pub unsafe fn read_rx_buf_unchecked(&mut self) -> u8 {
+        self.usci.ucrxbuf_rd()
+    }
+
+    /// Write to the Tx buffer without checking if it's ready.
+    /// Useful in cases where you already know the Tx buffer is ready (e.g. a Tx interrupt occurred).
+    /// Used as part of the non-blocking / interrupt-based interface.
+    /// # Safety
+    /// If the buffer is not ready then previous data may be clobbered.
+    #[inline(always)]
+    pub unsafe fn write_tx_buf_unchecked(&mut self, byte: u8) {
+        self.usci.uctxbuf_wr(byte);
+    }
+
+    /// Check if the Rx buffer is full, if so read it. Used as part of the non-blocking / interrupt-based interface.
+    /// Returns `Err(WouldBlock)` if the Rx buffer is empty, otherwise `Ok(n)`.
+    #[inline(always)]
+    pub fn read_rx_buf(&mut self) -> nb::Result<u8, Infallible> {
+        self.sl_read_rx_buf()
+    }
+
+    /// Check if the Tx buffer is empty, if so write to it. Used as part of the non-blocking / interrupt-based interface.
+    /// Returns `Err(WouldBlock)` if the Tx buffer is still full, otherwise `Ok(())`.
+    #[inline(always)]
+    pub fn write_tx_buf(&mut self, byte: u8) -> nb::Result<(), Infallible> {
+        self.sl_write_tx_buf(byte)
+    }
+}
+
 /// I2C transmit/receive errors on a single master I2C bus.
 #[derive(Clone, Copy, Debug)]
 #[non_exhaustive]
@@ -607,6 +747,29 @@ pub enum I2cSingleMasterErr {
     /// methods this value counts up from the most recent Start or Repeated Start condition.
     GotNACK(usize),
     // Other errors like the 'clock low timeout' UCCLTOIFG may appear here in future.
+}
+
+/// A list of events that may occur on the I2C bus.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum I2cEvent {
+    /// The master sent a (repeated) start and wants to read from us. Write to the Tx buffer to clear this event.
+    ReadStart,
+    /// The master continues to read from us. Write to the Tx buffer to clear this event.
+    Read,
+    /// The master sent a (repeated) start and wants to write to us. Read from the Rx buffer to clear this event.
+    WriteStart,
+    /// The master continues to write to us. Read from the Rx buffer to clear this event.
+    Write,
+    /// We have fallen behind. The master sent a write (filled the Rx buffer), then a repeated start and a read (currently stalled).
+    ///
+    /// The repeated start after the write means we can no longer tell if the initial write was a `WriteStart` or a `Write`.
+    ///
+    /// If you have more information about the expected format of the transaction you may be able to deduce which of the two it was.
+    ///
+    /// Read from the Rx buffer to clear this event.
+    OverrunWrite,
+    /// The master has ended the transaction. This event is automatically cleared.
+    Stop,
 }
 
 /// List of possible I2C interrupt sources. 

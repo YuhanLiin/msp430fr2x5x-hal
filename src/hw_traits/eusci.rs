@@ -223,8 +223,14 @@ pub trait EUsciI2C: Steal {
     fn uctxstt_rd(&self) -> bool;
     fn uctxstp_rd(&self) -> bool;
 
+    fn start_received(&self) -> bool;
+    fn stop_received(&self) -> bool;
+    fn clear_start_flag(&self);
+    fn clear_start_stop_flags(&self);
+
     fn set_ucsla10(&self, bit: bool);
     fn set_uctr(&self, bit: bool);
+    fn set_master(&self);
 
     fn txifg0_rd(&self) -> bool;
     fn rxifg0_rd(&self) -> bool;
@@ -238,6 +244,10 @@ pub trait EUsciI2C: Steal {
 
     // Modify only when UCSWRST = 1
     fn ctw0_wr(&self, reg: &UcbCtlw0);
+
+    fn is_master(&self) -> bool;
+    fn is_bus_busy(&self) -> bool;
+    fn is_transmitter(&self) -> bool;
 
     // Modify only when UCSWRST = 1
     fn ctw1_wr(&self, reg: &UcbCtlw1);
@@ -730,6 +740,31 @@ macro_rules! eusci_b_impl {
             }
 
             #[inline(always)]
+            fn start_received(&self) -> bool {
+                self.$ucbxifg().read().ucsttifg().bit()
+            }
+
+            #[inline(always)]
+            fn stop_received(&self) -> bool {
+                self.$ucbxifg().read().ucstpifg().bit()
+            }
+
+            #[inline(always)]
+            fn clear_start_flag(&self) {
+                unsafe{ self.$ucbxifg().clear_bits(|w| w.ucsttifg().clear_bit()) }
+            }
+
+            #[inline(always)]
+            fn clear_start_stop_flags(&self) {
+                unsafe{ self.$ucbxifg().clear_bits(|w| w.ucstpifg().clear_bit().ucsttifg().clear_bit()) }
+            }
+
+            #[inline(always)]
+            fn set_master(&self) {
+                unsafe { self.$ucbxctlw0().set_bits(|w| w.ucmst().set_bit()) }
+            }
+
+            #[inline(always)]
             fn set_ucsla10(&self, bit: bool) {
                 match bit {
                     true => unsafe { self.$ucbxctlw0().set_bits(|w| w.ucsla10().set_bit()) },
@@ -758,6 +793,21 @@ macro_rules! eusci_b_impl {
             #[inline(always)]
             fn ctw0_wr(&self, reg: &UcbCtlw0) {
                 self.$ucbxctlw0().write(UcbCtlw0_wr! {reg});
+            }
+            
+            #[inline(always)]
+            fn is_master(&self) -> bool {
+                self.$ucbxctlw0().read().ucmst().bit_is_set()
+            }
+
+            #[inline(always)]
+            fn is_bus_busy(&self) -> bool {
+                self.$ucbxstatw().read().ucbbusy().bit_is_set()
+            }
+
+            #[inline(always)]
+            fn is_transmitter(&self) -> bool {
+                self.$ucbxctlw0().read().uctr().bit_is_set()
             }
 
             #[inline(always)]
