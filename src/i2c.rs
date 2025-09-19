@@ -2,11 +2,13 @@
 //!
 //! Peripherals eUSCI_B0 and eUSCI_B1 can be used for I2C communication.
 //!
-//! Begin by calling [`I2cConfig::new()`]. Depending on configuration, one of [`I2cSlave`] or [`I2cSingleMaster`]
-//! will be returned.
+//! Begin by calling [`I2cConfig::new()`]. Depending on configuration, one of [`I2cSlave`], [`I2cSingleMaster`], [`I2cMultiMaster`], 
+//! or [`I2cMasterSlave`] will be returned.
 //! 
 //! [`I2cSlave`] acts as a slave device on the bus. If the MSP430 is to be the only master on the bus then [`I2cSingleMaster`] 
 //! offers simplified error handling. If more than one master is on the bus then [`I2cMultiMaster`] should be used instead.
+//! [`I2cMasterSlave`] offers a multi-role implementation that can act as a master but automatically downgrades to a slave 
+//! upon being addressed by another device.
 //!
 //! In all modes interrupts can be set and cleared using the `set_interrupts()` and `clear_interrupts()` methods alongside
 //! [`I2cInterruptFlags`], which provides a user-friendly way to set the register flags.
@@ -612,7 +614,9 @@ use sealed::*;
 
 /// Common methods available to all I2C roles.
 pub trait I2cRoleCommon: I2cRoleBase {
-    /// Send a NACK on the I2C bus. Only use during a receive operation. Used as part of the non-blocking / interrupt-based interface.
+    /// Queue a NACK to be sent on the I2C bus. If this is called in response to a packet being received the NACK will be sent on the following byte.
+    /// 
+    /// Used as part of the non-blocking / interrupt-based interface. Only use during a receive operation. 
     #[inline(always)]
     fn send_nack(&mut self) {
         self.usci().transmit_nack();
@@ -801,7 +805,7 @@ impl<USCI: I2cUsci> I2cSingleMaster<USCI> {
 
     /// Check if the Rx buffer is full, if so read it. Used as part of the non-blocking / interrupt-based interface.
     ///
-    /// Returns `Err(WouldBlock)` if the Rx buffer is empty, `Err(GotNACK(n))` if a NACK was received
+    /// Returns `Err(WouldBlock)` if the Rx buffer is empty, `Err(GotNACK(n))` if a NACK was received from a previous byte
     /// (will prevent the Rx buffer from filling), where `n` is the number of
     /// bytes since the latest Start or Repeated Start condition. otherwise `Ok(n)`.
     #[inline(always)]
@@ -811,7 +815,7 @@ impl<USCI: I2cUsci> I2cSingleMaster<USCI> {
 
     /// Check if the Tx buffer is empty, if so write to it. Used as part of the non-blocking / interrupt-based interface.
     ///
-    /// Returns `Err(WouldBlock)` if the Tx buffer is still full, `Err(GotNACK(n))` if a NACK was received
+    /// Returns `Err(WouldBlock)` if the Tx buffer is still full, `Err(GotNACK(n))` if a NACK was received from a previous byte
     /// (will prevent the Tx buffer from emptying), where `n` is the number of
     /// bytes since the latest Start or Repeated Start condition. Otherwise returns `Ok(())`.
     #[inline(always)]
