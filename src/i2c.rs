@@ -9,7 +9,7 @@
 //! offers simplified error handling. If more than one master is on the bus then [`I2cMultiMaster`] should be used instead.
 //!
 //! In all modes interrupts can be set and cleared using the `set_interrupts()` and `clear_interrupts()` methods alongside
-//! [`I2cInterruptBits`], which provides a user-friendly way to set the register flags.
+//! [`I2cInterruptFlags`], which provides a user-friendly way to set the register flags.
 //! 
 //! ## [`I2cSlave`]
 //! In slave mode the peripheral responds to requests from master devices. The 'own address' is treated as 7-bit should a `u8`
@@ -435,20 +435,14 @@ macro_rules! i2c_common {
         }
 
         /// Set the bits in the interrupt enable register that correspond to the bits set in `intrs`.
-        ///
-        /// This bitmask can be generated using [`I2cInterruptBits`].
         #[inline(always)]
-        pub fn set_interrupts<I2cInterruptBits>(&mut self, intrs: I2cInterruptBits)
-        where I2cInterruptBits: Into<u16> {
-            self.usci.ie_set(intrs.into())
+        pub fn set_interrupts(&mut self, intrs: I2cInterruptFlags) {
+            self.usci.ie_set(intrs.bits())
         }
         /// Clear the bits in the interrupt enable register that correspond to the bits *set* in `intrs`.
-        ///
-        /// This bitmask can be generated using [`I2cInterruptBits`].
         #[inline(always)]
-        pub fn clear_interrupts<I2cInterruptBits>(&mut self, intrs: I2cInterruptBits)
-        where I2cInterruptBits: Into<u16> {
-            self.usci.ie_clr(!(intrs.into()))
+        pub fn clear_interrupts(&mut self, intrs: I2cInterruptFlags) {
+            self.usci.ie_clr(!(intrs.bits()))
         }
     };
 }
@@ -1133,75 +1127,42 @@ pub enum I2cVector {
     NinthBitReceived    = 0x1E,
 }
 
-/// Human-friendly list of possible I2C interrupt source flags.
-/// 
-/// Used for writing to the I2C interrupt enable register e.g. via the [`set_interrupts()`](I2cSingleMaster::set_interrupts()) method.
-/// 
-/// Example usage:
-/// ```ignore
-/// use I2cInterruptBits::*;
-/// i2c_device.set_interrupts(RxBufFull | TxBufEmpty | StopReceived);
-/// ```
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-#[repr(u16)]
-pub enum I2cInterruptBits {
-    /// UCRXIE0. Trigger an interrupt when data is waiting in the Rx buffer. In slave mode slave address 0 must be on the I2C bus when this occurred.
-    RxBufFull           = 1 << 0,
-    /// UCTXIE0. Trigger an interrupt when the Tx buffer is empty. In slave mode slave address 0 must be on the I2C bus when this occurred.
-    TxBufEmpty          = 1 << 1,
-    /// UCSTTIE. Trigger an interrupt when a Start condition is received on the I2C bus along with one of our own addresses.
-    StartReceived       = 1 << 2,
-    /// UCSTPIE. Trigger an interrupt when a Stop condition is received on the I2C bus in a transaction we are a part of.
-    /// Typically this triggers when acting as an I2C slave, but this also triggers as an I2C master during a zero byte write.
-    StopReceived        = 1 << 3,
-    /// UCALIE. Trigger an interrupt when arbitration was lost during an attempted transmission.
-    ArbitrationLost     = 1 << 4,
-    /// UCNACKIE. Trigger an interrupt a NACK is received.
-    NackReceived        = 1 << 5,
-    /// UCBCNTIE. Trigger an interrupt when the target byte count has been reached.
-    ByteCounterZero     = 1 << 6,
-    /// UCCLTOIE. Trigger an interrupt when the SCL line has been held low longer than the Clock Low Timeout value.
-    ClockLowTimeout     = 1 << 7,
-    /// UCRXIE1. Trigger an interrupt when slave address 1 receives a data byte.
-    Slave1RxBufFull     = 1 << 8,
-    /// UCTXIE1. Trigger an interrupt when the Tx buffer is empty and slave address 1 was on the I2C bus when this occurred.
-    Slave1TxBufEmpty    = 1 << 9,
-    /// UCRXIE2. Trigger an interrupt when slave address 2 receives a data byte.
-    Slave2RxBufFull     = 1 << 10,
-    /// UCTXIE2. Trigger an interrupt when the Tx buffer is empty and slave address 2 was on the I2C bus when this occurred.
-    Slave2TxBufEmpty    = 1 << 11,
-    /// UCRXIE3. Trigger an interrupt when slave address 3 receives a data byte.
-    Slave3RxBufFull     = 1 << 12,
-    /// UCTXIE3. Trigger an interrupt when the Tx buffer is empty and slave address 3 was on the I2C bus when this occurred.
-    Slave3TxBufEmpty    = 1 << 13,
-    /// UCBIT9IE. Trigger an interrupt when the 9th bit of an I2C data packet we are involved in has been completed.
-    NinthBitReceived    = 1 << 14,
-}
-impl From<I2cInterruptBits> for u16 {
-    #[inline(always)]
-    fn from(value: I2cInterruptBits) -> Self {
-        value as u16
-    }
-}
-impl core::ops::BitOr for I2cInterruptBits {
-    type Output = u16;
-    #[inline(always)]
-    fn bitor(self, rhs: Self) -> Self::Output {
-        (self as u16) | (rhs as u16)
-    }
-}
-impl core::ops::BitOr<u16> for I2cInterruptBits {
-    type Output = u16;
-    #[inline(always)]
-    fn bitor(self, rhs: u16) -> Self::Output {
-        (self as u16) | rhs
-    }
-}
-impl core::ops::BitOr<I2cInterruptBits> for u16 {
-    type Output = u16;
-    #[inline(always)]
-    fn bitor(self, rhs: I2cInterruptBits) -> Self::Output {
-        self | (rhs as u16)
+bitflags::bitflags! {
+    /// Human-friendly list of possible I2C interrupt source flags.
+    /// 
+    /// Used for writing to the I2C interrupt enable register e.g. via the [`set_interrupts()`](I2cSingleMaster::set_interrupts()) method.
+    pub struct I2cInterruptFlags: u16 {
+        /// UCRXIE0. Trigger an interrupt when data is waiting in the Rx buffer. In slave mode slave address 0 must be on the I2C bus when this occurred.
+        const RxBufFull           = 1 << 0;
+        /// UCTXIE0. Trigger an interrupt when the Tx buffer is empty. In slave mode slave address 0 must be on the I2C bus when this occurred.
+        const TxBufEmpty          = 1 << 1;
+        /// UCSTTIE. Trigger an interrupt when a Start condition is received on the I2C bus along with one of our own addresses.
+        const StartReceived       = 1 << 2;
+        /// UCSTPIE. Trigger an interrupt when a Stop condition is received on the I2C bus in a transaction we are a part of.
+        /// Typically this triggers when acting as an I2C slave, but this also triggers as an I2C master during a zero byte write.
+        const StopReceived        = 1 << 3;
+        /// UCALIE. Trigger an interrupt when arbitration was lost during an attempted transmission.
+        const ArbitrationLost     = 1 << 4;
+        /// UCNACKIE. Trigger an interrupt a NACK is received.
+        const NackReceived        = 1 << 5;
+        /// UCBCNTIE. Trigger an interrupt when the target byte count has been reached.
+        const ByteCounterZero     = 1 << 6;
+        /// UCCLTOIE. Trigger an interrupt when the SCL line has been held low longer than the Clock Low Timeout value.
+        const ClockLowTimeout     = 1 << 7;
+        /// UCRXIE1. Trigger an interrupt when slave address 1 receives a data byte.
+        const Slave1RxBufFull     = 1 << 8;
+        /// UCTXIE1. Trigger an interrupt when the Tx buffer is empty and slave address 1 was on the I2C bus when this occurred.
+        const Slave1TxBufEmpty    = 1 << 9;
+        /// UCRXIE2. Trigger an interrupt when slave address 2 receives a data byte.
+        const Slave2RxBufFull     = 1 << 10;
+        /// UCTXIE2. Trigger an interrupt when the Tx buffer is empty and slave address 2 was on the I2C bus when this occurred.
+        const Slave2TxBufEmpty    = 1 << 11;
+        /// UCRXIE3. Trigger an interrupt when slave address 3 receives a data byte.
+        const Slave3RxBufFull     = 1 << 12;
+        /// UCTXIE3. Trigger an interrupt when the Tx buffer is empty and slave address 3 was on the I2C bus when this occurred.
+        const Slave3TxBufEmpty    = 1 << 13;
+        /// UCBIT9IE. Trigger an interrupt when the 9th bit of an I2C data packet we are involved in has been completed.
+        const NinthBitReceived    = 1 << 14;
     }
 }
 

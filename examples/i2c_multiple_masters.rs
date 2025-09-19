@@ -22,7 +22,7 @@ use msp430_rt::entry;
 use msp430fr2355::{interrupt, E_USCI_B1};
 use msp430fr2x5x_hal::{
     clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv}, fram::Fram, gpio::Batch, 
-    i2c::{GlitchFilter, I2cConfig, I2cInterruptBits, I2cMasterSlave, I2cVector}, pmm::Pmm, watchdog::Wdt
+    i2c::{GlitchFilter, I2cConfig, I2cInterruptFlags as Flags, I2cMasterSlave, I2cVector}, pmm::Pmm, watchdog::Wdt
 };
 use panic_msp430 as _;
 
@@ -68,7 +68,7 @@ fn main() -> ! {
         .configure(m_scl, m_sda);
 
     critical_section::with(|cs| {
-        i2c_master_slave.set_interrupts(I2cInterruptBits::StartReceived);
+        i2c_master_slave.set_interrupts(Flags::StartReceived);
         unsafe { *I2C_MULTI_MASTER.borrow(cs).get() = Some(i2c_master_slave) }
     });
     unsafe { enable_interrupts() };
@@ -108,8 +108,7 @@ fn EUSCI_B1() {
         match i2c_master_slave.interrupt_source() {
             I2cVector::StartReceived => {
                 // We have been addressed as a slave. Enable Rx, Tx and Stop interrupts.
-                use I2cInterruptBits::*;
-                i2c_master_slave.set_interrupts(TxBufEmpty | RxBufFull | StopReceived);
+                i2c_master_slave.set_interrupts(Flags::TxBufEmpty | Flags::RxBufFull | Flags::StopReceived);
             }
             I2cVector::RxBufFull => {
                 // Store the received value so we can echo it back later when the master switches to read mode
@@ -121,8 +120,7 @@ fn EUSCI_B1() {
             }
             I2cVector::StopReceived => {
                 // Slave addressing concluded. Disable Rx, Tx, and Stop interrupts. We don't want these to trigger when acting as a master.
-                use I2cInterruptBits::*;
-                i2c_master_slave.clear_interrupts(TxBufEmpty | RxBufFull | StopReceived);
+                i2c_master_slave.clear_interrupts(Flags::TxBufEmpty | Flags::RxBufFull | Flags::StopReceived);
                 i2c_master_slave.return_to_master();
             }
             _ => (), // unreachable

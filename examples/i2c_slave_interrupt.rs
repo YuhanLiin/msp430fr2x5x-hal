@@ -31,7 +31,7 @@ use msp430fr2x5x_hal::{
     clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv},
     fram::Fram,
     gpio::Batch,
-    i2c::{GlitchFilter, I2cConfig, I2cInterruptBits, I2cSlave, I2cVector},
+    i2c::{GlitchFilter, I2cConfig, I2cInterruptFlags as Flags, I2cSlave, I2cVector},
     pmm::Pmm,
     watchdog::Wdt,
 };
@@ -78,8 +78,7 @@ fn main() -> ! {
         .as_slave(SLAVE_ADDR)
         .configure(sl_scl, sl_sda);
 
-    use I2cInterruptBits::*;
-    i2c_slave.set_interrupts(StopReceived | RxBufFull | TxBufEmpty);
+    i2c_slave.set_interrupts(Flags::StopReceived | Flags::RxBufFull | Flags::TxBufEmpty);
 
     critical_section::with(|cs| {
         unsafe { *I2C_SLAVE.borrow(cs).get() = Some(i2c_slave) }
