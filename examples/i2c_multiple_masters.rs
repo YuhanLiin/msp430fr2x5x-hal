@@ -22,7 +22,7 @@ use msp430_rt::entry;
 use msp430fr2355::{interrupt, E_USCI_B1};
 use msp430fr2x5x_hal::{
     clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv}, fram::Fram, gpio::Batch, 
-    i2c::{GlitchFilter, I2cConfig, I2cInterruptFlags as Flags, I2cMasterSlave, I2cVector}, pmm::Pmm, watchdog::Wdt
+    i2c::{GlitchFilter, I2cConfig, I2cInterruptFlags as Flags, I2cMasterSlave, I2cVector}, pmm::Pmm, prelude::*, watchdog::Wdt
 };
 use panic_msp430 as _;
 

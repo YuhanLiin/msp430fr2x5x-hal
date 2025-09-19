@@ -11,6 +11,7 @@ use msp430fr2x5x_hal::{
     gpio::Batch,
     i2c::{GlitchFilter, I2cConfig},
     pmm::Pmm,
+    prelude::*,
     watchdog::Wdt,
 };
 use panic_msp430 as _;

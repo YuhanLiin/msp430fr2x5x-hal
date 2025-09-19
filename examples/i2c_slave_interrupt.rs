@@ -33,6 +33,7 @@ use msp430fr2x5x_hal::{
     gpio::Batch,
     i2c::{GlitchFilter, I2cConfig, I2cInterruptFlags as Flags, I2cSlave, I2cVector},
     pmm::Pmm,
+    prelude::*,
     watchdog::Wdt,
 };
 use panic_msp430 as _;

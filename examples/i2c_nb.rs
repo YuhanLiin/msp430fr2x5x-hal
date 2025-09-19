@@ -17,7 +17,7 @@ use embedded_hal::{digital::{OutputPin, StatefulOutputPin}, delay::DelayNs};
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
     clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv}, fram::Fram, gpio::Batch, 
-    i2c::{GlitchFilter, I2cConfig, I2cEvent, TransmissionMode}, pmm::Pmm, watchdog::Wdt
+    i2c::{GlitchFilter, I2cConfig, I2cEvent, TransmissionMode}, pmm::Pmm, prelude::*, watchdog::Wdt
 };
 use panic_msp430 as _;
 
