@@ -475,7 +475,7 @@ mod sealed {
             for (idx, &byte) in bytes.iter().enumerate() {
                 loop {
                     let ifg = self.usci().ifg_rd();
-                    self.handle_errs(&ifg, idx)?;
+                    self.handle_errs(&ifg, idx.saturating_sub(1))?; // Subtract index because buffer fills before any NACKs come through
                     if ifg.uctxifg0() {
                         break;
                     }
@@ -483,13 +483,13 @@ mod sealed {
                 self.usci().uctxbuf_wr(byte);
             }
             while !self.usci().ifg_rd().uctxifg0() {
-                self.handle_errs(&self.usci().ifg_rd(), bytes.len())?;
+                self.handle_errs(&self.usci().ifg_rd(), bytes.len().saturating_sub(1))?;
             }
 
             if send_stop {
                 self.usci().transmit_stop();
-                while self.usci().uctxstp_rd() {
-                    asm::nop();
+                while self.usci().is_bus_busy() {
+                    self.handle_errs(&self.usci().ifg_rd(), bytes.len())?;
                 }
             }
             
