@@ -405,8 +405,9 @@ mod sealed {
     }
 
     pub trait I2cError {
-        fn nack(byte_index: usize) -> Self;
-        fn is_nack(&self) -> Option<usize>;
+        fn addr_nack(byte_index: usize) -> Self;
+        fn data_nack(byte_index: usize) -> Self;
+        fn is_nack(&self) -> Option<NackType>;
     }
 
     /// Internal methods common to all I2C roles capable of master operations
@@ -517,10 +518,10 @@ mod sealed {
         /// In multi-operation transactions update the NACK byte error count to match *total* bytes sent
         #[inline]
         fn add_nack_count(err: Self::ErrorType, bytes_already_sent: usize) -> Self::ErrorType {
-            if let Some(n) = err.is_nack() {
-                Self::ErrorType::nack(n + bytes_already_sent)
-            } else { 
-                err 
+            match err.is_nack() {
+                None => err,
+                Some(NackType::Address(n)) => Self::ErrorType::addr_nack(n + bytes_already_sent),
+                Some(NackType::Data(n))    => Self::ErrorType::data_nack(n + bytes_already_sent),
             }
         }
 
@@ -550,7 +551,13 @@ mod sealed {
 
         fn mst_write_tx_buf(&mut self, byte: u8, ifg: &<Self::USCI as EUsciI2C>::IfgOut) -> nb::Result<(), Self::ErrorType> {
             if ifg.ucnackifg() {
-                return Err(Other(Self::ErrorType::nack(self.usci().byte_count() as usize)));
+                let byte_count = self.usci().byte_count();
+                
+                if byte_count == 0 {
+                    return Err(Other(Self::ErrorType::addr_nack(byte_count as usize)));
+                } else {
+                    return Err(Other(Self::ErrorType::data_nack(byte_count as usize)));
+                };
             }
             if !ifg.uctxifg0() {
                 return Err(WouldBlock);
@@ -561,7 +568,13 @@ mod sealed {
         
         fn mst_read_rx_buf(&mut self, ifg: &<Self::USCI as EUsciI2C>::IfgOut) -> nb::Result<u8, Self::ErrorType> {
             if ifg.ucnackifg() {
-                return Err(Other(Self::ErrorType::nack(self.usci().byte_count() as usize)));
+                let byte_count = self.usci().byte_count();
+                
+                if byte_count == 0 {
+                    return Err(Other(Self::ErrorType::addr_nack(byte_count as usize)));
+                } else {
+                    return Err(Other(Self::ErrorType::data_nack(byte_count as usize)));
+                };
             }
             if !ifg.ucrxifg0() {
                 return Err(WouldBlock);
@@ -760,10 +773,15 @@ impl<USCI: I2cUsci> I2cRoleMasterPrivate for I2cSingleMaster<USCI> {
     fn handle_errs(&mut self, ifg: &<Self::USCI as EUsciI2C>::IfgOut, idx: usize) -> Result<(), Self::ErrorType> {
         if ifg.ucnackifg() {
             self.usci.transmit_stop();
+            let nack = if idx == 0 {
+                NackType::Address(idx)
+            } else {
+                NackType::Data(idx)
+            };
             while self.usci.uctxstp_rd() {
                 asm::nop();
             }
-            return Err(I2cSingleMasterErr::GotNACK(idx));
+            return Err(I2cSingleMasterErr::GotNACK(nack));
         }
         Ok(())
     }
@@ -828,10 +846,15 @@ impl<USCI: I2cUsci> I2cRoleMasterPrivate for I2cMultiMaster<USCI> {
     fn handle_errs(&mut self, ifg: &USCI::IfgOut, idx: usize) -> Result<(), I2cMultiMasterErr> {
         if ifg.ucnackifg() {
             self.usci.transmit_stop();
+            let nack = if idx == 0 {
+                NackType::Address(idx)
+            } else {
+                NackType::Data(idx)
+            };
             while self.usci.uctxstp_rd() {
                 asm::nop();
             }
-            return Err(I2cMultiMasterErr::GotNACK(idx));
+            return Err(I2cMultiMasterErr::GotNACK(nack));
         }
         if ifg.ucalifg() {
             return Err(I2cMultiMasterErr::ArbitrationLost);
@@ -956,10 +979,15 @@ impl<USCI: I2cUsci> I2cRoleMasterPrivate for I2cMasterSlave<USCI> {
     fn handle_errs(&mut self, ifg: &USCI::IfgOut, idx: usize) -> Result<(), I2cMasterSlaveErr> {
         if ifg.ucnackifg() {
             self.usci.transmit_stop();
+            let nack = if idx == 0 {
+                NackType::Address(idx)
+            } else {
+                NackType::Data(idx)
+            };
             while self.usci.uctxstp_rd() {
                 asm::nop();
             }
-            return Err(I2cMasterSlaveErr::GotNACK(idx));
+            return Err(I2cMasterSlaveErr::GotNACK(nack));
         }
         if ifg.ucalifg() {
             return match ifg.ucsttifg() {
@@ -1056,13 +1084,16 @@ impl<USCI: I2cUsci> I2cMasterSlave<USCI> {
 macro_rules! impl_i2c_error {
     ($err_type: ty) => {
         impl I2cError for $err_type {
-            fn nack(byte_index: usize) -> Self {
-                Self::GotNACK(byte_index)
+            fn addr_nack(byte_index: usize) -> Self {
+                Self::GotNACK(NackType::Address(byte_index))
+            }
+            fn data_nack(byte_index: usize) -> Self {
+                Self::GotNACK(NackType::Data(byte_index))
             }
 
-            fn is_nack(&self) -> Option<usize> {
+            fn is_nack(&self) -> Option<NackType> {
                 match self {
-                    Self::GotNACK(n) => Some(*n),
+                    Self::GotNACK(nack_type) => Some(*nack_type),
                     #[allow(unreachable_patterns)] // I2cSingleMasterErr has only one variant
                     _ => None,
                 }
@@ -1071,16 +1102,27 @@ macro_rules! impl_i2c_error {
     };
 }
 
+/// NACK information enum. The contained value is the byte number when the error occurred. 
+///
+/// If this originated from a blocking method the byte number counts up from the beginning of the transaction 
+/// (i.e. the initial start condition) where byte 0 is the address byte, byte 1 is the first data byte, etc.. 
+/// If it originated from a non-blocking method it counts up from the most recent Start or Repeated Start condition.
+#[derive(Clone, Copy, Debug)]
+pub enum NackType {
+    /// Received a NACK during an address byte. No device with the specified address is on the bus.
+    Address(usize),
+    /// Received a NACK during a data byte. This could be caused by a number of reasons - 
+    /// the receiver is not ready, it received invalid data or commands, it cannot receive any more data, etc.
+    Data(usize),
+}
+
 /// I2C transmit/receive errors on a single master I2C bus.
 #[derive(Clone, Copy, Debug)]
 #[non_exhaustive]
 pub enum I2cSingleMasterErr {
     /// Received a NACK. The contained value denotes the byte where the NACK occurred.
-    ///
-    /// In the blocking methods the contained value counts up from the initial start condition
-    /// (byte 0 is the address byte, byte 1 is the first data byte, etc.). When using the non-blocking
-    /// methods this value counts up from the most recent Start or Repeated Start condition.
-    GotNACK(usize),
+
+    GotNACK(NackType),
     // Other errors like the 'clock low timeout' UCCLTOIFG may appear here in future.
 }
 impl_i2c_error!(I2cSingleMasterErr);
@@ -1090,11 +1132,7 @@ impl_i2c_error!(I2cSingleMasterErr);
 #[non_exhaustive]
 pub enum I2cMultiMasterErr {
     /// Received a NACK. The contained value denotes the byte where the NACK occurred.
-    ///
-    /// In the blocking implementation the contained value counts since the initial start condition
-    /// (byte 0 is the address byte, byte 1 is the first data byte, etc.). When using the non-blocking
-    /// methods this value counts up from the most recent Start or Repeated Start condition.
-    GotNACK(usize),
+    GotNACK(NackType),
     /// Another master on the bus talked over us, so the transaction was aborted.
     /// The peripheral has been forced into slave mode.
     /// Call [`return_to_master()`](I2cRoleMulti::return_to_master) to resume the master role.
@@ -1108,11 +1146,7 @@ impl_i2c_error!(I2cMultiMasterErr);
 #[non_exhaustive]
 pub enum I2cMasterSlaveErr {
     /// Received a NACK. The contained value denotes the byte where the NACK occurred.
-    ///
-    /// In the blocking implementation the contained value counts since the initial start condition
-    /// (byte 0 is the address byte, byte 1 is the first data byte, etc.). When using the non-blocking
-    /// methods this value counts up from the most recent Start or Repeated Start condition.
-    GotNACK(usize),
+    GotNACK(NackType),
     /// Another master on the bus talked over us, so the transaction was aborted.
     /// The peripheral has been forced into slave mode.
     /// Call [`return_to_master()`](I2cRoleMulti::return_to_master) to resume the master role.
@@ -1297,12 +1331,13 @@ mod ehal1 {
         };
     }
 
+    use NackType::*;
     impl_ehal_i2c!(I2cSingleMaster<USCI>, I2cSingleMasterErr);
     impl Error for I2cSingleMasterErr {
         fn kind(&self) -> ErrorKind {
             match self {
-                I2cSingleMasterErr::GotNACK(0)  => ErrorKind::NoAcknowledge(NoAcknowledgeSource::Address),
-                I2cSingleMasterErr::GotNACK(_)  => ErrorKind::NoAcknowledge(NoAcknowledgeSource::Data),
+                I2cSingleMasterErr::GotNACK(Address(_))  => ErrorKind::NoAcknowledge(NoAcknowledgeSource::Address),
+                I2cSingleMasterErr::GotNACK(Data(_))     => ErrorKind::NoAcknowledge(NoAcknowledgeSource::Data),
             }
         }
     }
@@ -1311,8 +1346,8 @@ mod ehal1 {
     impl Error for I2cMultiMasterErr {
         fn kind(&self) -> ErrorKind {
             match self {
-                I2cMultiMasterErr::GotNACK(0)           => ErrorKind::NoAcknowledge(NoAcknowledgeSource::Address),
-                I2cMultiMasterErr::GotNACK(_)           => ErrorKind::NoAcknowledge(NoAcknowledgeSource::Data),
+                I2cMultiMasterErr::GotNACK(Address(_))  => ErrorKind::NoAcknowledge(NoAcknowledgeSource::Address),
+                I2cMultiMasterErr::GotNACK(Data(_))     => ErrorKind::NoAcknowledge(NoAcknowledgeSource::Data),
                 I2cMultiMasterErr::ArbitrationLost      => ErrorKind::ArbitrationLoss,
             }
         }
@@ -1322,8 +1357,8 @@ mod ehal1 {
     impl Error for I2cMasterSlaveErr {
         fn kind(&self) -> ErrorKind {
             match self {
-                I2cMasterSlaveErr::GotNACK(0)           => ErrorKind::NoAcknowledge(NoAcknowledgeSource::Address),
-                I2cMasterSlaveErr::GotNACK(_)           => ErrorKind::NoAcknowledge(NoAcknowledgeSource::Data),
+                I2cMasterSlaveErr::GotNACK(Address(_))  => ErrorKind::NoAcknowledge(NoAcknowledgeSource::Address),
+                I2cMasterSlaveErr::GotNACK(Data(_))     => ErrorKind::NoAcknowledge(NoAcknowledgeSource::Data),
                 I2cMasterSlaveErr::ArbitrationLost      => ErrorKind::ArbitrationLoss,
                 I2cMasterSlaveErr::AddressedAsSlave     => ErrorKind::ArbitrationLoss,
                 I2cMasterSlaveErr::TriedAddressingSelf  => ErrorKind::Other,
