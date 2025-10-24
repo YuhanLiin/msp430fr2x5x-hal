@@ -17,6 +17,10 @@ pub use crate::timer::CapCmpTimer3 as _msp430fr2x5x_hal_CapCmpTimer3;
 pub use crate::timer::CapCmpTimer7 as _msp430fr2x5x_hal_CapCmpTimer7;
 pub use crate::timer::TimerPeriph as _msp430fr2x5x_hal_TimerPeriph;
 pub use crate::watchdog::WatchdogSelect as _msp430fr2x5x_hal_WatchdogSelect;
+pub use crate::i2c::I2cRoleCommon as _msp430fr2x5x_hal_I2cRoleCommon;
+pub use crate::i2c::I2cRoleMaster as _msp430fr2x5x_hal_I2cRoleMaster;
+pub use crate::i2c::I2cRoleSlave as _msp430fr2x5x_hal_I2cRoleSlave;
+pub use crate::i2c::I2cRoleMulti as _msp430fr2x5x_hal_I2cRoleMulti;
 
 #[cfg(feature = "embedded-hal-02")]
 pub use embedded_hal_02::prelude;

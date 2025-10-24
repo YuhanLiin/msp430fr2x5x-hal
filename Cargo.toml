@@ -22,6 +22,7 @@ embedded-hal = { version = "1.0" }
 embedded-hal-nb = { version = "1.0" }
 embedded-io = "0.6"
 msp430fr2355 = { version = "0.5.2", features = ["rt", "critical-section"] }
+bitflags = "2.9"
 
 [dev-dependencies]
 panic-msp430 = "0.4.0"
@@ -29,6 +30,7 @@ panic-never = "0.1.0"
 msp430-rt = "0.4.1"
 critical-section = "1.0.0"
 msp430 = { version = "0.4.0", features = ["critical-section-single-core"] }
+msp430-atomic = "0.1.5"
 
 [profile.release]
 lto = "fat"
