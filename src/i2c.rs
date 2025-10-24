@@ -407,9 +407,8 @@ mod sealed {
     }
 
     pub trait I2cError {
-        fn addr_nack(byte_index: usize) -> Self;
-        fn data_nack(byte_index: usize) -> Self;
-        fn is_nack(&self) -> Option<NackType>;
+        fn nack(variant: NackType) -> Self;
+        fn nack_type(&self) -> Option<NackType>;
     }
 
     /// Internal methods common to all I2C roles capable of master operations
@@ -520,10 +519,10 @@ mod sealed {
         /// In multi-operation transactions update the NACK byte error count to match *total* bytes sent
         #[inline]
         fn add_nack_count(err: Self::ErrorType, bytes_already_sent: usize) -> Self::ErrorType {
-            match err.is_nack() {
+            match err.nack_type() {
                 None => err,
-                Some(NackType::Address(n)) => Self::ErrorType::addr_nack(n + bytes_already_sent),
-                Some(NackType::Data(n))    => Self::ErrorType::data_nack(n + bytes_already_sent),
+                Some(NackType::Address(n)) => Self::ErrorType::nack(NackType::Address(n + bytes_already_sent)),
+                Some(NackType::Data(n))    => Self::ErrorType::nack(NackType::Data(n + bytes_already_sent)),
             }
         }
 
@@ -553,13 +552,12 @@ mod sealed {
 
         fn mst_write_tx_buf(&mut self, byte: u8, ifg: &<Self::USCI as EUsciI2C>::IfgOut) -> nb::Result<(), Self::ErrorType> {
             if ifg.ucnackifg() {
-                let byte_count = self.usci().byte_count();
-                
-                if byte_count == 0 {
-                    return Err(Other(Self::ErrorType::addr_nack(byte_count as usize)));
-                } else {
-                    return Err(Other(Self::ErrorType::data_nack(byte_count as usize)));
+                let nack_type = match self.usci().byte_count() {
+                    0 => NackType::Address(0),
+                    n => NackType::Data(n as usize),
                 };
+
+                return Err(Other(Self::ErrorType::nack(nack_type)));
             }
             if !ifg.uctxifg0() {
                 return Err(WouldBlock);
@@ -570,13 +568,12 @@ mod sealed {
         
         fn mst_read_rx_buf(&mut self, ifg: &<Self::USCI as EUsciI2C>::IfgOut) -> nb::Result<u8, Self::ErrorType> {
             if ifg.ucnackifg() {
-                let byte_count = self.usci().byte_count();
-                
-                if byte_count == 0 {
-                    return Err(Other(Self::ErrorType::addr_nack(byte_count as usize)));
-                } else {
-                    return Err(Other(Self::ErrorType::data_nack(byte_count as usize)));
+                let nack_type = match self.usci().byte_count() {
+                    0 => NackType::Address(0),
+                    n => NackType::Data(n as usize),
                 };
+
+                return Err(Other(Self::ErrorType::nack(nack_type)));
             }
             if !ifg.ucrxifg0() {
                 return Err(WouldBlock);
@@ -685,7 +682,7 @@ pub trait I2cRoleMaster: I2cRoleMasterPrivate {
         self.set_addressing_mode(TenOrSevenBit::addr_type());
         match self.blocking_write(address.into(), &[], true, true) {
             Ok(_) => Ok(true),
-            Err(e) if e.is_nack().is_some() => Ok(false),
+            Err(e) if e.nack_type().is_some() => Ok(false),
             Err(e) => Err(e),
         }
     }
@@ -1088,14 +1085,11 @@ impl<USCI: I2cUsci> I2cMasterSlave<USCI> {
 macro_rules! impl_i2c_error {
     ($err_type: ty) => {
         impl I2cError for $err_type {
-            fn addr_nack(byte_index: usize) -> Self {
-                Self::GotNACK(NackType::Address(byte_index))
-            }
-            fn data_nack(byte_index: usize) -> Self {
-                Self::GotNACK(NackType::Data(byte_index))
+            fn nack(variant: NackType) -> Self {
+                Self::GotNACK(variant)
             }
 
-            fn is_nack(&self) -> Option<NackType> {
+            fn nack_type(&self) -> Option<NackType> {
                 match self {
                     Self::GotNACK(nack_type) => Some(*nack_type),
                     #[allow(unreachable_patterns)] // I2cSingleMasterErr has only one variant
@@ -1125,7 +1119,6 @@ pub enum NackType {
 #[non_exhaustive]
 pub enum I2cSingleMasterErr {
     /// Received a NACK. The contained value denotes the byte where the NACK occurred.
-
     GotNACK(NackType),
     // Other errors like the 'clock low timeout' UCCLTOIFG may appear here in future.
 }
