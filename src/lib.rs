@@ -1,7 +1,7 @@
 //! Implementation of [`embedded_hal`] traits for MSP430FR2x5x family of microcontrollers.
 //! Here are the [`datasheet`] and [`User's guide`] for reference.
 //!
-//! As of this writing, the only supported board is the MSP430FR2355.
+//! As of this writing, the only supported MCUs are the MSP430FR2x5x series.
 //!
 //! [`embedded_hal`]: https://github.com/rust-embedded/embedded-hal
 //! [`datasheet`]: http://www.ti.com/lit/ds/symlink/msp430fr2355.pdf
@@ -17,12 +17,16 @@
 //! # Examples
 //!
 //! The `examples/` directory contains binary code examples using the HAL abstractions.
+//! These examples target the MSP430FR2355, particularly the MSP-EXP430FR2355 dev board.
 //! To flash the examples, make sure you have `mspdebug` with `tilib` support installed and in
-//! $PATH. Invoke `cargo run --example whatever` with the board plugged and the scripts should do
+//! $PATH. Invoke `cargo run --features msp430fr2355 --example whatever` with the board plugged and the scripts should do
 //! the trick, assuming your host is Linux and you are connected via Launchpad.
 //!
-//! # Features
+//! # Feature Flags
 //!
+//! Exactly one device feature must be enabled to specify which microcontroller is present. 
+//! More info can be found in the repository README.
+//! 
 //! An implementation of the pre-1.0 version of embedded-hal (e.g. 0.2.7 at time of writing) is
 //! available behind the `embedded-hal-02` feature flag. These traits are implemented on the same
 //! structs as the current embedded-hal implementation, so with this feature enabled you may mix and
