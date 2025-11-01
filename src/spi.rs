@@ -44,7 +44,7 @@ use crate::{
     hw_traits::eusci::{EusciSPI, Ucmode, Ucssel, UcxSpiCtw0},
 };
 use core::{convert::Infallible, marker::PhantomData};
-use msp430fr2355 as pac;
+use crate::pac;
 use nb::Error::WouldBlock;
 
 use embedded_hal::spi::{Mode, Phase, Polarity};

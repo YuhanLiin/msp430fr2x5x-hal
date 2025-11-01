@@ -9,7 +9,7 @@
 //! After choosing the most convenient data type for your application call the relevant method,
 //! such as [`BackupMemory::as_u8s()`], to recieve a mutable reference to the backup memory.
 
-use msp430fr2355::BKMEM;
+use crate::pac::BKMEM;
 
 /// Helper struct with static methods for interpreting the backup memory into more usable forms
 pub struct BackupMemory;
@@ -19,7 +19,7 @@ macro_rules! as_x {
         #[doc = "Interpret the backup memory as a `&mut"] #[doc = stringify!($arr)] #[doc = "`"]
         #[inline(always)]
         pub fn $fn_name(_reg: BKMEM) -> &'static mut $arr {
-            unsafe { &mut *(msp430fr2355::BKMEM::PTR as *mut $arr) }
+            unsafe { &mut *(BKMEM::PTR as *mut $arr) }
         }
     };
 }

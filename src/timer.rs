@@ -12,7 +12,7 @@ use crate::gpio::{Alternate1, Floating, Input, Pin, Pin2, Pin6, Pin7, P2, P5, P6
 use crate::hw_traits::timerb::{CCRn, RunningMode, Tbssel, TimerB};
 use core::convert::Infallible;
 use core::marker::PhantomData;
-use msp430fr2355 as pac;
+use crate::pac;
 
 pub use crate::hw_traits::timerb::{
     TimerDiv, TimerExDiv, CCR0, CCR1, CCR2, CCR3, CCR4, CCR5, CCR6,

@@ -5,7 +5,7 @@
 //! which disables write protection and directly provides a reference to the information memory as an array.
 //!
 
-use msp430fr2355::SYS;
+use crate::pac::SYS;
 
 /// A struct that manages writing and reading from information memory.
 pub struct InfoMemory(());

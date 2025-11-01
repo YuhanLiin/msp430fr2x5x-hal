@@ -26,7 +26,7 @@ use crate::hw_traits::eusci::{EUsciUart, UartUcxStatw, UcaCtlw0, Ucssel};
 use core::convert::Infallible;
 use core::marker::PhantomData;
 use core::num::NonZeroU32;
-use msp430fr2355 as pac;
+use crate::pac;
 
 /// Bit order of transmit and receive
 #[derive(Clone, Copy)]

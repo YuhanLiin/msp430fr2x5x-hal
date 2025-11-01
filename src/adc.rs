@@ -24,7 +24,7 @@
 
 use crate::{clock::{Aclk, Smclk}, gpio::*, pmm::{InternalTempSensor, InternalVRef}};
 use core::convert::Infallible;
-use msp430fr2355::ADC;
+use crate::pac::ADC;
 
 #[cfg(feature = "embedded-hal-02")]
 pub use embedded_hal_02::adc::Channel;

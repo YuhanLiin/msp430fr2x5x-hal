@@ -2,7 +2,7 @@
 
 use core::marker::PhantomData;
 
-use msp430fr2355::PMM;
+use crate::pac::PMM;
 
 /// PMM type
 pub struct Pmm(PMM);

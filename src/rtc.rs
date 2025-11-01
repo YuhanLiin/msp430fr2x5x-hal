@@ -4,7 +4,7 @@
 
 use crate::clock::Smclk;
 use core::{convert::Infallible, marker::PhantomData};
-use msp430fr2355 as pac;
+use crate::pac;
 use pac::{rtc::rtcctl::RTCSS_A, RTC};
 
 mod sealed {

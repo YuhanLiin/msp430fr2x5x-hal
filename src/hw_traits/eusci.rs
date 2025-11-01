@@ -1,5 +1,5 @@
 use super::Steal;
-use msp430fr2355 as pac;
+use crate::pac;
 
 use embedded_hal::spi::{Mode, Phase, Polarity};
 

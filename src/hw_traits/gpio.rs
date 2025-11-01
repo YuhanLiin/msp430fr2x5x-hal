@@ -1,5 +1,5 @@
 use super::Steal;
-use msp430fr2355 as pac;
+use crate::pac;
 
 pub trait GpioPeriph: Steal {
     fn pxin_rd(&self) -> u8;

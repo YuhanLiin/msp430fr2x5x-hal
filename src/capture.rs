@@ -14,7 +14,7 @@ use crate::gpio::{
 use crate::hw_traits::timerb::{CCRn, Ccis, Cm};
 use crate::timer::{read_tbxiv, CapCmpTimer3, CapCmpTimer7, TimerVector};
 use core::marker::PhantomData;
-use msp430fr2355 as pac;
+use crate::pac;
 
 pub use crate::timer::{
     CapCmp, TimerConfig, TimerDiv, TimerExDiv, TimerPeriph, CCR0, CCR1, CCR2, CCR3, CCR4, CCR5,

@@ -48,14 +48,14 @@
 //! the GPIO pins will take on their reset values when LOCKLPM5 is cleared.
 
 use core::arch::asm;
-use msp430fr2355::{Peripherals, RTC};
+use crate::pac::{Peripherals, RTC};
 
 use crate::{
     rtc::{Rtc, RtcVloclk},
     watchdog::{WatchdogSelect, Wdt},
 };
 
-pub use msp430fr2355::pmm::pmmctl0::SVSHE_A as SvsState;
+pub use crate::pac::pmm::pmmctl0::SVSHE_A as SvsState;
 
 // Status register:
 // SCG1 SCG0 OSC_OFF CPU_OFF GIE N Z C

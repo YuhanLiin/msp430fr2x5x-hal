@@ -1,8 +1,7 @@
-use msp430fr2355::{P1, P3, SAC0, SAC1, SAC2, SAC3};
-
 use crate::{
     gpio::{Pin, Alternate3, Input, Floating, Pin1, Pin2, Pin3, Pin5, Pin6, Pin7}, 
-    hw_traits::Steal, sac::{LoadTrigger, VRef, PowerMode}
+    hw_traits::Steal, sac::{LoadTrigger, VRef, PowerMode},
+    pac::{P1, P3, SAC0, SAC1, SAC2, SAC3},
 };
 
 /// Trait representing a Smart Analog Combo (SAC) peripheral.

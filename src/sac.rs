@@ -48,9 +48,11 @@
 //!
 
 use core::marker::PhantomData;
-use msp430fr2355::TB2;
 
-use crate::{hw_traits::sac::{MSel, NSel, SacPeriph}, pmm::InternalVRef, pwm::{CCR1, CCR2}, timer::SubTimer};
+use crate::{
+    hw_traits::sac::{MSel, NSel, SacPeriph}, pmm::InternalVRef, pwm::{CCR1, CCR2}, timer::SubTimer,
+    pac::TB2,
+};
 
 /// A builder for configuring a Smart Analog Combo (SAC) unit
 pub struct SacConfig;

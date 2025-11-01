@@ -16,7 +16,7 @@
 //! insertion functions and the regular result function.
 //!
 
-use msp430fr2355::CRC;
+use crate::pac::CRC;
 
 /// Struct representing a Cyclic Redundancy Check (CRC) peripheral initialised with a seed.
 pub struct Crc(CRC);

@@ -6,7 +6,7 @@
 
 use crate::clock::{Aclk, Smclk};
 use core::{convert::Infallible, marker::PhantomData};
-use msp430fr2355 as pac;
+use crate::pac;
 use pac::wdt_a::wdtctl::WDTSSEL_A;
 
 const PASSWORD: u8 = 0x5A;

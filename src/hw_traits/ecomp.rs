@@ -1,9 +1,9 @@
 use super::Steal;
 use crate::{
     ecomp::{ComparatorDac, BufferSel, DacVRef, FilterStrength, Hysteresis, NegativeInput, OutputPolarity, PositiveInput, PowerMode}, 
-    gpio::{Alternate2, Floating, Input, Output, Pin, Pin0, Pin1, Pin4, Pin5}, sac::Amplifier
+    gpio::{Alternate2, Floating, Input, Output, Pin, Pin0, Pin1, Pin4, Pin5}, sac::Amplifier,
+    pac::{E_COMP0, E_COMP1, P1, P2, SAC0, SAC1, SAC2, SAC3},
 };
-use msp430fr2355::{E_COMP0, E_COMP1, P1, P2, SAC0, SAC1, SAC2, SAC3};
 
 #[allow(non_camel_case_types)]
 pub trait ECompPeriph: Steal {

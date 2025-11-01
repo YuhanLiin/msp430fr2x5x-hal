@@ -18,7 +18,7 @@ use crate::hw_traits::gpio::{GpioPeriph, IntrPeriph};
 use crate::util::BitsExt;
 use core::convert::Infallible;
 use core::marker::PhantomData;
-use msp430fr2355 as pac;
+use crate::pac;
 pub use pac::{P1, P2, P3, P4, P5, P6};
 
 mod sealed {
