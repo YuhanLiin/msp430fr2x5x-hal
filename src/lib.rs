@@ -63,10 +63,11 @@ pub mod spi;
 pub mod timer;
 pub mod watchdog;
 
+mod device_specific;
 mod hw_traits;
 mod util;
 
-pub use msp430fr2355 as pac;
+pub use device_specific::pac;
 
 #[cfg(feature = "embedded-hal-02")]
 pub use embedded_hal_02 as ehal_02;

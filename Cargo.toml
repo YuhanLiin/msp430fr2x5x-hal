@@ -13,15 +13,23 @@ documentation = "https://docs.rs/msp430fr2x5x-hal"
 default = []
 embedded-hal-02 = ["dep:embedded-hal-02", "dep:void"]
 
+# msp430fr2x5x
+msp430fr2355 = ["dep:msp430fr2355", "2x5x", "sac"] # 32kB FRAM + SAC unit
+msp430fr2353 = ["dep:msp430fr2355", "2x5x", "sac"] # 16kB FRAM + SAC unit
+msp430fr2155 = ["dep:msp430fr2355", "2x5x"]        # 32kB FRAM
+msp430fr2153 = ["dep:msp430fr2355", "2x5x"]        # 16kB FRAM
+2x5x = []
+sac = []
+
 [dependencies]
 msp430 = "0.4.0"
+msp430fr2355 = { version = "0.5.2", features = ["rt", "critical-section"], optional = true }
 nb = "1.1"
 void = { version = "1.0.2", default-features = false, optional = true }
 embedded-hal-02 = { package = 'embedded-hal', version = "0.2.7", features = ["unproven"], optional = true }
 embedded-hal = { version = "1.0" }
 embedded-hal-nb = { version = "1.0" }
 embedded-io = "0.6"
-msp430fr2355 = { version = "0.5.2", features = ["rt", "critical-section"] }
 bitflags = "2.9"
 
 [dev-dependencies]
