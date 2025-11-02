@@ -21,12 +21,10 @@
 //!
 
 use crate::clock::{Aclk, Clock, Smclk};
-use crate::gpio::{Alternate1, Pin, Pin1, Pin2, Pin3, Pin5, Pin6, Pin7, P1, P4};
 use crate::hw_traits::eusci::{EUsciUart, UartUcxStatw, UcaCtlw0, Ucssel};
 use core::convert::Infallible;
 use core::marker::PhantomData;
 use core::num::NonZeroU32;
-use crate::pac;
 
 /// Bit order of transmit and receive
 #[derive(Clone, Copy)]
@@ -144,12 +142,6 @@ pub trait SerialUsci: EUsciUart {
     type RxPin;
 }
 
-impl SerialUsci for pac::E_USCI_A0 {
-    type ClockPin = UsciA0ClockPin;
-    type TxPin = UsciA0TxPin;
-    type RxPin = UsciA0RxPin;
-}
-
 macro_rules! impl_serial_pin {
     ($struct_name: ident, $port: ty, $pin: ty) => {
         impl<DIR> From<Pin<$port, $pin, Alternate1<DIR>>> for $struct_name {
@@ -160,36 +152,7 @@ macro_rules! impl_serial_pin {
         }
     };
 }
-
-/// UCLK pin for E_USCI_A0
-pub struct UsciA0ClockPin;
-impl_serial_pin!(UsciA0ClockPin, P1, Pin5);
-
-/// Tx pin for E_USCI_A0
-pub struct UsciA0TxPin;
-impl_serial_pin!(UsciA0TxPin, P1, Pin7);
-
-/// Rx pin for E_USCI_A0
-pub struct UsciA0RxPin;
-impl_serial_pin!(UsciA0RxPin, P1, Pin6);
-
-impl SerialUsci for pac::E_USCI_A1 {
-    type ClockPin = UsciA1ClockPin;
-    type TxPin = UsciA1TxPin;
-    type RxPin = UsciA1RxPin;
-}
-
-/// UCLK pin for E_USCI_A1
-pub struct UsciA1ClockPin;
-impl_serial_pin!(UsciA1ClockPin, P4, Pin1);
-
-/// Tx pin for E_USCI_A1
-pub struct UsciA1TxPin;
-impl_serial_pin!(UsciA1TxPin, P4, Pin3);
-
-/// Rx pin for E_USCI_A1
-pub struct UsciA1RxPin;
-impl_serial_pin!(UsciA1RxPin, P4, Pin2);
+pub(crate) use impl_serial_pin;
 
 /// Typestate for a serial interface with an unspecified clock source
 pub struct NoClockSet {

@@ -40,11 +40,9 @@
 //! | eUSCI_B1 | `P4.7` | `P4.6` | `P4.5` | `P4.4`|
 use crate::{
     clock::{Aclk, Smclk},
-    gpio::{Alternate1, Pin, Pin0, Pin1, Pin2, Pin3, Pin4, Pin5, Pin6, Pin7, P1, P4},
     hw_traits::eusci::{EusciSPI, Ucmode, Ucssel, UcxSpiCtw0},
 };
 use core::{convert::Infallible, marker::PhantomData};
-use crate::pac;
 use nb::Error::WouldBlock;
 
 use embedded_hal::spi::{Mode, Phase, Polarity};
@@ -61,34 +59,6 @@ pub trait SpiUsci: EusciSPI {
     type STE;
 }
 
-impl SpiUsci for pac::E_USCI_A0 {
-    type MISO = UsciA0MISOPin;
-    type MOSI = UsciA0MOSIPin;
-    type SCLK = UsciA0SCLKPin;
-    type STE = UsciA0STEPin;
-}
-
-impl SpiUsci for pac::E_USCI_A1 {
-    type MISO = UsciA1MISOPin;
-    type MOSI = UsciA1MOSIPin;
-    type SCLK = UsciA1SCLKPin;
-    type STE = UsciA1STEPin;
-}
-
-impl SpiUsci for pac::E_USCI_B0 {
-    type MISO = UsciB0MISOPin;
-    type MOSI = UsciB0MOSIPin;
-    type SCLK = UsciB0SCLKPin;
-    type STE = UsciB0STEPin;
-}
-
-impl SpiUsci for pac::E_USCI_B1 {
-    type MISO = UsciB1MISOPin;
-    type MOSI = UsciB1MOSIPin;
-    type SCLK = UsciB1SCLKPin;
-    type STE = UsciB1STEPin;
-}
-
 // Allows a GPIO pin to be converted into an SPI object
 macro_rules! impl_spi_pin {
     ($struct_name: ident, $port: ty, $pin: ty) => {
@@ -100,69 +70,7 @@ macro_rules! impl_spi_pin {
         }
     };
 }
-
-/// SPI MISO pin for eUSCI A0 (P1.6)
-pub struct UsciA0MISOPin;
-impl_spi_pin!(UsciA0MISOPin, P1, Pin6);
-
-/// SPI MOSI pin for eUSCI A0 (P1.7)
-pub struct UsciA0MOSIPin;
-impl_spi_pin!(UsciA0MOSIPin, P1, Pin7);
-
-/// SPI SCLK pin for eUSCI A0 (P1.5)
-pub struct UsciA0SCLKPin;
-impl_spi_pin!(UsciA0SCLKPin, P1, Pin5);
-
-/// SPI STE pin for eUSCI A0 (P1.4)
-pub struct UsciA0STEPin;
-impl_spi_pin!(UsciA0STEPin, P1, Pin4);
-
-/// SPI MISO pin for eUSCI A1 (P4.2)
-pub struct UsciA1MISOPin;
-impl_spi_pin!(UsciA1MISOPin, P4, Pin2);
-
-/// SPI MOSI pin for eUSCI A1 (P4.3)
-pub struct UsciA1MOSIPin;
-impl_spi_pin!(UsciA1MOSIPin, P4, Pin3);
-
-/// SPI SCLK pin for eUSCI A1 (P4.1)
-pub struct UsciA1SCLKPin;
-impl_spi_pin!(UsciA1SCLKPin, P4, Pin1);
-/// SPI STE pin for eUSCI A1 (P4.0)
-pub struct UsciA1STEPin;
-impl_spi_pin!(UsciA1STEPin, P4, Pin0);
-
-/// SPI MISO pin for eUSCI B0 (P1.3)
-pub struct UsciB0MISOPin;
-impl_spi_pin!(UsciB0MISOPin, P1, Pin3);
-
-/// SPI MOSI pin for eUSCI B0 (P1.2)
-pub struct UsciB0MOSIPin;
-impl_spi_pin!(UsciB0MOSIPin, P1, Pin2);
-
-/// SPI SCLK pin for eUSCI B0 (P1.1)
-pub struct UsciB0SCLKPin;
-impl_spi_pin!(UsciB0SCLKPin, P1, Pin1);
-
-/// SPI STE pin for eUSCI B0 (P1.0)
-pub struct UsciB0STEPin;
-impl_spi_pin!(UsciB0STEPin, P1, Pin0);
-
-/// SPI MISO pin for eUSCI B1 (P4.7)
-pub struct UsciB1MISOPin;
-impl_spi_pin!(UsciB1MISOPin, P4, Pin7);
-
-/// SPI MOSI pin for eUSCI B1 (P4.6)
-pub struct UsciB1MOSIPin;
-impl_spi_pin!(UsciB1MOSIPin, P4, Pin6);
-
-/// SPI SCLK pin for eUSCI B1 (P4.5)
-pub struct UsciB1SCLKPin;
-impl_spi_pin!(UsciB1SCLKPin, P4, Pin5);
-
-/// SPI STE pin for eUSCI B1 (P4.4)
-pub struct UsciB1STEPin;
-impl_spi_pin!(UsciB1STEPin, P4, Pin4);
+pub(crate) use impl_spi_pin;
 
 /// Typestate for an SPI bus whose role has not yet been chosen.
 pub struct RoleNotSet;

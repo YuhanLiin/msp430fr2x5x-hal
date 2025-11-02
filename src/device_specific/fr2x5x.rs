@@ -262,6 +262,46 @@ pub mod ecomp {
     );
 }
 
+/* I2C */
+mod i2c {
+    use crate::{pac::*, gpio::*, i2c::{impl_i2c_pin, I2cUsci}};
+
+    /// I2C SCL pin for eUSCI B0
+    pub struct UsciB0SCLPin;
+    impl_i2c_pin!(UsciB0SCLPin, P1, Pin3);
+
+    /// I2C SDA pin for eUSCI B0
+    pub struct UsciB0SDAPin;
+    impl_i2c_pin!(UsciB0SDAPin, P1, Pin2);
+
+    /// UCLKI pin for eUSCI B0. Used as an external clock source.
+    pub struct UsciB0UCLKIPin;
+    impl_i2c_pin!(UsciB0UCLKIPin, P1, Pin1);
+
+    /// I2C SCL pin for eUSCI B1
+    pub struct UsciB1SCLPin;
+    impl_i2c_pin!(UsciB1SCLPin, P4, Pin7);
+
+    /// I2C SDA pin for eUSCI B1
+    pub struct UsciB1SDAPin;
+    impl_i2c_pin!(UsciB1SDAPin, P4, Pin6);
+
+    /// UCLKI pin for eUSCI B1. Used as an external clock source.
+    pub struct UsciB1UCLKIPin;
+    impl_i2c_pin!(UsciB1UCLKIPin, P4, Pin5);
+
+    impl I2cUsci for E_USCI_B0 {
+        type ClockPin = UsciB0SCLPin;
+        type DataPin = UsciB0SDAPin;
+        type ExternalClockPin = UsciB0UCLKIPin;
+    }
+    impl I2cUsci for E_USCI_B1 {
+        type ClockPin = UsciB1SCLPin;
+        type DataPin = UsciB1SDAPin;
+        type ExternalClockPin = UsciB1UCLKIPin;
+    }
+}
+
 /* Information Memory */
 pub const INFO_MEM_SIZE: usize = 512;
 
@@ -360,6 +400,140 @@ mod sac {
         sac3oa, sac3pga, sac3dac, sac3dat
     );
 }
+
+/* Serial */
+mod serial {
+    use crate::{pac::*, gpio::*, serial::*};
+
+    impl SerialUsci for E_USCI_A0 {
+        type ClockPin = UsciA0ClockPin;
+        type TxPin = UsciA0TxPin;
+        type RxPin = UsciA0RxPin;
+    }
+    impl SerialUsci for E_USCI_A1 {
+        type ClockPin = UsciA1ClockPin;
+        type TxPin = UsciA1TxPin;
+        type RxPin = UsciA1RxPin;
+    }
+    /// UCLK pin for E_USCI_A0
+    pub struct UsciA0ClockPin;
+    impl_serial_pin!(UsciA0ClockPin, P1, Pin5);
+
+    /// Tx pin for E_USCI_A0
+    pub struct UsciA0TxPin;
+    impl_serial_pin!(UsciA0TxPin, P1, Pin7);
+
+    /// Rx pin for E_USCI_A0
+    pub struct UsciA0RxPin;
+    impl_serial_pin!(UsciA0RxPin, P1, Pin6);
+
+    /// UCLK pin for E_USCI_A1
+    pub struct UsciA1ClockPin;
+    impl_serial_pin!(UsciA1ClockPin, P4, Pin1);
+
+    /// Tx pin for E_USCI_A1
+    pub struct UsciA1TxPin;
+    impl_serial_pin!(UsciA1TxPin, P4, Pin3);
+
+    /// Rx pin for E_USCI_A1
+    pub struct UsciA1RxPin;
+    impl_serial_pin!(UsciA1RxPin, P4, Pin2);
+}
+
+/* SPI */
+mod spi {
+    use crate::{pac::*, gpio::*, spi::*};
+    impl SpiUsci for E_USCI_A0 {
+        type MISO = UsciA0MISOPin;
+        type MOSI = UsciA0MOSIPin;
+        type SCLK = UsciA0SCLKPin;
+        type STE = UsciA0STEPin;
+    }
+
+    impl SpiUsci for E_USCI_A1 {
+        type MISO = UsciA1MISOPin;
+        type MOSI = UsciA1MOSIPin;
+        type SCLK = UsciA1SCLKPin;
+        type STE = UsciA1STEPin;
+    }
+
+    impl SpiUsci for E_USCI_B0 {
+        type MISO = UsciB0MISOPin;
+        type MOSI = UsciB0MOSIPin;
+        type SCLK = UsciB0SCLKPin;
+        type STE = UsciB0STEPin;
+    }
+
+    impl SpiUsci for E_USCI_B1 {
+        type MISO = UsciB1MISOPin;
+        type MOSI = UsciB1MOSIPin;
+        type SCLK = UsciB1SCLKPin;
+        type STE = UsciB1STEPin;
+    }
+    /// SPI MISO pin for eUSCI A0 (P1.6)
+    pub struct UsciA0MISOPin;
+    impl_spi_pin!(UsciA0MISOPin, P1, Pin6);
+
+    /// SPI MOSI pin for eUSCI A0 (P1.7)
+    pub struct UsciA0MOSIPin;
+    impl_spi_pin!(UsciA0MOSIPin, P1, Pin7);
+
+    /// SPI SCLK pin for eUSCI A0 (P1.5)
+    pub struct UsciA0SCLKPin;
+    impl_spi_pin!(UsciA0SCLKPin, P1, Pin5);
+
+    /// SPI STE pin for eUSCI A0 (P1.4)
+    pub struct UsciA0STEPin;
+    impl_spi_pin!(UsciA0STEPin, P1, Pin4);
+
+    /// SPI MISO pin for eUSCI A1 (P4.2)
+    pub struct UsciA1MISOPin;
+    impl_spi_pin!(UsciA1MISOPin, P4, Pin2);
+
+    /// SPI MOSI pin for eUSCI A1 (P4.3)
+    pub struct UsciA1MOSIPin;
+    impl_spi_pin!(UsciA1MOSIPin, P4, Pin3);
+
+    /// SPI SCLK pin for eUSCI A1 (P4.1)
+    pub struct UsciA1SCLKPin;
+    impl_spi_pin!(UsciA1SCLKPin, P4, Pin1);
+    /// SPI STE pin for eUSCI A1 (P4.0)
+    pub struct UsciA1STEPin;
+    impl_spi_pin!(UsciA1STEPin, P4, Pin0);
+
+    /// SPI MISO pin for eUSCI B0 (P1.3)
+    pub struct UsciB0MISOPin;
+    impl_spi_pin!(UsciB0MISOPin, P1, Pin3);
+
+    /// SPI MOSI pin for eUSCI B0 (P1.2)
+    pub struct UsciB0MOSIPin;
+    impl_spi_pin!(UsciB0MOSIPin, P1, Pin2);
+
+    /// SPI SCLK pin for eUSCI B0 (P1.1)
+    pub struct UsciB0SCLKPin;
+    impl_spi_pin!(UsciB0SCLKPin, P1, Pin1);
+
+    /// SPI STE pin for eUSCI B0 (P1.0)
+    pub struct UsciB0STEPin;
+    impl_spi_pin!(UsciB0STEPin, P1, Pin0);
+
+    /// SPI MISO pin for eUSCI B1 (P4.7)
+    pub struct UsciB1MISOPin;
+    impl_spi_pin!(UsciB1MISOPin, P4, Pin7);
+
+    /// SPI MOSI pin for eUSCI B1 (P4.6)
+    pub struct UsciB1MOSIPin;
+    impl_spi_pin!(UsciB1MOSIPin, P4, Pin6);
+
+    /// SPI SCLK pin for eUSCI B1 (P4.5)
+    pub struct UsciB1SCLKPin;
+    impl_spi_pin!(UsciB1SCLKPin, P4, Pin5);
+
+    /// SPI STE pin for eUSCI B1 (P4.4)
+    pub struct UsciB1STEPin;
+    impl_spi_pin!(UsciB1STEPin, P4, Pin4);
+}
+
 
 /* Timer */
 mod timer {
