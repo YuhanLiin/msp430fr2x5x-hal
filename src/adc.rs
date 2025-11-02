@@ -22,7 +22,7 @@
 //! reference to [`InternalVRef`] or [`InternalTempSensor`] respectively. Channels 14 and 15 require no prior
 //! configuration, so the two functions below provide a reference that can be used to read from these channels.
 
-use crate::{clock::{Aclk, Smclk}, gpio::*, pmm::{InternalTempSensor, InternalVRef}};
+use crate::{clock::{Aclk, Smclk}, pmm::{InternalTempSensor, InternalVRef}};
 use core::convert::Infallible;
 use crate::pac::ADC;
 
@@ -228,19 +228,7 @@ macro_rules! impl_adc_channel_pin {
         }
     };
 }
-
-impl_adc_channel_pin!(P1, Pin0, 0);
-impl_adc_channel_pin!(P1, Pin1, 1);
-impl_adc_channel_pin!(P1, Pin2, 2);
-impl_adc_channel_pin!(P1, Pin3, 3);
-impl_adc_channel_pin!(P1, Pin4, 4);
-impl_adc_channel_pin!(P1, Pin5, 5);
-impl_adc_channel_pin!(P1, Pin6, 6);
-impl_adc_channel_pin!(P1, Pin7, 7);
-impl_adc_channel_pin!(P5, Pin0, 8);
-impl_adc_channel_pin!(P5, Pin1, 9);
-impl_adc_channel_pin!(P5, Pin2, 10);
-impl_adc_channel_pin!(P5, Pin3, 11);
+pub(crate) use impl_adc_channel_pin;
 
 // A few ADC channels don't correspond to pins.
 macro_rules! impl_adc_channel_extra {

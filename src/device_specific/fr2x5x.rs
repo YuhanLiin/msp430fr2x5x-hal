@@ -77,3 +77,21 @@ mod gpio {
     gpio_impl!(p5: P5 => p5in, p5out, p5dir, p5ren, p5selc, p5sel0, p5sel1);
     gpio_impl!(p6: P6 => p6in, p6out, p6dir, p6ren, p6selc, p6sel0, p6sel1);
 }
+
+/* ADC */
+mod adc {
+    use crate::{gpio::*, adc::*};
+
+    impl_adc_channel_pin!(P1, Pin0, 0);
+    impl_adc_channel_pin!(P1, Pin1, 1);
+    impl_adc_channel_pin!(P1, Pin2, 2);
+    impl_adc_channel_pin!(P1, Pin3, 3);
+    impl_adc_channel_pin!(P1, Pin4, 4);
+    impl_adc_channel_pin!(P1, Pin5, 5);
+    impl_adc_channel_pin!(P1, Pin6, 6);
+    impl_adc_channel_pin!(P1, Pin7, 7);
+    impl_adc_channel_pin!(P5, Pin0, 8);
+    impl_adc_channel_pin!(P5, Pin1, 9);
+    impl_adc_channel_pin!(P5, Pin2, 10);
+    impl_adc_channel_pin!(P5, Pin3, 11);
+}
