@@ -1,6 +1,8 @@
 //! Real time counter
 //!
-//! Can be used as a periodic 16-bit timer
+//! Can be used as a periodic 16-bit timer.
+//! 
+//! Supports using SMCLK or VLOCLK as clock sources (ACLK and XT1CLK not yet supported).
 
 use crate::clock::Smclk;
 use core::{convert::Infallible, marker::PhantomData};

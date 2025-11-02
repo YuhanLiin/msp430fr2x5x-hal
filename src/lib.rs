@@ -40,17 +40,14 @@
 
 #![deny(missing_docs)]
 
-pub mod adc;
 pub mod bak_mem;
 pub mod batch_gpio;
 pub mod capture;
 pub mod clock;
 pub mod crc;
 pub mod delay;
-pub mod ecomp;
 pub mod fram;
 pub mod gpio;
-pub mod i2c;
 pub mod lpm;
 pub mod pmm;
 pub mod prelude;
@@ -61,6 +58,15 @@ pub mod serial;
 pub mod spi;
 pub mod timer;
 pub mod watchdog;
+
+#[cfg(feature = "adc")]
+pub mod adc;
+
+#[cfg(feature = "ecomp")]
+pub mod ecomp;
+
+#[cfg(feature = "eusci_b")]
+pub mod i2c;
 
 #[cfg(feature = "info_mem")]
 pub mod info_mem;

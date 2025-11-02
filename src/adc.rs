@@ -183,6 +183,7 @@ pub enum Resolution {
     /// 10-bit ADC conversion result. The conversion step takes 12 ADCCLK cycles.
     #[default]
     _10BIT = 0b01,
+    #[cfg(feature = "adc12bit")]
     /// 12-bit ADC conversion result. The conversion step takes 14 ADCCLK cycles.
     _12BIT = 0b10,
 }

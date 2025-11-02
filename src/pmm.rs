@@ -23,8 +23,12 @@ impl InternalVRef {
 pub enum ReferenceVoltage {
     /// 1.5V
     _1V5 = 0b00,
+
+    #[cfg(feature = "enhanced_ref")]
     /// 2.0V
     _2V0 = 0b01,
+    
+    #[cfg(feature = "enhanced_ref")]
     /// 2.5V
     _2V5 = 0b10,
 }

@@ -2,6 +2,7 @@ pub trait Steal {
     unsafe fn steal() -> Self;
 }
 
+#[cfg(feature = "ecomp")]
 pub mod ecomp;
 pub mod eusci;
 pub mod gpio;
