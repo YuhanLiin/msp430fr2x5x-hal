@@ -10,6 +10,8 @@
 //! such as [`BackupMemory::as_u8s()`], to recieve a mutable reference to the backup memory.
 
 use crate::pac::BKMEM;
+use crate::device_specific::BAK_MEM_SIZE;
+use core::mem::size_of;
 
 /// Helper struct with static methods for interpreting the backup memory into more usable forms
 pub struct BackupMemory;
@@ -19,21 +21,22 @@ macro_rules! as_x {
         #[doc = "Interpret the backup memory as a `&mut"] #[doc = stringify!($arr)] #[doc = "`"]
         #[inline(always)]
         pub fn $fn_name(_reg: BKMEM) -> &'static mut $arr {
+            const { assert!( core::mem::size_of::<$arr>() == BAK_MEM_SIZE ) }
             unsafe { &mut *(BKMEM::PTR as *mut $arr) }
         }
     };
 }
 
 impl BackupMemory {
-    as_x!(as_u8s,   [u8; 32]);
-    as_x!(as_u16s,  [u16;16]);
-    as_x!(as_u32s,  [u32; 8]);
-    as_x!(as_u64s,  [u64; 4]);
-    as_x!(as_u128s, [u128;2]);
+    as_x!(as_u8s,   [u8;  BAK_MEM_SIZE/size_of::<u8>()  ]);
+    as_x!(as_u16s,  [u16; BAK_MEM_SIZE/size_of::<u16>() ]);
+    as_x!(as_u32s,  [u32; BAK_MEM_SIZE/size_of::<u32>() ]);
+    as_x!(as_u64s,  [u64; BAK_MEM_SIZE/size_of::<u64>() ]);
+    as_x!(as_u128s, [u128;BAK_MEM_SIZE/size_of::<u128>()]);
 
-    as_x!(as_i8s,   [i8; 32]);
-    as_x!(as_i16s,  [i16;16]);
-    as_x!(as_i32s,  [i32; 8]);
-    as_x!(as_i64s,  [i64; 4]);
-    as_x!(as_i128s, [i128;2]);
+    as_x!(as_i8s,   [i8;  BAK_MEM_SIZE/size_of::<i8>()  ]);
+    as_x!(as_i16s,  [i16; BAK_MEM_SIZE/size_of::<i16>() ]);
+    as_x!(as_i32s,  [i32; BAK_MEM_SIZE/size_of::<i32>() ]);
+    as_x!(as_i64s,  [i64; BAK_MEM_SIZE/size_of::<i64>() ]);
+    as_x!(as_i128s, [i128;BAK_MEM_SIZE/size_of::<i128>()]);
 }

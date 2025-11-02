@@ -51,7 +51,6 @@ pub mod ecomp;
 pub mod fram;
 pub mod gpio;
 pub mod i2c;
-pub mod info_mem;
 pub mod lpm;
 pub mod pmm;
 pub mod prelude;
@@ -62,6 +61,9 @@ pub mod serial;
 pub mod spi;
 pub mod timer;
 pub mod watchdog;
+
+#[cfg(feature = "info_mem")]
+pub mod info_mem;
 
 mod device_specific;
 mod hw_traits;

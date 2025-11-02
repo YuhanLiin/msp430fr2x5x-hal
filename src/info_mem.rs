@@ -5,7 +5,8 @@
 //! which disables write protection and directly provides a reference to the information memory as an array.
 //!
 
-use crate::pac::SYS;
+use crate::_pac::SYS;
+use crate::device_specific::INFO_MEM_SIZE;
 
 /// A struct that manages writing and reading from information memory.
 pub struct InfoMemory(());
@@ -23,6 +24,7 @@ macro_rules! as_x {
         #[doc = "` and return a mutable reference to it."]
         #[inline(always)]
         pub fn $fn_name(mut sys: SYS) -> (&'static mut $arr, System) {
+            const { assert!( core::mem::size_of::<$arr>() == INFO_MEM_SIZE ) }
             Self::disable_write_protect(&mut sys);
             let arr = unsafe { &mut *(INFO_MEM_START_ADDR as *mut $arr) };
             (arr, System(sys))
@@ -39,17 +41,17 @@ impl InfoMemory {
         );
     }
 
-    as_x!(as_u8s,   [u8;  512]);
-    as_x!(as_u16s,  [u16; 256]);
-    as_x!(as_u32s,  [u32; 128]);
-    as_x!(as_u64s,  [u64;  64]);
-    as_x!(as_u128s, [u128; 32]);
+    as_x!(as_u8s,   [u8;   INFO_MEM_SIZE/size_of::<u8>()]);
+    as_x!(as_u16s,  [u16;  INFO_MEM_SIZE/size_of::<u16>()]);
+    as_x!(as_u32s,  [u32;  INFO_MEM_SIZE/size_of::<u32>()]);
+    as_x!(as_u64s,  [u64;  INFO_MEM_SIZE/size_of::<u64>()]);
+    as_x!(as_u128s, [u128; INFO_MEM_SIZE/size_of::<u128>()]);
 
-    as_x!(as_i8s,   [i8;  512]);
-    as_x!(as_i16s,  [i16; 256]);
-    as_x!(as_i32s,  [i32; 128]);
-    as_x!(as_i64s,  [i64;  64]);
-    as_x!(as_i128s, [i128; 32]);
+    as_x!(as_i8s,   [i8;   INFO_MEM_SIZE/size_of::<i8>()]);
+    as_x!(as_i16s,  [i16;  INFO_MEM_SIZE/size_of::<i16>()]);
+    as_x!(as_i32s,  [i32;  INFO_MEM_SIZE/size_of::<i32>()]);
+    as_x!(as_i64s,  [i64;  INFO_MEM_SIZE/size_of::<i64>()]);
+    as_x!(as_i128s, [i128; INFO_MEM_SIZE/size_of::<i128>()]);
 }
 
 impl System {

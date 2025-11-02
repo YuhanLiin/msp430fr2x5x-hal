@@ -96,6 +96,9 @@ mod adc {
     impl_adc_channel_pin!(P5, Pin3, 11);
 }
 
+/* Backup Memory */
+pub const BAK_MEM_SIZE: usize = 32;
+
 /* eCOMP */
 pub mod ecomp {
     use core::convert::Infallible;
@@ -217,3 +220,6 @@ pub mod ecomp {
         cp1int, cp1iv
     );
 }
+
+/* Information Memory */
+pub const INFO_MEM_SIZE: usize = 512;
