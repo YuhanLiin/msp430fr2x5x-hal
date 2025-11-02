@@ -99,6 +99,47 @@ mod adc {
 /* Backup Memory */
 pub const BAK_MEM_SIZE: usize = 32;
 
+/* Capture */
+mod capture {
+    use crate::{pac::*, gpio::*, capture::CapturePeriph};
+
+    impl CapturePeriph for TB0 {
+        type Gpio1 = Pin<P1, Pin6, Alternate2<Input<Floating>>>;
+        type Gpio2 = Pin<P1, Pin7, Alternate2<Input<Floating>>>;
+        type Gpio3 = ();
+        type Gpio4 = ();
+        type Gpio5 = ();
+        type Gpio6 = ();
+    }
+
+    impl CapturePeriph for TB1 {
+        type Gpio1 = Pin<P2, Pin0, Alternate1<Input<Floating>>>;
+        type Gpio2 = Pin<P2, Pin1, Alternate1<Input<Floating>>>;
+        type Gpio3 = ();
+        type Gpio4 = ();
+        type Gpio5 = ();
+        type Gpio6 = ();
+    }
+
+    impl CapturePeriph for TB2 {
+        type Gpio1 = Pin<P5, Pin0, Alternate1<Input<Floating>>>;
+        type Gpio2 = Pin<P5, Pin1, Alternate1<Input<Floating>>>;
+        type Gpio3 = ();
+        type Gpio4 = ();
+        type Gpio5 = ();
+        type Gpio6 = ();
+    }
+
+    impl CapturePeriph for TB3 {
+        type Gpio1 = Pin<P6, Pin0, Alternate1<Input<Floating>>>;
+        type Gpio2 = Pin<P6, Pin1, Alternate1<Input<Floating>>>;
+        type Gpio3 = Pin<P6, Pin2, Alternate1<Input<Floating>>>;
+        type Gpio4 = Pin<P6, Pin3, Alternate1<Input<Floating>>>;
+        type Gpio5 = Pin<P6, Pin4, Alternate1<Input<Floating>>>;
+        type Gpio6 = Pin<P6, Pin5, Alternate1<Input<Floating>>>;
+    }
+}
+
 /* eCOMP */
 pub mod ecomp {
     use core::convert::Infallible;
@@ -223,3 +264,141 @@ pub mod ecomp {
 
 /* Information Memory */
 pub const INFO_MEM_SIZE: usize = 512;
+
+/* PWM */
+mod pwm {
+    use crate::{pac::*, gpio::*, pwm::*};
+
+    // TB0
+    impl PwmPeriph<CCR1> for TB0 {
+        type Gpio = Pin<P1, Pin6, Alternate2<Output>>;
+        const ALT: Alt = Alt::Alt2;
+    }
+    impl PwmPeriph<CCR2> for TB0 {
+        type Gpio = Pin<P1, Pin7, Alternate2<Output>>;
+        const ALT: Alt = Alt::Alt2;
+    }
+
+    // TB1
+    impl PwmPeriph<CCR1> for TB1 {
+        type Gpio = Pin<P2, Pin0, Alternate1<Output>>;
+        const ALT: Alt = Alt::Alt1;
+    }
+    impl PwmPeriph<CCR2> for TB1 {
+        type Gpio = Pin<P2, Pin1, Alternate1<Output>>;
+        const ALT: Alt = Alt::Alt1;
+    }
+
+    // TB2
+    impl PwmPeriph<CCR1> for TB2 {
+        type Gpio = Pin<P5, Pin0, Alternate1<Output>>;
+        const ALT: Alt = Alt::Alt1;
+    }
+    impl PwmPeriph<CCR2> for TB2 {
+        type Gpio = Pin<P5, Pin1, Alternate1<Output>>;
+        const ALT: Alt = Alt::Alt1;
+    }
+
+    // TB3
+    impl PwmPeriph<CCR1> for TB3 {
+        type Gpio = Pin<P6, Pin0, Alternate1<Output>>;
+        const ALT: Alt = Alt::Alt1;
+    }
+    impl PwmPeriph<CCR2> for TB3 {
+        type Gpio = Pin<P6, Pin1, Alternate1<Output>>;
+        const ALT: Alt = Alt::Alt1;
+    }
+    impl PwmPeriph<CCR3> for TB3 {
+        type Gpio = Pin<P6, Pin2, Alternate1<Output>>;
+        const ALT: Alt = Alt::Alt1;
+    }
+    impl PwmPeriph<CCR4> for TB3 {
+        type Gpio = Pin<P6, Pin3, Alternate1<Output>>;
+        const ALT: Alt = Alt::Alt1;
+    }
+    impl PwmPeriph<CCR5> for TB3 {
+        type Gpio = Pin<P6, Pin4, Alternate1<Output>>;
+        const ALT: Alt = Alt::Alt1;
+    }
+    impl PwmPeriph<CCR6> for TB3 {
+        type Gpio = Pin<P6, Pin5, Alternate1<Output>>;
+        const ALT: Alt = Alt::Alt1;
+    }
+}
+
+/* Timer */
+mod timer {
+    use crate::{pac, gpio::*, timer::*, hw_traits::{Steal, timerb::*}};
+
+    timerb_impl!(
+        TB0,
+        tb0,
+        tb0ctl,
+        tb0ex0,
+        tb0iv,
+        tb0r,
+        [CCR0, tb0cctl0, tb0ccr0],
+        [CCR1, tb0cctl1, tb0ccr1],
+        [CCR2, tb0cctl2, tb0ccr2]
+    );
+
+    timerb_impl!(
+        TB1,
+        tb1,
+        tb1ctl,
+        tb1ex0,
+        tb1iv,
+        tb1r,
+        [CCR0, tb1cctl0, tb1ccr0],
+        [CCR1, tb1cctl1, tb1ccr1],
+        [CCR2, tb1cctl2, tb1ccr2]
+    );
+
+    timerb_impl!(
+        TB2,
+        tb2,
+        tb2ctl,
+        tb2ex0,
+        tb2iv,
+        tb2r,
+        [CCR0, tb2cctl0, tb2ccr0],
+        [CCR1, tb2cctl1, tb2ccr1],
+        [CCR2, tb2cctl2, tb2ccr2]
+    );
+
+    timerb_impl!(
+        TB3,
+        tb3,
+        tb3ctl,
+        tb3ex0,
+        tb3iv,
+        tb3r,
+        [CCR0, tb3cctl0, tb3ccr0],
+        [CCR1, tb3cctl1, tb3ccr1],
+        [CCR2, tb3cctl2, tb3ccr2],
+        [CCR3, tb3cctl3, tb3ccr3],
+        [CCR4, tb3cctl4, tb3ccr4],
+        [CCR5, tb3cctl5, tb3ccr5],
+        [CCR6, tb3cctl6, tb3ccr6]
+    );
+    
+    impl TimerPeriph for TB0 {
+        type Tbxclk = Pin<P2, Pin7, Alternate1<Input<Floating>>>;
+    }
+    impl CapCmpTimer3 for TB0 {}
+
+    impl TimerPeriph for TB1 {
+        type Tbxclk = Pin<P2, Pin2, Alternate1<Input<Floating>>>;
+    }
+    impl CapCmpTimer3 for TB1 {}
+
+    impl TimerPeriph for TB2 {
+        type Tbxclk = Pin<P5, Pin2, Alternate1<Input<Floating>>>;
+    }
+    impl CapCmpTimer3 for TB2 {}
+
+    impl TimerPeriph for TB3 {
+        type Tbxclk = Pin<P6, Pin6, Alternate1<Input<Floating>>>;
+    }
+    impl CapCmpTimer7 for TB3 {}
+}

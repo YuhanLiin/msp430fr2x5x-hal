@@ -8,11 +8,9 @@
 //! `Capture` and `Pwm`.
 
 use crate::clock::{Aclk, Smclk};
-use crate::gpio::{Alternate1, Floating, Input, Pin, Pin2, Pin6, Pin7, P2, P5, P6};
 use crate::hw_traits::timerb::{CCRn, RunningMode, Tbssel, TimerB};
 use core::convert::Infallible;
 use core::marker::PhantomData;
-use crate::pac;
 
 pub use crate::hw_traits::timerb::{
     TimerDiv, TimerExDiv, CCR0, CCR1, CCR2, CCR3, CCR4, CCR5, CCR6,
@@ -44,26 +42,6 @@ pub trait CapCmpTimer7:
     + CapCmp<CCR6>
 {
 }
-
-impl TimerPeriph for pac::TB0 {
-    type Tbxclk = Pin<P2, Pin7, Alternate1<Input<Floating>>>;
-}
-impl CapCmpTimer3 for pac::TB0 {}
-
-impl TimerPeriph for pac::TB1 {
-    type Tbxclk = Pin<P2, Pin2, Alternate1<Input<Floating>>>;
-}
-impl CapCmpTimer3 for pac::TB1 {}
-
-impl TimerPeriph for pac::TB2 {
-    type Tbxclk = Pin<P5, Pin2, Alternate1<Input<Floating>>>;
-}
-impl CapCmpTimer3 for pac::TB2 {}
-
-impl TimerPeriph for pac::TB3 {
-    type Tbxclk = Pin<P6, Pin6, Alternate1<Input<Floating>>>;
-}
-impl CapCmpTimer7 for pac::TB3 {}
 
 /// Configuration object for the TimerB peripheral
 ///

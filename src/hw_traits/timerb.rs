@@ -1,5 +1,4 @@
 use super::Steal;
-use crate::pac;
 
 pub enum Tbssel {
     Tbxclk,
@@ -217,6 +216,7 @@ macro_rules! ccrn_impl {
         }
     };
 }
+pub(crate) use ccrn_impl;
 
 macro_rules! timerb_impl {
     ($TBx:ident, $tbx:ident, $tbxctl:ident, $tbxex:ident, $tbxiv:ident, $tbxr:ident, $([$CCRn:ident, $tbxcctln:ident, $tbxccrn:ident]),*) => {
@@ -324,55 +324,4 @@ macro_rules! timerb_impl {
         $(ccrn_impl!($TBx, $CCRn, $tbxcctln, $tbxccrn);)*
     };
 }
-
-timerb_impl!(
-    TB0,
-    tb0,
-    tb0ctl,
-    tb0ex0,
-    tb0iv,
-    tb0r,
-    [CCR0, tb0cctl0, tb0ccr0],
-    [CCR1, tb0cctl1, tb0ccr1],
-    [CCR2, tb0cctl2, tb0ccr2]
-);
-
-timerb_impl!(
-    TB1,
-    tb1,
-    tb1ctl,
-    tb1ex0,
-    tb1iv,
-    tb1r,
-    [CCR0, tb1cctl0, tb1ccr0],
-    [CCR1, tb1cctl1, tb1ccr1],
-    [CCR2, tb1cctl2, tb1ccr2]
-);
-
-timerb_impl!(
-    TB2,
-    tb2,
-    tb2ctl,
-    tb2ex0,
-    tb2iv,
-    tb2r,
-    [CCR0, tb2cctl0, tb2ccr0],
-    [CCR1, tb2cctl1, tb2ccr1],
-    [CCR2, tb2cctl2, tb2ccr2]
-);
-
-timerb_impl!(
-    TB3,
-    tb3,
-    tb3ctl,
-    tb3ex0,
-    tb3iv,
-    tb3r,
-    [CCR0, tb3cctl0, tb3ccr0],
-    [CCR1, tb3cctl1, tb3ccr1],
-    [CCR2, tb3cctl2, tb3ccr2],
-    [CCR3, tb3cctl3, tb3ccr3],
-    [CCR4, tb3cctl4, tb3ccr4],
-    [CCR5, tb3cctl5, tb3ccr5],
-    [CCR6, tb3cctl6, tb3ccr6]
-);
+pub(crate) use timerb_impl;
