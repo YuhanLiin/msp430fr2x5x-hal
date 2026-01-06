@@ -1,7 +1,5 @@
 use super::Steal;
-use crate::pac;
-
-use embedded_hal::spi::{Mode, Phase, Polarity};
+use embedded_hal::spi::Mode;
 
 /// Defines macros for a register associated struct to make reading/writing to this struct's
 /// register a lot less tedious.
@@ -39,6 +37,7 @@ macro_rules! reg_struct {
                  $($(.$int_name().bits($reg.$int_name as $int_size))*)?
             };
         }
+        pub(crate) use $macro_wr;
     };
 }
 
@@ -513,6 +512,7 @@ macro_rules! eusci_impl {
         }
     };
 }
+pub(crate) use eusci_impl;
 
 macro_rules! eusci_a_impl {
     ($intr_vec:ident,$EUsci:ident, $eusci:ident, $ucaxctlw0:ident, $ucaxctlw1:ident, $ucaxbrw:ident,
@@ -666,6 +666,7 @@ macro_rules! eusci_a_impl {
         }
     };
 }
+pub(crate) use eusci_a_impl;
 
 macro_rules! eusci_b_impl {
     ($intr_vec:ident, $EUsci:ident, $eusci:ident, $ucbxctlw0:ident, $ucbxctlw1:ident, $ucbxbrw:ident,
@@ -1010,107 +1011,4 @@ macro_rules! eusci_b_impl {
         }
     };
 }
-
-eusci_a_impl!(
-    EUSCI_A0,
-    E_USCI_A0,
-    e_usci_a0,
-    uca0ctlw0,
-    uca0ctlw1,
-    uca0brw,
-    uca0mctlw,
-    uca0statw,
-    uca0rxbuf,
-    uca0txbuf,
-    uca0ie,
-    uca0ifg,
-    uca0iv,
-    pac::e_usci_a0::uca0statw::R,
-    pac::e_usci_a0::uca0statw_spi::R,
-    uca0ctlw0_spi,
-    uca0statw_spi,
-    uca0ie_spi,
-    uca0ifg_spi
-);
-
-eusci_a_impl!(
-    EUSCI_A1,
-    E_USCI_A1,
-    e_usci_a1,
-    uca1ctlw0,
-    uca1ctlw1,
-    uca1brw,
-    uca1mctlw,
-    uca1statw,
-    uca1rxbuf,
-    uca1txbuf,
-    uca1ie,
-    uca1ifg,
-    uca1iv,
-    pac::e_usci_a1::uca1statw::R,
-    pac::e_usci_a1::uca1statw_spi::R,
-    uca1ctlw0_spi,
-    uca1statw_spi,
-    uca1ie_spi,
-    uca1ifg_spi
-);
-
-eusci_b_impl!(
-    EUSCI_B0,
-    E_USCI_B0,
-    e_usci_b0,
-    ucb0ctlw0,
-    ucb0ctlw1,
-    ucb0brw,
-    ucb0statw,
-    ucb0tbcnt,
-    ucb0rxbuf,
-    ucb0txbuf,
-    ucb0i2coa0,
-    ucb0i2coa1,
-    ucb0i2coa2,
-    ucb0i2coa3,
-    ucb0addrx,
-    ucb0addmask,
-    ucb0i2csa,
-    ucb0ie,
-    ucb0ifg,
-    ucb0iv,
-    pac::e_usci_b0::ucb0statw::R,
-    pac::e_usci_b0::ucb0ifg::R,
-    pac::e_usci_b0::ucb0statw_spi::R,
-    ucb0ctlw0_spi,
-    ucb0statw_spi,
-    ucb0ie_spi,
-    ucb0ifg_spi
-);
-
-eusci_b_impl!(
-    EUSCI_B1,
-    E_USCI_B1,
-    e_usci_b1,
-    ucb1ctlw0,
-    ucb1ctlw1,
-    ucb1brw,
-    ucb1statw,
-    ucb1tbcnt,
-    ucb1rxbuf,
-    ucb1txbuf,
-    ucb1i2coa0,
-    ucb1i2coa1,
-    ucb1i2coa2,
-    ucb1i2coa3,
-    ucb1addrx,
-    ucb1addmask,
-    ucb1i2csa,
-    ucb1ie,
-    ucb1ifg,
-    ucb1iv,
-    pac::e_usci_b1::ucb1statw::R,
-    pac::e_usci_b1::ucb1ifg::R,
-    pac::e_usci_b1::ucb1statw_spi::R,
-    ucb1ctlw0_spi,
-    ucb1statw_spi,
-    ucb1ie_spi,
-    ucb1ifg_spi
-);
+pub(crate) use eusci_b_impl;
