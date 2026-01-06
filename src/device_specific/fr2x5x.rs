@@ -100,15 +100,19 @@ mod adc {
 pub mod ecomp {
     use core::convert::Infallible;
 
-    use crate::{gpio::*, ecomp::*, sac::Amplifier};
+    use crate::{gpio::*, ecomp::*};
     use crate::hw_traits::{Steal, ecomp::*};
-    use crate::pac::{E_COMP0, E_COMP1, SAC0, SAC1, SAC2, SAC3};
+    use crate::pac::{E_COMP0, E_COMP1};
+    #[cfg(feature = "sac")]
+    use crate::{sac::Amplifier, pac::{SAC0, SAC1, SAC2, SAC3}};
 
     impl ECompInputs for E_COMP0 {
         type COMPx_0   = Pin<P1, Pin0, Alternate2<Input<Floating>>>;
         type COMPx_1   = Pin<P1, Pin1, Alternate2<Input<Floating>>>;
         type COMPx_Out = Pin<P2, Pin0, Alternate2<Output>>;
+        #[cfg(feature = "sac")]
         type SACp = Amplifier<SAC0>;
+        #[cfg(feature = "sac")]
         type SACn = Amplifier<SAC2>;
         
         type DeviceSpecific0    = (); // Internal 1.2V reference. No type required.
@@ -122,7 +126,9 @@ pub mod ecomp {
         type COMPx_0 = Pin<P2, Pin5, Alternate2<Input<Floating>>>;
         type COMPx_1 = Pin<P2, Pin4, Alternate2<Input<Floating>>>;
         type COMPx_Out = Pin<P2, Pin1, Alternate2<Output>>;
+        #[cfg(feature = "sac")]
         type SACp = Amplifier<SAC1>;
+        #[cfg(feature = "sac")]
         type SACn = Amplifier<SAC3>;
 
         type DeviceSpecific0    = (); // Internal 1.2V reference. No type required.
@@ -143,6 +149,7 @@ pub mod ecomp {
         COMPx_1(COMP::COMPx_1),
         /// Internal 1.2V reference
         _1V2,
+        #[cfg(feature = "sac")]
         /// Output of amplifier SAC0 for eCOMP0, SAC2 for eCOMP1.
         ///
         /// Requires a reference to ensure that it has been configured.
@@ -159,6 +166,7 @@ pub mod ecomp {
                 PositiveInput::COMPx_0(_)   => 0b000,
                 PositiveInput::COMPx_1(_)   => 0b001,
                 PositiveInput::_1V2         => 0b010,
+                #[cfg(feature = "sac")]
                 PositiveInput::OAxO(_)      => 0b101,
                 PositiveInput::Dac(_)       => 0b110,
             }
@@ -175,6 +183,7 @@ pub mod ecomp {
         COMPx_1(COMP::COMPx_1),
         /// Internal 1.2V reference
         _1V2,
+        #[cfg(feature = "sac")]
         /// Output of amplifier SAC1 for eCOMP0, SAC3 for eCOMP1.
         OAxO(&'a COMP::SACn),
         /// This eCOMP's internal 6-bit DAC
@@ -187,6 +196,7 @@ pub mod ecomp {
                 NegativeInput::COMPx_0(_)   => 0b000,
                 NegativeInput::COMPx_1(_)   => 0b001,
                 NegativeInput::_1V2         => 0b010,
+                #[cfg(feature = "sac")]
                 NegativeInput::OAxO(_)      => 0b101,
                 NegativeInput::Dac(_)       => 0b110,
             }
