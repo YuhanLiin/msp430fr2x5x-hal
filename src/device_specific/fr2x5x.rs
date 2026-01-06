@@ -647,9 +647,9 @@ mod spi {
 
 /* Timer */
 mod timer {
-    use crate::{pac, gpio::*, timer::*, hw_traits::{Steal, timerb::*}};
+    use crate::{pac::{self,*}, gpio::*, timer::*, hw_traits::{Steal, timer_b::*}};
 
-    timerb_impl!(
+    timer_b_impl!(
         TB0,
         tb0,
         tb0ctl,
@@ -661,7 +661,7 @@ mod timer {
         [CCR2, tb0cctl2, tb0ccr2]
     );
 
-    timerb_impl!(
+    timer_b_impl!(
         TB1,
         tb1,
         tb1ctl,
@@ -673,7 +673,7 @@ mod timer {
         [CCR2, tb1cctl2, tb1ccr2]
     );
 
-    timerb_impl!(
+    timer_b_impl!(
         TB2,
         tb2,
         tb2ctl,
@@ -685,7 +685,7 @@ mod timer {
         [CCR2, tb2cctl2, tb2ccr2]
     );
 
-    timerb_impl!(
+    timer_b_impl!(
         TB3,
         tb3,
         tb3ctl,

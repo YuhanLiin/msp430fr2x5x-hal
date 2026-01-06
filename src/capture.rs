@@ -7,7 +7,7 @@
 //! be decided before any of them can be used. This differs from `Pwm`, where pins are initialized
 //! on an individual basis.
 
-use crate::hw_traits::timerb::{CCRn, Ccis, Cm};
+use crate::hw_traits::timer_base::{CCRn, Ccis, Cm};
 use crate::timer::{read_tbxiv, CapCmpTimer3, CapCmpTimer7, TimerVector};
 use core::marker::PhantomData;
 

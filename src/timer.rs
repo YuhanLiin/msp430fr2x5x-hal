@@ -8,11 +8,11 @@
 //! `Capture` and `Pwm`.
 
 use crate::clock::{Aclk, Smclk};
-use crate::hw_traits::timerb::{CCRn, RunningMode, Tbssel, TimerB};
+use crate::hw_traits::timer_base::{CCRn, RunningMode, Tbssel, TimerBase};
 use core::convert::Infallible;
 use core::marker::PhantomData;
 
-pub use crate::hw_traits::timerb::{
+pub use crate::hw_traits::timer_base::{
     TimerDiv, TimerExDiv, CCR0, CCR1, CCR2, CCR3, CCR4, CCR5, CCR6,
 };
 
@@ -23,7 +23,7 @@ impl<T: CCRn<C>, C> CapCmp<C> for T {}
 
 // Trait effectively sealed by TimerB
 /// Trait indicating that the peripheral can be used as a timer
-pub trait TimerPeriph: TimerB + CapCmp<CCR0> {
+pub trait TimerPeriph: TimerBase + CapCmp<CCR0> {
     /// Pin type used for external TBxCLK of this timer
     type Tbxclk;
 }
@@ -212,7 +212,7 @@ pub enum TimerVector {
 }
 
 #[inline]
-pub(crate) fn read_tbxiv<T: TimerB>(timer: &T) -> TimerVector {
+pub(crate) fn read_tbxiv<T: TimerBase>(timer: &T) -> TimerVector {
     match timer.tbxiv_rd() {
         0 => TimerVector::NoInterrupt,
         2 => TimerVector::SubTimer1,
@@ -229,7 +229,7 @@ pub(crate) fn read_tbxiv<T: TimerB>(timer: &T) -> TimerVector {
 /// Interrupt vector register for determining which timer caused an ISR
 pub struct TBxIV<T>(PhantomData<T>);
 
-impl<T: TimerB> TBxIV<T> {
+impl<T: TimerBase> TBxIV<T> {
     #[inline]
     /// Read the timer interrupt vector. Automatically resets corresponding interrupt flag.
     pub fn interrupt_vector(&mut self) -> TimerVector {

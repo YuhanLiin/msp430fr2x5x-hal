@@ -1,3 +1,5 @@
+// Functionality common to both TimerA and TimerB
+
 use super::Steal;
 
 pub enum Tbssel {
@@ -64,7 +66,7 @@ pub enum Ccis {
     Vcc,
 }
 
-pub trait TimerB: Steal {
+pub trait TimerBase: Steal {
     /// Reset timer countdown
     fn reset(&self);
 
@@ -218,7 +220,7 @@ macro_rules! ccrn_impl {
 }
 pub(crate) use ccrn_impl;
 
-macro_rules! timerb_impl {
+macro_rules! timer_base_impl {
     ($TBx:ident, $tbx:ident, $tbxctl:ident, $tbxex:ident, $tbxiv:ident, $tbxr:ident, $([$CCRn:ident, $tbxcctln:ident, $tbxccrn:ident]),*) => {
         impl Steal for pac::$TBx {
             #[inline(always)]
@@ -227,7 +229,7 @@ macro_rules! timerb_impl {
             }
         }
 
-        impl TimerB for pac::$TBx {
+        impl TimerBase for pac::$TBx {
             #[inline(always)]
             fn reset(&self) {
                 unsafe { self.$tbxctl.set_bits(|w| w.tbclr().set_bit()) };
@@ -324,4 +326,4 @@ macro_rules! timerb_impl {
         $(ccrn_impl!($TBx, $CCRn, $tbxcctln, $tbxccrn);)*
     };
 }
-pub(crate) use timerb_impl;
+pub(crate) use timer_base_impl;

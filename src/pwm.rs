@@ -7,7 +7,7 @@
 //! appropriate alternate-function GPIO pin. Only initialized pins can be used for PWM.
 
 use crate::gpio::ChangeSelectBits;
-use crate::hw_traits::timerb::{CCRn, Outmod};
+use crate::hw_traits::timer_base::{CCRn, Outmod};
 use crate::timer::{CapCmpTimer3, CapCmpTimer7};
 use core::marker::PhantomData;
 
