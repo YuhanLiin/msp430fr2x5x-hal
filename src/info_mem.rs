@@ -37,7 +37,7 @@ impl InfoMemory {
     fn disable_write_protect(sys: &mut SYS) {
         sys.syscfg0.write(|w| w
             .frwppw().variant(SYSCFG0_PASSWORD)
-            .dfwp().dfwp_0()
+            .dfwp().clear_bit()
         );
     }
 

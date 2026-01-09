@@ -478,7 +478,7 @@ macro_rules! eusci_impl {
 
             #[inline(always)]
             fn iv_rd(&self) -> u16 {
-                self.$ucxiv().read().uciv().bits()
+                self.$ucxiv().read().bits()
             }
 
             fn is_busy(&self) -> bool {

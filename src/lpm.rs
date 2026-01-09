@@ -209,7 +209,7 @@ fn enter_lpmx_5<MODE: WatchdogSelect>(mut wdt: Wdt<MODE>, svs: SvsState, regs: P
     regs.PMM.pmmctl0.write(|w| w
         .pmmpw().variant(PASSWORD)
         .svshe().variant(svs)
-        .pmmregoff().pmmregoff_1()
+        .pmmregoff().set_bit()
     );
 
     // Write incorrect password to PMM to lock

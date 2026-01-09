@@ -156,7 +156,7 @@ impl<MODE: WatchdogSelect> Wdt<MODE> {
     #[inline]
     pub fn wait(&mut self) -> nb::Result<(), Infallible> {
         let sfr = unsafe { &*pac::SFR::ptr() };
-        if sfr.sfrifg1.read().wdtifg().is_wdtifg_1() {
+        if sfr.sfrifg1.read().wdtifg().bit_is_set() {
             unsafe { sfr.sfrifg1.clear_bits(|w| w.wdtifg().clear_bit()) };
             Ok(())
         } else {

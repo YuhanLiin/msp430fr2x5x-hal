@@ -370,7 +370,7 @@ impl AdcConfig<ClockSet> {
         let adcdiv = self.clock_divider.adcdiv();
         adc_reg.adcctl1.write(|w| { w
             .adcssel().bits(adcssel)
-            .adcshp().adcshp_1()
+            .adcshp().set_bit()
             .adcdiv().bits(adcdiv)
         });
 

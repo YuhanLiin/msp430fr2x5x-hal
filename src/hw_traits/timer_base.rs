@@ -106,11 +106,13 @@ pub trait TimerBase: Steal {
     fn get_tbxr(&self) -> u16;
 }
 
+#[repr(u8)]
 pub enum RunningMode {
     Up = 0b01,
     Continuous = 0b10,
     UpDown = 0b11,
 }
+#[repr(u8)]
 pub enum Mode {
     Stop = 0b00,
     Up = 0b01,
@@ -170,15 +172,11 @@ macro_rules! ccrn_impl {
 
             #[inline(always)]
             fn config_cap_mode(&self, cm: Cm, ccis: Ccis) {
-                self.$tbxcctln.write(|w| {
-                    w.cap()
-                        .capture()
-                        .scs()
-                        .sync()
-                        .cm()
-                        .bits(cm as u8)
-                        .ccis()
-                        .bits(ccis as u8)
+                self.$tbxcctln.write(|w| unsafe { w
+                    .cap().set_bit()
+                    .scs().set_bit()
+                    .cm().bits(cm as u8)
+                    .ccis().bits(ccis as u8)
                 });
             }
 
@@ -269,12 +267,12 @@ macro_rules! timer_base_impl {
 
             #[inline(always)]
             fn is_stopped(&self) -> bool {
-                self.$tbxctl.read().mc().is_stop()
+                self.$tbxctl.read().mc().bits() == (Mode::Stop as u8)
             }
 
             #[inline(always)]
             fn stop(&self) {
-                unsafe { self.$tbxctl.clear_bits(|w| w.mc().stop()) };
+                unsafe { self.$tbxctl.clear_bits(|w| w.mc().bits(Mode::Stop as u8)) };
             }
 
             #[inline(always)]
