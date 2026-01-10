@@ -362,18 +362,22 @@ pub trait I2CUcbIfgOut {
     fn ucrxifg0(&self) -> bool;
 }
 
-macro_rules! eusci_impl {
-    ($intr_vec:ident, $EUsci:ident, $eusci:ident, $ucxctlw0:ident, $ucxctlw1:ident, $ucxbrw:ident,
-     $ucxstatw:ident, $ucxrxbuf:ident, $ucxtxbuf:ident, $ucxie:ident, $ucxifg:ident,
-     $ucxiv:ident, $StatwSpi:ty) => {
-        impl Steal for pac::$EUsci {
+macro_rules! eusci_steal_impl {
+    ($EUsci:ident) => {
+        impl Steal for $EUsci {
             #[inline(always)]
             unsafe fn steal() -> Self {
-                pac::Peripherals::conjure().$EUsci
+                crate::pac::Peripherals::steal().$EUsci
             }
         }
+    };
+}
+pub(crate) use eusci_steal_impl;
 
-        impl EusciSPI for pac::$EUsci {
+macro_rules! eusci_spi_impl {
+    ($EUsci:ident, $ucxctlw0:ident, $ucxbrw:ident, $ucxstatw:ident, $ucxrxbuf:ident, 
+    $ucxtxbuf:ident, $ucxie:ident, $ucxifg:ident, $ucxiv:ident, $StatwSpi:ty) => {
+        impl EusciSPI for $EUsci {
             type Statw = $StatwSpi;
 
             #[inline(always)]
@@ -447,7 +451,8 @@ macro_rules! eusci_impl {
 
             #[inline(always)]
             // Set the SPI mode without disturbing the rest of the register.
-            fn set_spi_mode(&self, mode: Mode) {
+            fn set_spi_mode(&self, mode: embedded_hal::spi::Mode) {
+                use embedded_hal::spi::{Phase, Polarity};
                 let ucckph = match mode.phase {
                     Phase::CaptureOnFirstTransition => true,
                     Phase::CaptureOnSecondTransition => false,
@@ -512,31 +517,13 @@ macro_rules! eusci_impl {
         }
     };
 }
-pub(crate) use eusci_impl;
+pub(crate) use eusci_spi_impl;
 
-macro_rules! eusci_a_impl {
-    ($intr_vec:ident,$EUsci:ident, $eusci:ident, $ucaxctlw0:ident, $ucaxctlw1:ident, $ucaxbrw:ident,
+macro_rules! eusci_uart_impl {
+    ($EUsci:ident, $ucaxctlw0:ident, $ucaxctlw1:ident, $ucaxbrw:ident,
      $ucaxmctlw:ident, $ucaxstatw:ident, $ucaxrxbuf:ident, $ucaxtxbuf:ident, $ucaxie:ident,
-     $ucaxifg:ident, $ucaxiv:ident, $Statw:ty,
-     $StatwSpi:ty,
-     $ucaxctlw0spi:ident, $ucaxstatwspi:ident, $ucaxiespi:ident, $ucaxifgspi:ident) => {
-        eusci_impl!(
-            $intr_vec,
-            $EUsci,
-            $eusci,
-            $ucaxctlw0spi,
-            $ucaxctlw1,
-            $ucaxbrw,
-            $ucaxstatwspi,
-            $ucaxrxbuf,
-            $ucaxtxbuf,
-            $ucaxiespi,
-            $ucaxifgspi,
-            $ucaxiv,
-            $StatwSpi
-        );
-
-        impl EUsciUart for pac::$EUsci {
+     $ucaxifg:ident, $ucaxiv:ident, $Statw:ty) => {
+        impl EUsciUart for $EUsci {
             type Statw = $Statw;
 
             #[inline(always)]
@@ -666,33 +653,15 @@ macro_rules! eusci_a_impl {
         }
     };
 }
-pub(crate) use eusci_a_impl;
+pub(crate) use eusci_uart_impl;
 
-macro_rules! eusci_b_impl {
-    ($intr_vec:ident, $EUsci:ident, $eusci:ident, $ucbxctlw0:ident, $ucbxctlw1:ident, $ucbxbrw:ident,
+macro_rules! eusci_i2c_impl {
+    ($EUsci:ident, $ucbxctlw0:ident, $ucbxctlw1:ident, $ucbxbrw:ident,
      $ucbxstatw:ident, $ucbxtbcnt:ident, $ucbxrxbuf:ident, $ucbxtxbuf:ident, $ucbxi2coa0:ident,
      $ucbxi2coa1:ident, $ucbxi2coa2:ident, $ucbxi2coa3:ident, $ucbxaddrx:ident, $ucbxaddmask:ident,
      $ucbxi2csa:ident, $ucbxie:ident,
-     $ucbxifg:ident, $ucbxiv:ident, $Statw:ty, $Ifg:ty,
-     $StatwSpi:ty,
-     $ucbxctlw0spi:ident, $ucbxstatwspi:ident, $ucbxiespi:ident, $ucbxifgspi:ident) => {
-        eusci_impl!(
-            $intr_vec,
-            $EUsci,
-            $eusci,
-            $ucbxctlw0spi,
-            $ucbxctlw1,
-            $ucbxbrw,
-            $ucbxstatwspi,
-            $ucbxrxbuf,
-            $ucbxtxbuf,
-            $ucbxiespi,
-            $ucbxifgspi,
-            $ucbxiv,
-            $StatwSpi
-        );
-
-        impl EUsciI2C for pac::$EUsci {
+     $ucbxifg:ident, $ucbxiv:ident, $Ifg:ty,) => {
+        impl EUsciI2C for $EUsci {
             type IfgOut = $Ifg;
 
             #[inline(always)]
@@ -1011,4 +980,4 @@ macro_rules! eusci_b_impl {
         }
     };
 }
-pub(crate) use eusci_b_impl;
+pub(crate) use eusci_i2c_impl;

@@ -269,57 +269,20 @@ pub mod ecomp {
 
 /* eUSCI */
 mod eusci {
-    use crate::{pac, hw_traits::{Steal, eusci::*}};
-    use embedded_hal::spi::{Mode, Phase, Polarity};
+    use crate::{pac::*, hw_traits::{Steal, eusci::*}};
 
-    eusci_a_impl!(
-        EUSCI_A0,
-        E_USCI_A0,
-        e_usci_a0,
-        uca0ctlw0,
-        uca0ctlw1,
-        uca0brw,
-        uca0mctlw,
-        uca0statw,
-        uca0rxbuf,
-        uca0txbuf,
-        uca0ie,
-        uca0ifg,
-        uca0iv,
-        pac::e_usci_a0::uca0statw::R,
-        pac::e_usci_a0::uca0statw_spi::R,
-        uca0ctlw0_spi,
-        uca0statw_spi,
-        uca0ie_spi,
-        uca0ifg_spi
-    );
+    eusci_steal_impl!(E_USCI_A0);
+    eusci_steal_impl!(E_USCI_A1);
+    eusci_steal_impl!(E_USCI_B0);
+    eusci_steal_impl!(E_USCI_B1);
+}
 
-    eusci_a_impl!(
-        EUSCI_A1,
-        E_USCI_A1,
-        e_usci_a1,
-        uca1ctlw0,
-        uca1ctlw1,
-        uca1brw,
-        uca1mctlw,
-        uca1statw,
-        uca1rxbuf,
-        uca1txbuf,
-        uca1ie,
-        uca1ifg,
-        uca1iv,
-        pac::e_usci_a1::uca1statw::R,
-        pac::e_usci_a1::uca1statw_spi::R,
-        uca1ctlw0_spi,
-        uca1statw_spi,
-        uca1ie_spi,
-        uca1ifg_spi
-    );
+/* I2C */
+mod i2c {
+    use crate::{pac::*, gpio::*, hw_traits::eusci::*, i2c::{impl_i2c_pin, I2cUsci}};
 
-    eusci_b_impl!(
-        EUSCI_B0,
+    eusci_i2c_impl!(
         E_USCI_B0,
-        e_usci_b0,
         ucb0ctlw0,
         ucb0ctlw1,
         ucb0brw,
@@ -337,19 +300,10 @@ mod eusci {
         ucb0ie,
         ucb0ifg,
         ucb0iv,
-        pac::e_usci_b0::ucb0statw::R,
-        pac::e_usci_b0::ucb0ifg::R,
-        pac::e_usci_b0::ucb0statw_spi::R,
-        ucb0ctlw0_spi,
-        ucb0statw_spi,
-        ucb0ie_spi,
-        ucb0ifg_spi
+        crate::pac::e_usci_b0::ucb0ifg::R,
     );
-
-    eusci_b_impl!(
-        EUSCI_B1,
+    eusci_i2c_impl!(
         E_USCI_B1,
-        e_usci_b1,
         ucb1ctlw0,
         ucb1ctlw1,
         ucb1brw,
@@ -367,20 +321,8 @@ mod eusci {
         ucb1ie,
         ucb1ifg,
         ucb1iv,
-        pac::e_usci_b1::ucb1statw::R,
-        pac::e_usci_b1::ucb1ifg::R,
-        pac::e_usci_b1::ucb1statw_spi::R,
-        ucb1ctlw0_spi,
-        ucb1statw_spi,
-        ucb1ie_spi,
-        ucb1ifg_spi
+        crate::pac::e_usci_b1::ucb1ifg::R,
     );
-}
-
-/* I2C */
-mod i2c {
-    use crate::{pac::*, gpio::*, i2c::{impl_i2c_pin, I2cUsci}};
-
     /// I2C SCL pin for eUSCI B0
     pub struct UsciB0SCLPin;
     impl_i2c_pin!(UsciB0SCLPin, P1, Pin3);
@@ -518,7 +460,37 @@ mod sac {
 
 /* Serial */
 mod serial {
-    use crate::{pac::*, gpio::*, serial::*};
+    use crate::{pac::*, gpio::*, hw_traits::eusci::*, serial::*};
+
+    eusci_uart_impl!(
+        E_USCI_A0,
+        uca0ctlw0,
+        uca0ctlw1,
+        uca0brw,
+        uca0mctlw,
+        uca0statw,
+        uca0rxbuf,
+        uca0txbuf,
+        uca0ie,
+        uca0ifg,
+        uca0iv,
+        crate::pac::e_usci_a0::uca0statw::R
+    );
+
+    eusci_uart_impl!(
+        E_USCI_A1,
+        uca1ctlw0,
+        uca1ctlw1,
+        uca1brw,
+        uca1mctlw,
+        uca1statw,
+        uca1rxbuf,
+        uca1txbuf,
+        uca1ie,
+        uca1ifg,
+        uca1iv,
+        crate::pac::e_usci_a1::uca1statw::R
+    );
 
     impl SerialUsci for E_USCI_A0 {
         type ClockPin = UsciA0ClockPin;
@@ -557,7 +529,57 @@ mod serial {
 
 /* SPI */
 mod spi {
-    use crate::{pac::*, gpio::*, spi::*};
+    use crate::{pac::*, gpio::*, hw_traits::eusci::*, spi::*};
+
+    eusci_spi_impl!(
+        E_USCI_A0,
+        uca0ctlw0_spi,
+        uca0brw,
+        uca0statw_spi,
+        uca0rxbuf,
+        uca0txbuf,
+        uca0ie_spi,
+        uca0ifg_spi,
+        uca0iv,
+        crate::pac::e_usci_a0::uca0statw_spi::R
+    );
+    eusci_spi_impl!(
+        E_USCI_A1,
+        uca1ctlw0_spi,
+        uca1brw,
+        uca1statw_spi,
+        uca1rxbuf,
+        uca1txbuf,
+        uca1ie_spi,
+        uca1ifg_spi,
+        uca1iv,
+        crate::pac::e_usci_a1::uca1statw_spi::R
+    );
+    eusci_spi_impl!(
+        E_USCI_B0,
+        ucb0ctlw0_spi,
+        ucb0brw,
+        ucb0statw_spi,
+        ucb0rxbuf,
+        ucb0txbuf,
+        ucb0ie_spi,
+        ucb0ifg_spi,
+        ucb0iv,
+        crate::pac::e_usci_b0::ucb0statw_spi::R
+    );
+    eusci_spi_impl!(
+        E_USCI_B1,
+        ucb1ctlw0_spi,
+        ucb1brw,
+        ucb1statw_spi,
+        ucb1rxbuf,
+        ucb1txbuf,
+        ucb1ie_spi,
+        ucb1ifg_spi,
+        ucb1iv,
+        crate::pac::e_usci_b1::ucb1statw_spi::R
+    );
+
     impl SpiUsci for E_USCI_A0 {
         type MISO = UsciA0MISOPin;
         type MOSI = UsciA0MOSIPin;
