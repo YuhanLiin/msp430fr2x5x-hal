@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
+- The library now requires specifying a device feature (e.g. `msp430fr2355`) as part of the process to support more devices. Users must enable exactly one device feature that matches the device being targetted.
 - The underlying PAC version has been bumped to 0.6, which now uses svd2rust 0.37.1. This has changed the capitalisation of peripheral instances from `SCREAMING_CASE` to `snake_case`, e.g.`periph.WDT_A` is now `periph.wdt_a`. Peripheral type names have also changed case, and underscores have been omitted, e.g. `E_USCI_A0` is now `EUsciA0`.
 
 ## [v0.5.0] - 2025-10-30

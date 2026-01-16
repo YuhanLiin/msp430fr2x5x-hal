@@ -17,11 +17,11 @@ available on your PATH.
 
 # Usage
 
-A number of examples are provided, targetting the MSP430FR2355 (typically the MSP-EXP430FR2355 
-dev board). They can be built with `cargo build --example <example_name> --features <device>` 
+The `device-examples/` folder contains typical projects for various supported devices, each of which containing a number of examples
+They can be built by moving into the relevant project folder, then running `cargo build --example <example_name>`
 
 An example can be flashed to a connected device with 
-`cargo run --example <example_name> --features <device>`
+`cargo run --example <example_name>`
 
 # Supported Devices
 The library currently supports the MSP430FR2x5x subfamily, but intends to expand to the MSP430FR2xxx/4xxx family in time. 
@@ -38,15 +38,15 @@ The device being targetted is must be specified by enabling exactly one device f
 | MSP430FR2153 | `msp430fr2153` |
 
 The documentation on crates.rs (and example programs) target the MSP430FR2355. Documentation for a particular device can be 
-built by running `cargo doc --open --features <device>` in this repo, or `cargo doc --open --package msp430fr2x5x-hal` in a 
-cargo project with `msp430fr2x5x-hal` correctly configured as a dependency (including a specified device feature).
+built by running `cargo doc --open --features <device>` from within the `hal/` folder, or `cargo doc --open --package msp430fr2x5x-hal` in a 
+cargo project with `msp430fr2x5x-hal` correctly configured as a dependency, such as the projects in the `device-examples/` folder.
 
 ## Supporting additional devices
 
 The maintainers don't have access to every device in the MSP430FR2xxx / 4xxx family, so if you want to add support for a particular device (or subfamily) we are happy to accept pull requests. 
 To add support for a device (or subfamily) you should fork this repo and:
-1. Create a new file in `src/device_specific/`, import a Peripheral Access Crate (PAC) for your device, and follow the example in `src/device_specific/msp430fr2x5x.rs` to see how to e.g. mark which GPIO pins are capable of what functionality.
-2. Re-export your PAC and any device-specific constants to the rest of the library by appending an entry to `src/device_specific.rs`.
+1. Create a new file in `hal/src/device_specific/`, import a Peripheral Access Crate (PAC) for your device, and follow the example in `hal/src/device_specific/msp430fr2x5x.rs` to see how to e.g. mark which GPIO pins are capable of what functionality.
+2. Append an entry to `hal/src/device_specific.rs` to re-export your PAC and any device-specific constants to the rest of the library.
 
 # Functionality
 The library is mostly feature complete for the MSP430FR2x5x subfamily. There are a few edge cases not yet supported, such as:
