@@ -12,10 +12,8 @@ use core::arch::asm;
 
 use crate::delay::SysDelay;
 use crate::fram::{Fram, WaitStates};
-use crate::pac;
-use pac::cs::csctl1::DCORSEL_A;
-use pac::cs::csctl4::{SELA_A, SELMS_A};
-pub use pac::cs::csctl5::{DIVM_A as MclkDiv, DIVS_A as SmclkDiv};
+use crate::_pac::{self, cs::{csctl1::DCORSEL_A, csctl4::{SELA_A, SELMS_A}}};
+pub use crate::_pac::cs::csctl5::{DIVM_A as MclkDiv, DIVS_A as SmclkDiv};
 
 /// REFOCLK frequency
 pub const REFOCLK: u16 = 32768;
@@ -175,7 +173,7 @@ impl SmclkState for SmclkDisabled {
 /// Can only commit configurations to hardware if both MCLK and SMCLK settings have been
 /// configured. ACLK configurations are optional, with its default source being REFOCLK.
 pub struct ClockConfig<MCLK, SMCLK> {
-    periph: pac::CS,
+    periph: _pac::CS,
     mclk: MCLK,
     mclk_div: MclkDiv,
     aclk_sel: AclkSel,
@@ -196,7 +194,7 @@ macro_rules! make_clkconf {
 
 impl ClockConfig<NoClockDefined, NoClockDefined> {
     /// Converts CS into a fresh, unconfigured clock builder object
-    pub fn new(cs: pac::CS) -> Self {
+    pub fn new(cs: _pac::CS) -> Self {
         ClockConfig {
             periph: cs,
             smclk: NoClockDefined,

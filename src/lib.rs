@@ -84,6 +84,9 @@ mod util;
 
 pub use device_specific::pac;
 
+/// PAC with non-standard peripheral names corrected
+pub(crate) use device_specific::_pac;
+
 #[cfg(feature = "embedded-hal-02")]
 pub use embedded_hal_02 as ehal_02;
 

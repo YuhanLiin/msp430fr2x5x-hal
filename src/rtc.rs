@@ -6,8 +6,7 @@
 
 use crate::clock::Smclk;
 use core::{convert::Infallible, marker::PhantomData};
-use crate::pac;
-use pac::{rtc::rtcctl::RTCSS_A, RTC};
+use crate::_pac::{rtc::rtcctl::RTCSS_A, RTC};
 
 mod sealed {
     use super::*;
@@ -54,7 +53,7 @@ impl Rtc<RtcVloclk> {
     }
 }
 
-pub use pac::rtc::rtcctl::RTCPS_A as RtcDiv;
+pub use crate::_pac::rtc::rtcctl::RTCPS_A as RtcDiv;
 
 impl<SRC: RtcClockSrc> Rtc<SRC> {
     /// Configure the RTC to use SMCLK as clock source. Setting comes in effect the next time RTC

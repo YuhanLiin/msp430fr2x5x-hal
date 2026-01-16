@@ -9,8 +9,7 @@
 //! After choosing the most convenient data type for your application call the relevant method,
 //! such as [`BackupMemory::as_u8s()`], to recieve a mutable reference to the backup memory.
 
-use crate::pac::BKMEM;
-use crate::device_specific::BAK_MEM_SIZE;
+use crate::device_specific::{_pac::BKMEM, BAK_MEM_SIZE};
 use core::mem::size_of;
 
 /// Helper struct with static methods for interpreting the backup memory into more usable forms

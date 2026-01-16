@@ -1,6 +1,6 @@
 //! FRAM controller
 
-use crate::pac::FRCTL;
+use crate::_pac::FRCTL;
 
 /// FRAM controller
 pub struct Fram {

@@ -1,4 +1,7 @@
 pub use msp430fr2355 as pac;
+
+/// PAC with standardised peripheral names. For the fr2x5x this is just the PAC.
+pub use msp430fr2355 as _pac;
 /*         GPIO          */
 pub mod gpio {
     // Make PAC GPIO avilable as a re-export

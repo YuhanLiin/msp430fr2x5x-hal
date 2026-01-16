@@ -24,7 +24,7 @@
 
 use crate::{clock::{Aclk, Smclk}, pmm::{InternalTempSensor, InternalVRef}};
 use core::convert::Infallible;
-use crate::pac::ADC;
+use crate::_pac::ADC;
 
 #[cfg(feature = "embedded-hal-02")]
 pub use embedded_hal_02::adc::Channel;
@@ -466,7 +466,7 @@ impl Adc {
     ///
     /// `ref_voltage_mv` is the reference voltage of the ADC in millivolts.
     pub fn count_to_mv(&self, count: u16, ref_voltage_mv: u16) -> u16 {
-        use crate::pac::adc::adcctl2::ADCRES_A;
+        use crate::_pac::adc::adcctl2::ADCRES_A;
         let resolution = match self.adc_reg.adcctl2.read().adcres().variant() {
             ADCRES_A::ADCRES_0 => 256,  //  8-bit
             ADCRES_A::ADCRES_1 => 1024, // 10-bit

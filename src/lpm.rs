@@ -48,7 +48,7 @@
 //! the GPIO pins will take on their reset values when LOCKLPM5 is cleared.
 
 use core::arch::asm;
-use crate::pac::{Peripherals, RTC};
+use crate::_pac::{Peripherals, RTC};
 
 use crate::{
     rtc::{Rtc, RtcVloclk},
