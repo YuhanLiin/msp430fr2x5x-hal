@@ -20,6 +20,7 @@ msp430fr2155 = ["dep:msp430fr2355", "2x5x"]        # 32kB FRAM
 msp430fr2153 = ["dep:msp430fr2355", "2x5x"]        # 16kB FRAM
 2x5x = []
 sac = []
+tia = []
 
 [dependencies]
 msp430 = "0.4.0"

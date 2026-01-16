@@ -95,3 +95,115 @@ mod adc {
     impl_adc_channel_pin!(P5, Pin2, 10);
     impl_adc_channel_pin!(P5, Pin3, 11);
 }
+
+/* eCOMP */
+pub mod ecomp {
+    use core::convert::Infallible;
+
+    use crate::{gpio::*, ecomp::*, sac::Amplifier};
+    use crate::hw_traits::{Steal, ecomp::*};
+    use crate::pac::{E_COMP0, E_COMP1, SAC0, SAC1, SAC2, SAC3};
+
+    impl ECompInputs for E_COMP0 {
+        type COMPx_0   = Pin<P1, Pin0, Alternate2<Input<Floating>>>;
+        type COMPx_1   = Pin<P1, Pin1, Alternate2<Input<Floating>>>;
+        type COMPx_Out = Pin<P2, Pin0, Alternate2<Output>>;
+        type SACp = Amplifier<SAC0>;
+        type SACn = Amplifier<SAC2>;
+        
+        type DeviceSpecific0    = (); // Internal 1.2V reference. No type required.
+        type DeviceSpecific1    = Infallible; // Not used
+        type DeviceSpecific2Pos = Infallible; // Not used
+        type DeviceSpecific2Neg = Infallible; // Not used
+        type DeviceSpecific3Pos = Pin<P1, Pin1, Alternate2<Input<Floating>>>;
+        type DeviceSpecific3Neg = Pin<P3, Pin1, Alternate2<Input<Floating>>>;
+    }
+    impl ECompInputs for E_COMP1 {
+        type COMPx_0 = Pin<P2, Pin5, Alternate2<Input<Floating>>>;
+        type COMPx_1 = Pin<P2, Pin4, Alternate2<Input<Floating>>>;
+        type COMPx_Out = Pin<P2, Pin1, Alternate2<Output>>;
+        type SACp = Amplifier<SAC1>;
+        type SACn = Amplifier<SAC3>;
+
+        type DeviceSpecific0    = (); // Internal 1.2V reference. No type required.
+        type DeviceSpecific1    = Infallible; // Not used
+        type DeviceSpecific2Pos = Infallible; // Not used
+        type DeviceSpecific2Neg = Infallible; // Not used
+        type DeviceSpecific3Pos = Pin<P1, Pin5, Alternate2<Input<Floating>>>;
+        type DeviceSpecific3Neg = Pin<P3, Pin5, Alternate2<Input<Floating>>>;
+    }
+
+        /// List of possible inputs to the positive input of an eCOMP comparator.
+    /// The amplifier output and DAC options take a reference to ensure they have been configured.
+    #[allow(non_camel_case_types)]
+    pub enum PositiveInput<'a, COMP: ECompInputs> {
+        /// COMPx.0. P1.0 for COMP0, P2.5 for COMP1
+        COMPx_0(COMP::COMPx_0),
+        /// COMPx.1. P1.1 for COMP0, P2.4 for COMP1
+        COMPx_1(COMP::COMPx_1),
+        /// Internal 1.2V reference
+        _1V2,
+        /// Output of amplifier SAC0 for eCOMP0, SAC2 for eCOMP1.
+        ///
+        /// Requires a reference to ensure that it has been configured.
+        OAxO(&'a COMP::SACp),
+        /// This eCOMP's internal 6-bit DAC
+        ///
+        /// Requires a reference to ensure that it has been configured.
+        Dac(&'a dyn CompDacPeriph<COMP>),
+    }
+    impl<COMP: ECompInputs> PositiveInput<'_, COMP> {
+        #[inline(always)]
+        pub(crate) fn cppsel(&self) -> u8 {
+            match self {
+                PositiveInput::COMPx_0(_)   => 0b000,
+                PositiveInput::COMPx_1(_)   => 0b001,
+                PositiveInput::_1V2         => 0b010,
+                PositiveInput::OAxO(_)      => 0b101,
+                PositiveInput::Dac(_)       => 0b110,
+            }
+        }
+    }
+
+    /// List of possible inputs to the negative input of an eCOMP comparator.
+    /// The amplifier output and DAC options take a reference to ensure they have been configured.
+    #[allow(non_camel_case_types)]
+    pub enum NegativeInput<'a, COMP: ECompInputs> {
+        /// COMPx.0. P1.0 for COMP0, P2.5 for COMP1
+        COMPx_0(COMP::COMPx_0),
+        /// COMPx.1. P1.1 for COMP0, P2.4 for COMP1
+        COMPx_1(COMP::COMPx_1),
+        /// Internal 1.2V reference
+        _1V2,
+        /// Output of amplifier SAC1 for eCOMP0, SAC3 for eCOMP1.
+        OAxO(&'a COMP::SACn),
+        /// This eCOMP's internal 6-bit DAC
+        Dac(&'a dyn CompDacPeriph<COMP>),
+    }
+    impl<COMP: ECompInputs> NegativeInput<'_, COMP> {
+        #[inline(always)]
+        pub(crate) fn cpnsel(&self) -> u8 {
+            match self {
+                NegativeInput::COMPx_0(_)   => 0b000,
+                NegativeInput::COMPx_1(_)   => 0b001,
+                NegativeInput::_1V2         => 0b010,
+                NegativeInput::OAxO(_)      => 0b101,
+                NegativeInput::Dac(_)       => 0b110,
+            }
+        }
+    }
+
+    impl_ecomp!(
+        E_COMP0,
+        cpctl0, cpctl1,
+        cpdacctl, cpdacdata,
+        cpint, cpiv
+    );
+
+    impl_ecomp!(
+        E_COMP1,
+        cp1ctl0, cp1ctl1,
+        cp1dacctl, cp1dacdata,
+        cp1int, cp1iv
+    );
+}
