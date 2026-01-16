@@ -587,68 +587,6 @@ where
     }
 }
 
-// P1 alternate 1
-impl<PIN: PinNum, DIR> ToAlternate1 for Pin<P1, PIN, DIR> {}
-// P1 alternate 2
-impl<DIR> ToAlternate2 for Pin<P1, Pin0, DIR> {}
-impl<DIR> ToAlternate2 for Pin<P1, Pin1, DIR> {}
-impl<PULL> ToAlternate2 for Pin<P1, Pin2, Input<PULL>> {}
-impl<DIR> ToAlternate2 for Pin<P1, Pin6, DIR> {}
-impl<DIR> ToAlternate2 for Pin<P1, Pin7, DIR> {}
-// P1 alternate 3
-impl<PIN: PinNum, DIR> ToAlternate3 for Pin<P1, PIN, DIR> {}
-
-// P2 alternate 1
-impl<DIR> ToAlternate1 for Pin<P2, Pin0, DIR> {}
-impl<DIR> ToAlternate1 for Pin<P2, Pin1, DIR> {}
-impl<PULL> ToAlternate1 for Pin<P2, Pin2, Input<PULL>> {}
-impl<DIR> ToAlternate1 for Pin<P2, Pin3, DIR> {}
-impl<DIR> ToAlternate1 for Pin<P2, Pin6, DIR> {}
-impl<DIR> ToAlternate1 for Pin<P2, Pin7, DIR> {}
-// P2 alternate 2
-impl ToAlternate2 for Pin<P2, Pin0, Output> {}
-impl ToAlternate2 for Pin<P2, Pin1, Output> {}
-impl<DIR> ToAlternate2 for Pin<P2, Pin6, DIR> {}
-impl<DIR> ToAlternate2 for Pin<P2, Pin7, DIR> {}
-// P2 alternate 3
-impl<DIR> ToAlternate3 for Pin<P2, Pin4, DIR> {}
-impl<DIR> ToAlternate3 for Pin<P2, Pin5, DIR> {}
-
-// P3 alternate 1
-impl<DIR> ToAlternate1 for Pin<P3, Pin0, DIR> {}
-impl<DIR> ToAlternate1 for Pin<P3, Pin4, DIR> {}
-// P3 alternate 3
-impl<DIR> ToAlternate3 for Pin<P3, Pin1, DIR> {}
-impl<DIR> ToAlternate3 for Pin<P3, Pin2, DIR> {}
-impl<DIR> ToAlternate3 for Pin<P3, Pin3, DIR> {}
-impl<DIR> ToAlternate3 for Pin<P3, Pin5, DIR> {}
-impl<DIR> ToAlternate3 for Pin<P3, Pin6, DIR> {}
-impl<DIR> ToAlternate3 for Pin<P3, Pin7, DIR> {}
-
-// P4 alternate 1
-impl<PIN: PinNum, DIR> ToAlternate1 for Pin<P4, PIN, DIR> {}
-// P4 alternate 2
-impl<DIR> ToAlternate2 for Pin<P4, Pin0, DIR> {}
-impl<DIR> ToAlternate2 for Pin<P4, Pin2, DIR> {}
-impl<DIR> ToAlternate2 for Pin<P4, Pin3, DIR> {}
-
-// P5 alternate 1
-impl<DIR> ToAlternate1 for Pin<P5, Pin0, DIR> {}
-impl<DIR> ToAlternate1 for Pin<P5, Pin1, DIR> {}
-impl<DIR> ToAlternate1 for Pin<P5, Pin2, DIR> {}
-impl<DIR> ToAlternate1 for Pin<P5, Pin3, DIR> {}
-// P5 alternate 2
-impl<DIR> ToAlternate2 for Pin<P5, Pin0, DIR> {}
-impl<DIR> ToAlternate2 for Pin<P5, Pin1, DIR> {}
-// P5 alternate 3
-impl<DIR> ToAlternate3 for Pin<P5, Pin0, DIR> {}
-impl<DIR> ToAlternate3 for Pin<P5, Pin1, DIR> {}
-impl<DIR> ToAlternate3 for Pin<P5, Pin2, DIR> {}
-impl<DIR> ToAlternate3 for Pin<P5, Pin3, DIR> {}
-
-// P6 alternate 1
-impl<PIN: PinNum, DIR> ToAlternate1 for Pin<P6, PIN, DIR> {}
-
 mod ehal1 {
     use super::*;
     use core::convert::Infallible;

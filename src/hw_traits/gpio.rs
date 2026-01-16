@@ -1,5 +1,4 @@
 use super::Steal;
-use crate::pac;
 
 pub trait GpioPeriph: Steal {
     fn pxin_rd(&self) -> u8;
@@ -75,6 +74,7 @@ macro_rules! reg_methods {
         }
     };
 }
+pub(crate) use reg_methods;
 
 macro_rules! gpio_impl {
     ($px:ident: $Px:ident =>
@@ -82,7 +82,7 @@ macro_rules! gpio_impl {
      $(, [$pxies:ident, $pxie:ident, $pxifg:ident, $pxiv:ident])?
     ) => {
         mod $px {
-            use super::*;
+            use crate::{pac, hw_traits::{Steal, gpio::*}};
 
             impl Steal for pac::$Px {
                 #[inline(always)]
@@ -129,10 +129,4 @@ macro_rules! gpio_impl {
         }
     };
 }
-
-gpio_impl!(p1: P1 => p1in, p1out, p1dir, p1ren, p1selc, p1sel0, p1sel1, [p1ies, p1ie, p1ifg, p1iv]);
-gpio_impl!(p2: P2 => p2in, p2out, p2dir, p2ren, p2selc, p2sel0, p2sel1, [p2ies, p2ie, p2ifg, p2iv]);
-gpio_impl!(p3: P3 => p3in, p3out, p3dir, p3ren, p3selc, p3sel0, p3sel1, [p3ies, p3ie, p3ifg, p3iv]);
-gpio_impl!(p4: P4 => p4in, p4out, p4dir, p4ren, p4selc, p4sel0, p4sel1, [p4ies, p4ie, p4ifg, p4iv]);
-gpio_impl!(p5: P5 => p5in, p5out, p5dir, p5ren, p5selc, p5sel0, p5sel1);
-gpio_impl!(p6: P6 => p6in, p6out, p6dir, p6ren, p6selc, p6sel0, p6sel1);
+pub(crate) use gpio_impl;
