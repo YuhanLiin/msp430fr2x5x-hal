@@ -4,13 +4,15 @@
 //! To specify any pin on a port that supports interrupts, use the bounds `Pin<PORT: IntrPortNum, PIN: PinNum>`.
 //! To specify any pin on port Px, use the bounds `Pin<Px, PIN: PinNum>`.
 //!
-//! Note that interrupts are only supported by the hardware on ports **1 to 4**, so interrupt-related
+//! Note that interrupts are only supported by some hardware ports (e.g. Ports 1 to 4 on the MSP430FR2355), so interrupt-related
 //! methods are only available on those pins.
 //!
 //! Pins can be converted to alternate functionalities 1 to 3, but the availability of these
 //! conversions on each pin is limited by the hardware capabilities in the [`datasheet`], so not
 //! every pin in every configuration can be converted to every alternate functionality.
 //!
+//! For devices that expose ADC functionality through the ADCPCTLx bits, a special ADC mode is provided instead.
+//! 
 //! [`datasheet`]: http://www.ti.com/lit/ds/symlink/msp430fr2355.pdf
 
 pub use crate::batch_gpio::*;
@@ -396,6 +398,10 @@ pub trait ChangeSelectBits {
     fn clear_sel0(&mut self);
     fn clear_sel1(&mut self);
     fn flip_selc(&mut self);
+    #[cfg(not(feature = "sac"))]
+    fn set_adcpctl(&mut self, mask: u16);
+    #[cfg(not(feature = "sac"))]
+    fn clr_adcpctl(&mut self, mask: u16);
 }
 
 // Methods for managing sel1, sel0, and selc registers
@@ -430,6 +436,20 @@ impl<PORT: PortNum, PIN: PinNum, DIR> ChangeSelectBits for Pin<PORT, PIN, DIR> {
         // Change both sel0 and sel1 bits at once
         p.pxselc_wr(0u8.set(PIN::NUM));
     }
+
+    #[cfg(not(feature = "sac"))]
+    #[inline]
+    fn set_adcpctl(&mut self, mask: u16) {
+        let p = unsafe { PORT::steal() };
+        p.adcpctl_set(mask);
+    }
+
+    #[cfg(not(feature = "sac"))]
+    #[inline]
+    fn clr_adcpctl(&mut self, mask: u16) {
+        let p = unsafe { PORT::steal() };
+        p.adcpctl_clr(mask);
+    }
 }
 
 /// Typestate for GPIO alternate function 1
@@ -441,6 +461,10 @@ pub struct Alternate2<DIR>(PhantomData<DIR>);
 /// Typestate for GPIO alternate function 3
 pub struct Alternate3<DIR>(PhantomData<DIR>);
 
+#[cfg(not(feature = "sac"))]
+/// Typestate for GPIO ADC mode (for devices that use ADCPCTLx)
+pub struct AdcMode<DIR>(PhantomData<DIR>);
+
 // Sealing these traits takes a lot of work, and I'll never add any items in the future, so they
 // are unsealed
 /// Marker trait for all Pins that have alternate function 1 available
@@ -449,6 +473,15 @@ pub trait ToAlternate1 {}
 pub trait ToAlternate2 {}
 /// Marker trait for all Pins that have alternate function 3 available
 pub trait ToAlternate3 {}
+
+#[cfg(not(feature = "sac"))]
+/// Marker trait for all Pins that have ADC functionality via ADCPCTLx
+pub trait ToAdcPctl: crate::adc::AdcPctlCapable {
+    #[doc(hidden)]
+    const SET_MASK: u16 = 1 << Self::ADCPCTLX;
+    #[doc(hidden)]
+    const CLR_MASK: u16 = !(1 << Self::ADCPCTLX);
+}
 
 impl<PORT: PortNum, PIN: PinNum, DIR: GpioFunction> Pin<PORT, PIN, DIR>
 where
@@ -584,6 +617,32 @@ where
     #[inline]
     pub fn to_alternate2(mut self) -> Pin<PORT, PIN, Alternate2<DIR>> {
         self.clear_sel0();
+        make_pin!()
+    }
+}
+
+#[cfg(not(feature = "sac"))]
+impl<PORT: PortNum, PIN: PinNum, MODE> Pin<PORT, PIN, MODE>
+where
+    Self: ToAdcPctl,
+{
+    /// Convert pin to ADC mode (ADCPCTL set)
+    #[inline]
+    pub fn to_adc_mode(mut self) -> Pin<PORT, PIN, AdcMode<MODE>> {
+        self.set_adcpctl(Self::SET_MASK);
+        make_pin!()
+    }
+}
+
+#[cfg(not(feature = "sac"))]
+impl<PORT: PortNum, PIN: PinNum, MODE> Pin<PORT, PIN, AdcMode<MODE>>
+where
+    Self: ToAdcPctl,
+{
+    /// Return pin to the mode it was in prior to ADCPCTL mode
+    #[inline]
+    pub fn from_adc_mode(mut self) -> Pin<PORT, PIN, MODE> {
+        self.clr_adcpctl(Self::CLR_MASK);
         make_pin!()
     }
 }

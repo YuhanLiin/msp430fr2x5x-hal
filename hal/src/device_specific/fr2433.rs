@@ -33,8 +33,9 @@ pub mod gpio {
     impl<DIR>  ToAlternate2 for Pin<P1, Pin5, DIR> {}
     impl<PULL> ToAlternate2 for Pin<P1, Pin6, Input<PULL>> {}
     impl       ToAlternate2 for Pin<P1, Pin7, Output> {}
-    
-    // TODO: For some reason, non-SAC devices don't use PxSEL to set pins as ADC inputs. This is done with ADCPCTL bits in SYSCFG2 instead.
+
+    // P1 ADCPCTLx. 'x' determined by ADC channel impl in adc module.
+    impl<PIN: PinNum, DIR> ToAdcPctl for Pin<P1, PIN, DIR> where Self: adc::AdcPctlCapable {}
 
     // P2 alternate 1
     impl<DIR>  ToAlternate1 for Pin<P2, Pin0, DIR> {}
@@ -57,14 +58,14 @@ pub mod gpio {
 mod adc {
     use crate::{gpio::*, adc::*};
 
-    impl_adc_channel_pin!(P1, Pin0, 0);
-    impl_adc_channel_pin!(P1, Pin1, 1);
-    impl_adc_channel_pin!(P1, Pin2, 2);
-    impl_adc_channel_pin!(P1, Pin3, 3);
-    impl_adc_channel_pin!(P1, Pin4, 4);
-    impl_adc_channel_pin!(P1, Pin5, 5);
-    impl_adc_channel_pin!(P1, Pin6, 6);
-    impl_adc_channel_pin!(P1, Pin7, 7);
+    impl_adc_channel_pin!(P1, Pin0, AdcMode => 0);
+    impl_adc_channel_pin!(P1, Pin1, AdcMode => 1);
+    impl_adc_channel_pin!(P1, Pin2, AdcMode => 2);
+    impl_adc_channel_pin!(P1, Pin3, AdcMode => 3);
+    impl_adc_channel_pin!(P1, Pin4, AdcMode => 4);
+    impl_adc_channel_pin!(P1, Pin5, AdcMode => 5);
+    impl_adc_channel_pin!(P1, Pin6, AdcMode => 6);
+    impl_adc_channel_pin!(P1, Pin7, AdcMode => 7);
 }
 
 /* Backup Memory */

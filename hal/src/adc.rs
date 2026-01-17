@@ -61,6 +61,12 @@ pub trait Channel<ADC> {
     /// Get the specific ID that identifies this channel, for example `0_u8` for the first ADC channel
     fn channel() -> u8;
 }
+/// Marker trait that marks a pin as being capable of being an ADC input via ADCPCTLx.
+// This trait is used to mark a pin as being capable of moving between PxSEL modes and ADCPCTLx mode.
+pub trait AdcPctlCapable {
+    /// The corresponding ADCPCTL bit that represents this pin.
+    const ADCPCTLX: u8;
+}
 
 /// How many ADCCLK cycles the ADC's sample-and-hold stage will last for.
 ///
@@ -219,13 +225,19 @@ impl SamplingRate {
 
 // Pins corresponding to an ADC channel. Pin types can have `::channel()` called on them to get their ADC channel index.
 macro_rules! impl_adc_channel_pin {
-    ($port: ty, $pin: ty, $channel: literal ) => {
-        impl Channel<Adc> for Pin<$port, $pin, Alternate3<Input<Floating>>> {
+    ($port: ty, $pin: ty, $mode:tt => $channel: literal ) => {
+        impl<DIR> Channel<Adc> for Pin<$port, $pin, $mode<DIR>> {
             type ID = u8;
 
             fn channel() -> Self::ID {
                 $channel
             }
+        }
+        // If the device doesn't have SAC, then ADC functionality is done via ADCPCTLx instead of Alternate1/2/3.
+        // Implement this for all modes
+        #[cfg(not(feature = "sac"))]
+        impl<MODE> AdcPctlCapable for Pin<$port, $pin, MODE> {
+            const ADCPCTLX: u8 = $channel;
         }
     };
 }

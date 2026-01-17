@@ -87,18 +87,18 @@ pub mod gpio {
 mod adc {
     use crate::{gpio::*, adc::*};
 
-    impl_adc_channel_pin!(P1, Pin0, 0);
-    impl_adc_channel_pin!(P1, Pin1, 1);
-    impl_adc_channel_pin!(P1, Pin2, 2);
-    impl_adc_channel_pin!(P1, Pin3, 3);
-    impl_adc_channel_pin!(P1, Pin4, 4);
-    impl_adc_channel_pin!(P1, Pin5, 5);
-    impl_adc_channel_pin!(P1, Pin6, 6);
-    impl_adc_channel_pin!(P1, Pin7, 7);
-    impl_adc_channel_pin!(P5, Pin0, 8);
-    impl_adc_channel_pin!(P5, Pin1, 9);
-    impl_adc_channel_pin!(P5, Pin2, 10);
-    impl_adc_channel_pin!(P5, Pin3, 11);
+    impl_adc_channel_pin!(P1, Pin0, Alternate3 => 0);
+    impl_adc_channel_pin!(P1, Pin1, Alternate3 => 1);
+    impl_adc_channel_pin!(P1, Pin2, Alternate3 => 2);
+    impl_adc_channel_pin!(P1, Pin3, Alternate3 => 3);
+    impl_adc_channel_pin!(P1, Pin4, Alternate3 => 4);
+    impl_adc_channel_pin!(P1, Pin5, Alternate3 => 5);
+    impl_adc_channel_pin!(P1, Pin6, Alternate3 => 6);
+    impl_adc_channel_pin!(P1, Pin7, Alternate3 => 7);
+    impl_adc_channel_pin!(P5, Pin0, Alternate3 => 8);
+    impl_adc_channel_pin!(P5, Pin1, Alternate3 => 9);
+    impl_adc_channel_pin!(P5, Pin2, Alternate3 => 10);
+    impl_adc_channel_pin!(P5, Pin3, Alternate3 => 11);
 }
 
 /* Backup Memory */
