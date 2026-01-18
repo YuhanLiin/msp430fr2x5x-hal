@@ -509,10 +509,7 @@ macro_rules! eusci_spi_impl {
 
             #[inline(always)]
             fn ucbusy(&self) -> bool {
-                // TODO: Update the PAC
-                // The PAC is currently missing the UCBUSY bit in the SPI version of this register
-                const UCBUSY_MASK: u16 = (1 << 0);
-                (self.bits() & UCBUSY_MASK) > 0
+                self.ucbusy().bit()
             }
         }
     };
