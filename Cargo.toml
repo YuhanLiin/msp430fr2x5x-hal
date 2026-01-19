@@ -34,7 +34,7 @@ info_mem = []
 
 [dependencies]
 msp430 = "0.4.0"
-msp430fr2355 = { version = "0.5.2", features = ["rt", "critical-section"], optional = true }
+msp430fr2355 = { version = "0.6", features = ["rt", "critical-section"], optional = true }
 nb = "1.1"
 void = { version = "1.0.2", default-features = false, optional = true }
 embedded-hal-02 = { package = 'embedded-hal', version = "0.2.7", features = ["unproven"], optional = true }

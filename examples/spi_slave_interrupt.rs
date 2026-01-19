@@ -20,7 +20,7 @@ use embedded_hal::delay::DelayNs;
 use embedded_hal::digital::{OutputPin, StatefulOutputPin};
 use embedded_hal::spi::{SpiBus, MODE_0};
 use msp430_rt::entry;
-use msp430fr2355::{interrupt, E_USCI_A0};
+use msp430fr2355::{interrupt, EUsciA0};
 use msp430fr2x5x_hal::spi::{SpiConfig, SpiErr, SpiSlave, StePolarity};
 use msp430fr2x5x_hal::{
     clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv}, fram::Fram, gpio::Batch, pmm::Pmm, watchdog::Wdt
@@ -32,17 +32,17 @@ use panic_msp430 as _;
 fn main() -> ! {
     let periph = msp430fr2355::Peripherals::take().unwrap();
 
-    let mut fram = Fram::new(periph.FRCTL);
-    let _wdt = Wdt::constrain(periph.WDT_A);
+    let mut fram = Fram::new(periph.frctl);
+    let _wdt = Wdt::constrain(periph.wdt_a);
 
-    let pmm = Pmm::new(periph.PMM);
-    let p1 = Batch::new(periph.P1).split(&pmm);
+    let pmm = Pmm::new(periph.pmm);
+    let p1 = Batch::new(periph.p1).split(&pmm);
     let sl_mosi = p1.pin7.to_alternate1();
     let sl_miso = p1.pin6.to_alternate1();
     let sl_sclk = p1.pin5.to_alternate1();
     let sl_ste  = p1.pin4.to_alternate1();
 
-    let p4 = Batch::new(periph.P4).split(&pmm);
+    let p4 = Batch::new(periph.p4).split(&pmm);
     let mosi = p4.pin6.to_alternate1();
     let miso = p4.pin7.to_alternate1();
     let sclk = p4.pin5.to_alternate1();
@@ -50,9 +50,9 @@ fn main() -> ! {
     ste.set_high().ok();
 
     let mut red_led = p1.pin0.to_output();
-    let mut green_led = Batch::new(periph.P6).split(&pmm).pin6.to_output();
+    let mut green_led = Batch::new(periph.p6).split(&pmm).pin6.to_output();
 
-    let (smclk, _aclk, mut delay) = ClockConfig::new(periph.CS)
+    let (smclk, _aclk, mut delay) = ClockConfig::new(periph.cs)
         .mclk_dcoclk(DcoclkFreqSel::_8MHz, MclkDiv::_1)
         .smclk_on(SmclkDiv::_1)
         .aclk_vloclk()
@@ -62,12 +62,12 @@ fn main() -> ! {
     // It can be configured for either a shared or exclusive bus depending on whether
     // there are other slaves on the bus. On an exclusive bus MISO is always an output.
     // On a shared bus the STE pin is used to control whether this slave's MISO is an output or high impedance pin.
-    let mut spi_slave = SpiConfig::new(periph.E_USCI_A0, MODE_0, true)
+    let mut spi_slave = SpiConfig::new(periph.e_usci_a0, MODE_0, true)
         .to_slave()
         .shared_bus(sl_miso, sl_mosi, sl_sclk, sl_ste, StePolarity::EnabledWhenLow);
 
     // Configure another as an SPI master to drive the bus.
-    let mut spi = SpiConfig::new(periph.E_USCI_B1, MODE_0, true)
+    let mut spi = SpiConfig::new(periph.e_usci_b1, MODE_0, true)
         .to_master_using_smclk(&smclk, 800) // 8MHz / 80 = 100kHz
         .single_master_bus(miso, mosi, sclk);
 
@@ -98,7 +98,7 @@ fn main() -> ! {
     }
 }
 
-static SPI_SLAVE: Mutex<RefCell<Option< SpiSlave<E_USCI_A0> >>> = Mutex::new(RefCell::new(None));
+static SPI_SLAVE: Mutex<RefCell<Option< SpiSlave<EUsciA0> >>> = Mutex::new(RefCell::new(None));
 
 #[interrupt]
 fn EUSCI_A0() {

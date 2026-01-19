@@ -15,14 +15,14 @@ fn main() -> ! {
     let periph = msp430fr2355::Peripherals::take().unwrap();
 
     // DON'T disable the watchdog. It will reset us after a few ms.
-    //let _wdt = Wdt::constrain(periph.WDT_A);
+    //let _wdt = Wdt::constrain(periph.wdt_a);
 
     // Configure GPIO
-    let pmm = Pmm::new(periph.PMM);
-    let mut led = Batch::new(periph.P1).split(&pmm).pin0.to_output();
+    let pmm = Pmm::new(periph.pmm);
+    let mut led = Batch::new(periph.p1).split(&pmm).pin0.to_output();
 
     // Interpret register block as a &mut [u8;32]
-    let bk_mem = BackupMemory::as_u8s(periph.BKMEM);
+    let bk_mem = BackupMemory::as_u8s(periph.bkmem);
 
     bk_mem[0] = bk_mem[0].wrapping_add(1);
 

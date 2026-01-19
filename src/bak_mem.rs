@@ -9,7 +9,7 @@
 //! After choosing the most convenient data type for your application call the relevant method,
 //! such as [`BackupMemory::as_u8s()`], to recieve a mutable reference to the backup memory.
 
-use crate::device_specific::{_pac::BKMEM, BAK_MEM_SIZE};
+use crate::device_specific::{_pac::Bkmem, BAK_MEM_SIZE};
 use core::mem::size_of;
 
 /// Helper struct with static methods for interpreting the backup memory into more usable forms
@@ -19,9 +19,9 @@ macro_rules! as_x {
     ($fn_name: ident, $arr: ty) => {
         #[doc = "Interpret the backup memory as a `&mut"] #[doc = stringify!($arr)] #[doc = "`"]
         #[inline(always)]
-        pub fn $fn_name(_reg: BKMEM) -> &'static mut $arr {
+        pub fn $fn_name(_reg: Bkmem) -> &'static mut $arr {
             const { assert!( core::mem::size_of::<$arr>() == BAK_MEM_SIZE ) }
-            unsafe { &mut *(BKMEM::PTR as *mut $arr) }
+            unsafe { &mut *(Bkmem::PTR as *mut $arr) }
         }
     };
 }

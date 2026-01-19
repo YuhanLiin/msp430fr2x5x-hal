@@ -9,10 +9,10 @@ use panic_msp430 as _;
 #[entry]
 fn main() -> ! {
     let periph = msp430fr2355::Peripherals::take().unwrap();
-    let _wdt = Wdt::constrain(periph.WDT_A);
+    let _wdt = Wdt::constrain(periph.wdt_a);
 
-    let pmm = Pmm::new(periph.PMM);
-    let p1 = Batch::new(periph.P1).split(&pmm);
+    let pmm = Pmm::new(periph.pmm);
+    let p1 = Batch::new(periph.p1).split(&pmm);
     let mut led = p1.pin0.to_output();
 
     // Some random data to create a signature over. Can be modified.
@@ -24,7 +24,7 @@ fn main() -> ! {
     ];
 
     // Configure the hardware CRC module, pass in the data and retrieve the signature.
-    let mut crc_hw = Crc::new(periph.CRC, 0xFFFF);
+    let mut crc_hw = Crc::new(periph.crc, 0xFFFF);
     crc_hw.add_words_lsb(&crc_input);
     let hw_sig = crc_hw.result();
 

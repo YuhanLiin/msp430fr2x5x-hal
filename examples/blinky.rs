@@ -17,16 +17,16 @@ use panic_msp430 as _;
 fn main() -> ! {
     // Take peripherals and disable watchdog
     let periph = msp430fr2355::Peripherals::take().unwrap();
-    let _wdt = Wdt::constrain(periph.WDT_A);
+    let _wdt = Wdt::constrain(periph.wdt_a);
 
     // Configure GPIO
-    let pmm = Pmm::new(periph.PMM);
-    let port1 = Batch::new(periph.P1).split(&pmm);
+    let pmm = Pmm::new(periph.pmm);
+    let port1 = Batch::new(periph.p1).split(&pmm);
     let mut p1_0 = port1.pin0.to_output();
 
     // Configure clocks to get accurate delay timing
-    let mut fram = Fram::new(periph.FRCTL);
-    let (_smclk, _aclk, mut delay) = ClockConfig::new(periph.CS)
+    let mut fram = Fram::new(periph.frctl);
+    let (_smclk, _aclk, mut delay) = ClockConfig::new(periph.cs)
         .mclk_dcoclk(DcoclkFreqSel::_8MHz, MclkDiv::_1)
         .smclk_on(SmclkDiv::_1)
         .freeze(&mut fram);

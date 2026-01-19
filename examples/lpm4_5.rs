@@ -30,24 +30,24 @@ macro_rules! init_port_as_pulldowns {
 fn main() -> ! {
     let periph = msp430fr2355::Peripherals::take().unwrap();
 
-    let wdt = Wdt::constrain(periph.WDT_A);
-    let pmm = Pmm::new(periph.PMM);
+    let wdt = Wdt::constrain(periph.wdt_a);
+    let pmm = Pmm::new(periph.pmm);
 
     // Floating input pins consume a *huge* amount of power (relatively speaking).
     // Set unused pins to outputs or enable their pull resistors.
-    let port1 = init_port_as_pulldowns!(periph.P1)
+    let port1 = init_port_as_pulldowns!(periph.p1)
         .config_pin0(|p| p.to_output())
         .split(&pmm);
     let mut red_led = port1.pin0;
 
-    let port2 = init_port_as_pulldowns!(periph.P2)
+    let port2 = init_port_as_pulldowns!(periph.p2)
         .config_pin3(|p| p.pullup())
         .split(&pmm);
 
-    init_unused_gpio(periph.P3, periph.P4, periph.P5, periph.P6, &pmm);
+    init_unused_gpio(periph.p3, periph.p4, periph.p5, periph.p6, &pmm);
 
     // If this reset was a wake up from LPMx.5...
-    if periph.SYS.sysrstiv.read().sysrstiv().is_lpm5wu() {
+    if periph.sys.sysrstiv().read().sysrstiv().is_lpm5wu() {
         loop {
             for _ in 0..10_000 {
                 nop();
@@ -62,7 +62,7 @@ fn main() -> ! {
         button.select_falling_edge_trigger().enable_interrupts();
 
         // And enter LPM4.5. Global interrupts are enabled before LPM4.5 is entered.
-        enter_lpm4_5(wdt, periph.RTC, SvsState::SVSHE_0);
+        enter_lpm4_5(wdt, periph.rtc, SvsState::Svshe0);
     }
 }
 

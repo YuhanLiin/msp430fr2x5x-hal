@@ -18,22 +18,22 @@ use panic_msp430 as _;
 fn main() -> ! {
     let periph = msp430fr2355::Peripherals::take().unwrap();
 
-    let mut fram = Fram::new(periph.FRCTL);
-    let wdt = Wdt::constrain(periph.WDT_A);
+    let mut fram = Fram::new(periph.frctl);
+    let wdt = Wdt::constrain(periph.wdt_a);
 
-    let pmm = Pmm::new(periph.PMM);
-    let p1 = Batch::new(periph.P1)
+    let pmm = Pmm::new(periph.pmm);
+    let p1 = Batch::new(periph.p1)
         .config_pin0(|p| p.to_output())
         .split(&pmm);
     let mut p1_0 = p1.pin0;
 
-    let (smclk, _aclk, _delay) = ClockConfig::new(periph.CS)
+    let (smclk, _aclk, _delay) = ClockConfig::new(periph.cs)
         .mclk_dcoclk(DcoclkFreqSel::_8MHz, MclkDiv::_1)
         .smclk_on(SmclkDiv::_1)
         .aclk_vloclk()
         .freeze(&mut fram);
 
-    const DELAY: WdtClkPeriods = WdtClkPeriods::_8192K;
+    const DELAY: WdtClkPeriods = WdtClkPeriods::_8192k;
 
     // blinks should be 1 second on, 1 second off
     let mut wdt = wdt.to_interval();

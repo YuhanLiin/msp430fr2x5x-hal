@@ -27,20 +27,20 @@ static P2IV: Mutex<RefCell<Option<PxIV<P2>>>> = Mutex::new(RefCell::new(None));
 #[entry]
 fn main() -> ! {
     let periph = msp430fr2355::Peripherals::take().unwrap();
-    let (_smclk, aclk, _delay) = ClockConfig::new(periph.CS)
+    let (_smclk, aclk, _delay) = ClockConfig::new(periph.cs)
         .mclk_refoclk(MclkDiv::_1)
         // 32 KHz SMCLK
         .smclk_on(SmclkDiv::_2)
         .aclk_vloclk()
-        .freeze(&mut Fram::new(periph.FRCTL));
-    let mut wdt = Wdt::constrain(periph.WDT_A).to_interval();
-    let pmm = Pmm::new(periph.PMM);
+        .freeze(&mut Fram::new(periph.frctl));
+    let mut wdt = Wdt::constrain(periph.wdt_a).to_interval();
+    let pmm = Pmm::new(periph.pmm);
 
-    let p1 = Batch::new(periph.P1).split(&pmm);
-    let p2 = Batch::new(periph.P2)
+    let p1 = Batch::new(periph.p1).split(&pmm);
+    let p2 = Batch::new(periph.p2)
         .config_pin3(|p| p.pullup())
         .split(&pmm);
-    let p6 = Batch::new(periph.P6)
+    let p6 = Batch::new(periph.p6)
         .config_pin6(|p| p.to_output())
         .split(&pmm);
 
@@ -57,7 +57,7 @@ fn main() -> ! {
 
     wdt.set_aclk(&aclk)
         .enable_interrupts()
-        .set_interval_and_start(WdtClkPeriods::_32K);
+        .set_interval_and_start(WdtClkPeriods::_32k);
     pin.select_rising_edge_trigger().enable_interrupts();
     button.select_falling_edge_trigger();
 

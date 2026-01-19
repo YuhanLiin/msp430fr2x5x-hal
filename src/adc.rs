@@ -24,7 +24,7 @@
 
 use crate::{clock::{Aclk, Smclk}, pmm::{InternalTempSensor, InternalVRef}};
 use core::convert::Infallible;
-use crate::_pac::ADC;
+use crate::_pac;
 
 #[cfg(feature = "embedded-hal-02")]
 pub use embedded_hal_02::adc::Channel;
@@ -359,28 +359,28 @@ impl AdcConfig<NoClockSet> {
 }
 impl AdcConfig<ClockSet> {
     /// Applies this ADC configuration to hardware registers, and returns an ADC.
-    pub fn configure(self, mut adc_reg: ADC) -> Adc {
+    pub fn configure(self, mut adc_reg: _pac::Adc) -> Adc {
         // Disable the ADC before we set the other bits. Some can only be set while the ADC is disabled.
         disable_adc_reg(&mut adc_reg);
 
         let adcsht = self.sample_time.adcsht();
-        adc_reg.adcctl0.write(|w| w.adcsht().bits(adcsht));
+        adc_reg.adcctl0().write(|w| unsafe { w.adcsht().bits(adcsht) });
 
         let adcssel = self.state.0.adcssel();
         let adcdiv = self.clock_divider.adcdiv();
-        adc_reg.adcctl1.write(|w| { w
+        adc_reg.adcctl1().write(|w| { unsafe { w
             .adcssel().bits(adcssel)
             .adcshp().set_bit()
-            .adcdiv().bits(adcdiv)
+            .adcdiv().bits(adcdiv) }
         });
 
         let adcpdiv = self.predivider.adcpdiv();
         let adcres = self.resolution.adcres();
         let adcsr = self.sampling_rate.adcsr();
-        adc_reg.adcctl2.write(|w| { w
+        adc_reg.adcctl2().write(|w| { unsafe { w
             .adcpdiv().bits(adcpdiv)
             .adcres().bits(adcres)
-            .adcsr().bit(adcsr)
+            .adcsr().bit(adcsr) }
         });
 
         Adc {
@@ -392,25 +392,25 @@ impl AdcConfig<ClockSet> {
 
 /// Controls the onboard ADC. The `read()` method is available through the embedded_hal `OneShot` trait.
 pub struct Adc {
-    adc_reg: ADC,
+    adc_reg: _pac::Adc,
     is_waiting: bool,
 }
 
 impl Adc {
     /// Whether the ADC is currently sampling or converting.
     pub fn adc_is_busy(&self) -> bool {
-        self.adc_reg.adcctl1.read().adcbusy().bit_is_set()
+        self.adc_reg.adcctl1().read().adcbusy().bit_is_set()
     }
 
     /// Gets the latest ADC conversion result.
     pub fn adc_get_result(&self) -> u16 {
-        self.adc_reg.adcmem0.read().bits()
+        self.adc_reg.adcmem0().read().bits()
     }
 
     /// Enables this ADC, ready to start conversions.
     pub fn enable(&mut self) {
         unsafe {
-            self.adc_reg.adcctl0.set_bits(|w| w.adcon().set_bit());
+            self.adc_reg.adcctl0().set_bits(|w| w.adcon().set_bit());
         }
     }
 
@@ -425,14 +425,14 @@ impl Adc {
         PIN: Channel<Self, ID = u8>,
     {
         self.adc_reg
-            .adcmctl0
-            .modify(|_, w| w.adcinch().bits(PIN::channel()));
+            .adcmctl0()
+            .modify(|_, w| unsafe { w.adcinch().bits(PIN::channel()) });
     }
 
     /// Starts an ADC conversion.
     fn start_conversion(&mut self) {
         unsafe {
-            self.adc_reg.adcctl0.set_bits(|w| w
+            self.adc_reg.adcctl0().set_bits(|w| w
                 .adcenc().set_bit()
                 .adcsc().set_bit());
         }
@@ -466,12 +466,12 @@ impl Adc {
     ///
     /// `ref_voltage_mv` is the reference voltage of the ADC in millivolts.
     pub fn count_to_mv(&self, count: u16, ref_voltage_mv: u16) -> u16 {
-        use crate::_pac::adc::adcctl2::ADCRES_A;
-        let resolution = match self.adc_reg.adcctl2.read().adcres().variant() {
-            ADCRES_A::ADCRES_0 => 256,  //  8-bit
-            ADCRES_A::ADCRES_1 => 1024, // 10-bit
-            ADCRES_A::ADCRES_2 => 4096, // 12-bit
-            ADCRES_A::ADCRES_3 => 4096, // Reserved, unreachable
+        use crate::_pac::adc::adcctl2::Adcres;
+        let resolution = match self.adc_reg.adcctl2().read().adcres().variant() {
+            Adcres::Adcres0 => 256,  //  8-bit
+            Adcres::Adcres1 => 1024, // 10-bit
+            Adcres::Adcres2 => 4096, // 12-bit
+            Adcres::Adcres3 => 4096, // Reserved, unreachable
         };
         ((count as u32 * ref_voltage_mv as u32) / resolution) as u16
     }
@@ -486,9 +486,9 @@ impl Adc {
     }
 }
 
-fn disable_adc_reg(adc: &mut ADC) {
+fn disable_adc_reg(adc: &mut _pac::Adc) {
     unsafe {
-        adc.adcctl0.clear_bits(|w| w
+        adc.adcctl0().clear_bits(|w| w
             .adcon().clear_bit()
             .adcenc().clear_bit());
     }

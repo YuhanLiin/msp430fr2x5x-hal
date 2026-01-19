@@ -157,22 +157,22 @@ macro_rules! ccrn_impl {
         impl CCRn<$CCRn> for pac::$TBx {
             #[inline(always)]
             fn set_ccrn(&self, count: u16) {
-                self.$tbxccrn.write(|w| unsafe { w.bits(count) });
+                self.$tbxccrn().write(|w| unsafe { w.bits(count) });
             }
 
             #[inline(always)]
             fn get_ccrn(&self) -> u16 {
-                self.$tbxccrn.read().bits()
+                self.$tbxccrn().read().bits()
             }
 
             #[inline(always)]
             fn config_outmod(&self, outmod: Outmod) {
-                self.$tbxcctln.write(|w| w.outmod().bits(outmod as u8));
+                self.$tbxcctln().write(|w| unsafe{ w.outmod().bits(outmod as u8) });
             }
 
             #[inline(always)]
             fn config_cap_mode(&self, cm: Cm, ccis: Ccis) {
-                self.$tbxcctln.write(|w| unsafe { w
+                self.$tbxcctln().write(|w| unsafe { w
                     .cap().set_bit()
                     .scs().set_bit()
                     .cm().bits(cm as u8)
@@ -182,34 +182,34 @@ macro_rules! ccrn_impl {
 
             #[inline(always)]
             fn ccifg_rd(&self) -> bool {
-                self.$tbxcctln.read().ccifg().bit()
+                self.$tbxcctln().read().ccifg().bit()
             }
 
             #[inline(always)]
             fn ccifg_clr(&self) {
-                unsafe { self.$tbxcctln.clear_bits(|w| w.ccifg().clear_bit()) };
+                unsafe { self.$tbxcctln().clear_bits(|w| w.ccifg().clear_bit()) };
             }
 
             #[inline(always)]
             fn ccie_set(&self) {
-                unsafe { self.$tbxcctln.set_bits(|w| w.ccie().set_bit()) };
+                unsafe { self.$tbxcctln().set_bits(|w| w.ccie().set_bit()) };
             }
 
             #[inline(always)]
             fn ccie_clr(&self) {
-                unsafe { self.$tbxcctln.clear_bits(|w| w.ccie().clear_bit()) };
+                unsafe { self.$tbxcctln().clear_bits(|w| w.ccie().clear_bit()) };
             }
 
             #[inline(always)]
             fn cov_ccifg_rd(&self) -> (bool, bool) {
-                let cctl = self.$tbxcctln.read();
+                let cctl = self.$tbxcctln().read();
                 (cctl.cov().bit(), cctl.ccifg().bit())
             }
 
             #[inline(always)]
             fn cov_ccifg_clr(&self) {
                 unsafe {
-                    self.$tbxcctln
+                    self.$tbxcctln()
                         .clear_bits(|w| w.ccifg().clear_bit().cov().clear_bit())
                 };
             }
@@ -220,22 +220,22 @@ pub(crate) use ccrn_impl;
 
 macro_rules! timer_base_impl {
     ($TBx:ident, $tbx:ident, $tbxctl:ident, $tbxex:ident, $tbxiv:ident, $tbxr:ident, $([$CCRn:ident, $tbxcctln:ident, $tbxccrn:ident]),*) => {
-        impl Steal for pac::$TBx {
+        impl Steal for $TBx {
             #[inline(always)]
             unsafe fn steal() -> Self {
-                pac::Peripherals::conjure().$TBx
+                $TBx::steal()
             }
         }
 
         impl TimerBase for pac::$TBx {
             #[inline(always)]
             fn reset(&self) {
-                unsafe { self.$tbxctl.set_bits(|w| w.tbclr().set_bit()) };
+                unsafe { self.$tbxctl().set_bits(|w| w.tbclr().set_bit()) };
             }
 
             #[inline(always)]
             fn upmode(&self) {
-                self.$tbxctl.modify(|r, w| {
+                self.$tbxctl().modify(|r, w| {
                     unsafe { w.bits(r.bits()) }
                         .tbclr()
                         .set_bit()
@@ -248,7 +248,7 @@ macro_rules! timer_base_impl {
 
             #[inline(always)]
             fn continuous(&self) {
-                self.$tbxctl.modify(|r, w| {
+                self.$tbxctl().modify(|r, w| {
                     unsafe { w.bits(r.bits()) }
                         .tbclr()
                         .set_bit()
@@ -261,63 +261,66 @@ macro_rules! timer_base_impl {
 
             #[inline(always)]
             fn config_clock(&self, tbssel: Tbssel, div: TimerDiv) {
-                self.$tbxctl
-                    .write(|w| w.tbssel().bits(tbssel as u8).id().bits(div as u8));
+                self.$tbxctl()
+                    .write(|w| unsafe { w
+                        .tbssel().bits(tbssel as u8)
+                        .id().bits(div as u8)
+                    });
             }
 
             #[inline(always)]
             fn is_stopped(&self) -> bool {
-                self.$tbxctl.read().mc().bits() == (Mode::Stop as u8)
+                self.$tbxctl().read().mc().bits() == (Mode::Stop as u8)
             }
 
             #[inline(always)]
             fn stop(&self) {
-                unsafe { self.$tbxctl.clear_bits(|w| w.mc().bits(Mode::Stop as u8)) };
+                unsafe { self.$tbxctl().clear_bits(|w| w.mc().bits(Mode::Stop as u8)) };
             }
 
             #[inline(always)]
             fn change_mode(&self, mode: Mode) {
-                self.$tbxctl.modify(|_,w| w.mc().bits(mode as u8))
+                self.$tbxctl().modify(|_,w| unsafe{ w.mc().bits(mode as u8) });
             }
 
             #[inline(always)]
             fn resume(&self, mode: RunningMode) {
-                unsafe { self.$tbxctl.set_bits(|w| w.mc().bits(mode as u8)) };
+                unsafe { self.$tbxctl().set_bits(|w| w.mc().bits(mode as u8)) };
             }
 
             #[inline(always)]
             fn set_tbidex(&self, tbidex: TimerExDiv) {
-                self.$tbxex.write(|w| w.tbidex().bits(tbidex as u8));
+                self.$tbxex().write(|w| unsafe { w.tbidex().bits(tbidex as u8) });
             }
 
             #[inline(always)]
             fn tbifg_rd(&self) -> bool {
-                self.$tbxctl.read().tbifg().bit()
+                self.$tbxctl().read().tbifg().bit()
             }
 
             #[inline(always)]
             fn tbifg_clr(&self) {
-                unsafe { self.$tbxctl.clear_bits(|w| w.tbifg().clear_bit()) };
+                unsafe { self.$tbxctl().clear_bits(|w| w.tbifg().clear_bit()) };
             }
 
             #[inline(always)]
             fn tbie_set(&self) {
-                unsafe { self.$tbxctl.set_bits(|w| w.tbie().set_bit()) };
+                unsafe { self.$tbxctl().set_bits(|w| w.tbie().set_bit()) };
             }
 
             #[inline(always)]
             fn tbie_clr(&self) {
-                unsafe { self.$tbxctl.clear_bits(|w| w.tbie().clear_bit()) };
+                unsafe { self.$tbxctl().clear_bits(|w| w.tbie().clear_bit()) };
             }
 
             #[inline(always)]
             fn tbxiv_rd(&self) -> u16 {
-                self.$tbxiv.read().bits()
+                self.$tbxiv().read().bits()
             }
 
             #[inline(always)]
             fn get_tbxr(&self) -> u16 {
-                self.$tbxr.read().bits()
+                self.$tbxr().read().bits()
             }
         }
 

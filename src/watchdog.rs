@@ -6,11 +6,11 @@
 
 use crate::clock::{Aclk, Smclk};
 use core::{convert::Infallible, marker::PhantomData};
-use crate::_pac::{self, wdt_a::wdtctl::WDTSSEL_A};
+use crate::_pac::{self, wdt_a::wdtctl::Wdtssel};
 
 const PASSWORD: u8 = 0x5A;
 
-pub use crate::_pac::wdt_a::wdtctl::WDTIS_A as WdtClkPeriods;
+pub use crate::_pac::wdt_a::wdtctl::Wdtis as WdtClkPeriods;
 
 mod sealed {
     use super::*;
@@ -24,20 +24,20 @@ mod sealed {
 /// Watchdog timer which can be configured to watchdog or interval (timer) mode
 pub struct Wdt<MODE> {
     _mode: PhantomData<MODE>,
-    periph: _pac::WDT_A,
+    periph: _pac::WdtA,
 }
 
 impl Wdt<WatchdogMode> {
     /// Convert WDT peripheral into a watchdog timer (watchdog mode) and disable the watchdog. Set
     /// clock source to VLOCLK.
-    pub fn constrain(wdt: _pac::WDT_A) -> Self {
+    pub fn constrain(wdt: _pac::WdtA) -> Self {
         // Disable first
-        wdt.wdtctl.write(|w| {
+        wdt.wdtctl().write(|w| {
             unsafe { w.wdtpw().bits(PASSWORD) }
                 .wdthold()
                 .hold()
                 .wdtssel()
-                .variant(WDTSSEL_A::VLOCLK)
+                .variant(Wdtssel::Vloclk)
         });
         Wdt {
             _mode: PhantomData,
@@ -81,9 +81,9 @@ impl<MODE: WatchdogSelect> Wdt<MODE> {
     }
 
     #[inline]
-    fn set_clk(&mut self, clk_src: WDTSSEL_A) -> &mut Self {
+    fn set_clk(&mut self, clk_src: Wdtssel) -> &mut Self {
         // Halt timer first, as specified in the user's guide
-        self.periph.wdtctl.write(|w| {
+        self.periph.wdtctl().write(|w| {
             Self::prewrite(w, 0)
                 .wdthold()
                 .hold()
@@ -92,7 +92,7 @@ impl<MODE: WatchdogSelect> Wdt<MODE> {
                 .set_bit()
         });
         // Set clock src and keep timer halted
-        self.periph.wdtctl.write(|w| {
+        self.periph.wdtctl().write(|w| {
             Self::prewrite(w, 0)
                 .wdtssel()
                 .variant(clk_src)
@@ -105,25 +105,25 @@ impl<MODE: WatchdogSelect> Wdt<MODE> {
     /// Set watchdog clock source to ACLK and halt timer.
     #[inline]
     pub fn set_aclk(&mut self, _clks: &Aclk) -> &mut Self {
-        self.set_clk(WDTSSEL_A::ACLK)
+        self.set_clk(Wdtssel::Aclk)
     }
 
     /// Set watchdog clock source to VLOCLK and halt timer.
     #[inline]
     pub fn set_vloclk(&mut self) -> &mut Self {
-        self.set_clk(WDTSSEL_A::VLOCLK)
+        self.set_clk(Wdtssel::Vloclk)
     }
 
     /// Set watchdog clock source to SMCLK and halt timer.
     #[inline]
     pub fn set_smclk(&mut self, _clks: &Smclk) -> &mut Self {
-        self.set_clk(WDTSSEL_A::SMCLK)
+        self.set_clk(Wdtssel::Smclk)
     }
 
     /// Reset countdown, unpause timer, and set timeout in a single write
     #[inline]
     pub fn set_interval_and_start(&mut self, periods: WdtClkPeriods) {
-        self.periph.wdtctl.modify(|r, w| {
+        self.periph.wdtctl().modify(|r, w| {
             Self::prewrite(w, r.bits())
                 .wdtcntcl()
                 .set_bit()
@@ -138,7 +138,7 @@ impl<MODE: WatchdogSelect> Wdt<MODE> {
     #[inline]
     pub fn pause(&mut self) {
         self.periph
-            .wdtctl
+            .wdtctl()
             .modify(|r, w| Self::prewrite(w, r.bits()).wdthold().hold());
     }
 
@@ -146,7 +146,7 @@ impl<MODE: WatchdogSelect> Wdt<MODE> {
     #[inline]
     pub fn resume(&mut self) {
         self.periph
-            .wdtctl
+            .wdtctl()
             .modify(|r, w| Self::prewrite(w, r.bits()).wdthold().unhold());
     }
 
@@ -154,9 +154,9 @@ impl<MODE: WatchdogSelect> Wdt<MODE> {
     /// If called while the timer is not running, this will always return `WouldBlock`.
     #[inline]
     pub fn wait(&mut self) -> nb::Result<(), Infallible> {
-        let sfr = unsafe { &*_pac::SFR::ptr() };
-        if sfr.sfrifg1.read().wdtifg().bit_is_set() {
-            unsafe { sfr.sfrifg1.clear_bits(|w| w.wdtifg().clear_bit()) };
+        let sfr = unsafe { &*_pac::Sfr::ptr() };
+        if sfr.sfrifg1().read().wdtifg().bit_is_set() {
+            unsafe { sfr.sfrifg1().clear_bits(|w| w.wdtifg().clear_bit()) };
             Ok(())
         } else {
             Err(nb::Error::WouldBlock)
@@ -180,7 +180,7 @@ impl Wdt<WatchdogMode> {
     /// Refreshes the watchdog timer, preventing the processor from being reset.
     pub fn feed(&mut self) {
         self.periph
-            .wdtctl
+            .wdtctl()
             .modify(|r, w| Self::prewrite(w, r.bits()).wdtcntcl().set_bit());
     }
 }
@@ -196,8 +196,8 @@ impl Wdt<IntervalMode> {
         // Change mode bit and pause timer
         wdt.pause();
         // Wipe out old interrupt flag, which may cause a watchdog reset
-        let sfr = unsafe { &*_pac::SFR::ptr() };
-        unsafe { sfr.sfrifg1.clear_bits(|w| w.wdtifg().clear_bit()) };
+        let sfr = unsafe { &*_pac::Sfr::ptr() };
+        unsafe { sfr.sfrifg1().clear_bits(|w| w.wdtifg().clear_bit()) };
         wdt
     }
 
@@ -206,16 +206,16 @@ impl Wdt<IntervalMode> {
     /// switching to interval mode.
     #[inline]
     pub fn enable_interrupts(&mut self) -> &mut Self {
-        let sfr = unsafe { &*_pac::SFR::ptr() };
-        unsafe { sfr.sfrie1.set_bits(|w| w.wdtie().set_bit()) };
+        let sfr = unsafe { &*_pac::Sfr::ptr() };
+        unsafe { sfr.sfrie1().set_bits(|w| w.wdtie().set_bit()) };
         self
     }
 
     /// Disable interrupts for watchdog.
     #[inline]
     pub fn disable_interrupts(&mut self) -> &mut Self {
-        let sfr = unsafe { &*_pac::SFR::ptr() };
-        unsafe { sfr.sfrie1.clear_bits(|w| w.wdtie().clear_bit()) };
+        let sfr = unsafe { &*_pac::Sfr::ptr() };
+        unsafe { sfr.sfrie1().clear_bits(|w| w.wdtie().clear_bit()) };
         self
     }
 }

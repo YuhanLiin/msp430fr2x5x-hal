@@ -12,8 +12,8 @@ use core::arch::asm;
 
 use crate::delay::SysDelay;
 use crate::fram::{Fram, WaitStates};
-use crate::_pac::{self, cs::{csctl1::DCORSEL_A, csctl4::{SELA_A, SELMS_A}}};
-pub use crate::_pac::cs::csctl5::{DIVM_A as MclkDiv, DIVS_A as SmclkDiv};
+use crate::_pac::{self, cs::{csctl1::Dcorsel, csctl4::{Sela, Selms}}};
+pub use crate::_pac::cs::csctl5::{Divm as MclkDiv, Divs as SmclkDiv};
 
 /// REFOCLK frequency
 pub const REFOCLK: u16 = 32768;
@@ -37,11 +37,11 @@ impl MclkSel {
     }
 
     #[inline(always)]
-    fn selms(&self) -> SELMS_A {
+    fn selms(&self) -> Selms {
         match self {
-            MclkSel::Vloclk => SELMS_A::VLOCLK,
-            MclkSel::Refoclk => SELMS_A::REFOCLK,
-            MclkSel::Dcoclk(_) => SELMS_A::DCOCLKDIV,
+            MclkSel::Vloclk => Selms::Vloclk,
+            MclkSel::Refoclk => Selms::Refoclk,
+            MclkSel::Dcoclk(_) => Selms::Dcoclkdiv,
         }
     }
 }
@@ -56,11 +56,11 @@ enum AclkSel {
 
 impl AclkSel {
     #[inline(always)]
-    fn sela(self) -> SELA_A {
+    fn sela(self) -> Sela {
         match self {
             #[cfg(feature = "2x5x")]
-            AclkSel::Vloclk => SELA_A::VLOCLK,
-            AclkSel::Refoclk => SELA_A::REFOCLK,
+            AclkSel::Vloclk => Sela::Vloclk,
+            AclkSel::Refoclk => Sela::Refoclk,
         }
     }
 
@@ -100,18 +100,18 @@ pub enum DcoclkFreqSel {
 
 impl DcoclkFreqSel {
     #[inline(always)]
-    fn dcorsel(self) -> DCORSEL_A {
+    fn dcorsel(self) -> Dcorsel {
         match self {
-            DcoclkFreqSel::_1MHz => DCORSEL_A::DCORSEL_0,
-            DcoclkFreqSel::_2MHz => DCORSEL_A::DCORSEL_1,
-            DcoclkFreqSel::_4MHz => DCORSEL_A::DCORSEL_2,
-            DcoclkFreqSel::_8MHz => DCORSEL_A::DCORSEL_3,
-            DcoclkFreqSel::_12MHz => DCORSEL_A::DCORSEL_4,
-            DcoclkFreqSel::_16MHz => DCORSEL_A::DCORSEL_5,
+            DcoclkFreqSel::_1MHz => Dcorsel::Dcorsel0,
+            DcoclkFreqSel::_2MHz => Dcorsel::Dcorsel1,
+            DcoclkFreqSel::_4MHz => Dcorsel::Dcorsel2,
+            DcoclkFreqSel::_8MHz => Dcorsel::Dcorsel3,
+            DcoclkFreqSel::_12MHz => Dcorsel::Dcorsel4,
+            DcoclkFreqSel::_16MHz => Dcorsel::Dcorsel5,
             #[cfg(feature = "2x5x")]
-            DcoclkFreqSel::_20MHz => DCORSEL_A::DCORSEL_6,
+            DcoclkFreqSel::_20MHz => Dcorsel::Dcorsel6,
             #[cfg(feature = "2x5x")]
-            DcoclkFreqSel::_24MHz => DCORSEL_A::DCORSEL_7,
+            DcoclkFreqSel::_24MHz => Dcorsel::Dcorsel7,
         }
     }
 
@@ -173,7 +173,7 @@ impl SmclkState for SmclkDisabled {
 /// Can only commit configurations to hardware if both MCLK and SMCLK settings have been
 /// configured. ACLK configurations are optional, with its default source being REFOCLK.
 pub struct ClockConfig<MCLK, SMCLK> {
-    periph: _pac::CS,
+    periph: _pac::Cs,
     mclk: MCLK,
     mclk_div: MclkDiv,
     aclk_sel: AclkSel,
@@ -194,7 +194,7 @@ macro_rules! make_clkconf {
 
 impl ClockConfig<NoClockDefined, NoClockDefined> {
     /// Converts CS into a fresh, unconfigured clock builder object
-    pub fn new(cs: _pac::CS) -> Self {
+    pub fn new(cs: _pac::Cs) -> Self {
         ClockConfig {
             periph: cs,
             smclk: NoClockDefined,
@@ -286,12 +286,12 @@ impl<SMCLK: SmclkState> ClockConfig<MclkDefined, SMCLK> {
         if let MclkSel::Dcoclk(target_freq) = self.mclk.0 {
             fll_off();
 
-            self.periph.csctl3.write(|w| w.selref().refoclk());
-            self.periph.csctl0.write(|w| unsafe { w.bits(0) });
+            self.periph.csctl3().write(|w| w.selref().refoclk());
+            self.periph.csctl0().write(|w| unsafe { w.bits(0) });
             self.periph
-                .csctl1
+                .csctl1()
                 .write(|w| w.dcorsel().variant(target_freq.dcorsel()));
-            self.periph.csctl2.write(|w| {
+            self.periph.csctl2().write(|w| {
                 unsafe { w.flln().bits(target_freq.multiplier() - 1) }
                     .flld()
                     ._1()
@@ -303,21 +303,21 @@ impl<SMCLK: SmclkState> ClockConfig<MclkDefined, SMCLK> {
 
             fll_on();
 
-            while !self.periph.csctl7.read().fllunlock().is_fllunlock_0() {}
+            while !self.periph.csctl7().read().fllunlock().is_fllunlock_0() {}
         }
     }
 
     #[inline]
     fn configure_cs(&self) {
         // Configure clock selector and divisors
-        self.periph.csctl4.write(|w| {
+        self.periph.csctl4().write(|w| {
             w.sela()
                 .variant(self.aclk_sel.sela())
                 .selms()
                 .variant(self.mclk.0.selms())
         });
 
-        self.periph.csctl5.write(|w| {
+        self.periph.csctl5().write(|w| {
             let w = w.vloautooff().set_bit().divm().variant(self.mclk_div);
             match self.smclk.div() {
                 Some(div) => w.divs().variant(div),

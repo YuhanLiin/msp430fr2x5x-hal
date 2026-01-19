@@ -10,13 +10,13 @@ use panic_msp430 as _;
 #[entry]
 fn main() -> ! {
     let periph = msp430fr2355::Peripherals::take().unwrap();
-    let _wdt = Wdt::constrain(periph.WDT_A);
+    let _wdt = Wdt::constrain(periph.wdt_a);
 
-    let pmm = Pmm::new(periph.PMM);
-    let p2 = Batch::new(periph.P2)
+    let pmm = Pmm::new(periph.pmm);
+    let p2 = Batch::new(periph.p2)
         .config_pin3(|p| p.pullup())
         .split(&pmm);
-    let p6 = Batch::new(periph.P6)
+    let p6 = Batch::new(periph.p6)
         .config_pin6(|p| p.to_output())
         .split(&pmm);
 

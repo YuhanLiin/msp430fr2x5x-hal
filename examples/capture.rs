@@ -23,23 +23,23 @@ use panic_msp430 as _;
 fn main() -> ! {
     let periph = msp430fr2355::Peripherals::take().unwrap();
 
-    let mut fram = Fram::new(periph.FRCTL);
-    Wdt::constrain(periph.WDT_A);
+    let mut fram = Fram::new(periph.frctl);
+    Wdt::constrain(periph.wdt_a);
 
-    let pmm = Pmm::new(periph.PMM);
-    let p4 = Batch::new(periph.P4).split(&pmm);
-    let mut p1 = Batch::new(periph.P1)
+    let pmm = Pmm::new(periph.pmm);
+    let p4 = Batch::new(periph.p4).split(&pmm);
+    let mut p1 = Batch::new(periph.p1)
         .config_pin0(|p| p.to_output())
         .split(&pmm);
 
-    let (smclk, aclk, _delay) = ClockConfig::new(periph.CS)
+    let (smclk, aclk, _delay) = ClockConfig::new(periph.cs)
         .mclk_dcoclk(DcoclkFreqSel::_1MHz, MclkDiv::_1)
         .smclk_on(SmclkDiv::_1)
         .aclk_vloclk()
         .freeze(&mut fram);
 
     let mut tx = SerialConfig::new(
-        periph.E_USCI_A1,
+        periph.e_usci_a1,
         BitOrder::LsbFirst,
         BitCount::EightBits,
         StopBits::OneStopBit,
@@ -50,7 +50,7 @@ fn main() -> ! {
     .use_smclk(&smclk)
     .tx_only(p4.pin3.to_alternate1());
 
-    let captures = CaptureParts3::config(periph.TB0, TimerConfig::aclk(&aclk))
+    let captures = CaptureParts3::config(periph.tb0, TimerConfig::aclk(&aclk))
         .config_cap1_input_A(p1.pin6.to_alternate2())
         .config_cap1_trigger(CapTrigger::FallingEdge)
         .commit();

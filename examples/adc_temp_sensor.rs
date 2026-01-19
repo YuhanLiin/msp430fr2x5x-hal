@@ -17,11 +17,11 @@ use panic_msp430 as _;
 fn main() -> ! {
     // Take peripherals and disable watchdog
     let periph = msp430fr2355::Peripherals::take().unwrap();
-    let _wdt = Wdt::constrain(periph.WDT_A);
+    let _wdt = Wdt::constrain(periph.wdt_a);
 
     // Configure GPIO
-    let mut pmm = Pmm::new(periph.PMM);
-    let port1 = Batch::new(periph.P1).split(&pmm);
+    let mut pmm = Pmm::new(periph.pmm);
+    let port1 = Batch::new(periph.p1).split(&pmm);
     let mut led = port1.pin0.to_output();
 
     // ADC setup.
@@ -35,7 +35,7 @@ fn main() -> ! {
         SampleTime::_256,
     )
     .use_modclk()
-    .configure(periph.ADC);
+    .configure(periph.adc);
 
     let vref = pmm.enable_internal_reference(ReferenceVoltage::_1V5).unwrap();
     let mut t_sense = pmm.enable_internal_temp_sensor(&vref).unwrap();

@@ -16,18 +16,18 @@
 //! insertion functions and the regular result function.
 //!
 
-use crate::_pac::CRC;
+use crate::_pac;
 
 /// Struct representing a Cyclic Redundancy Check (CRC) peripheral initialised with a seed.
-pub struct Crc(CRC);
+pub struct Crc(_pac::Crc);
 
 impl Crc {
     /// Create a new CRC peripheral, setting the initial output to `seed`.
     ///
     /// The generated signature is based on the polynomial given in the CRC-CCITT standard: x<sup>16</sup> + x<sup>12</sup> + x<sup>5</sup> + 1.
     #[inline(always)]
-    pub fn new(crc: CRC, seed: u16) -> Self {
-        crc.crcinires.write(|w| unsafe { w.bits(seed) });
+    pub fn new(crc: _pac::Crc, seed: u16) -> Self {
+        crc.crcinires().write(|w| unsafe { w.bits(seed) });
         Self(crc)
     }
 
@@ -36,7 +36,7 @@ impl Crc {
     pub fn add_byte_lsb(&mut self, byte: u8) {
         // We must write *only* to the lower byte of CRCDIRB
         // The lower byte of CRCDIRB is the 2 + base address of the CRC module
-        unsafe { ((CRC::PTR as *mut u8).add(2)).write_volatile(byte) };
+        unsafe { ((_pac::Crc::PTR as *mut u8).add(2)).write_volatile(byte) };
     }
 
     /// Insert a slice of bytes into the CRC peripheral, assuming that bit 0 is the LSb of each byte. The byte at index 0 is included first.
@@ -53,7 +53,7 @@ impl Crc {
     #[inline(always)]
     pub fn add_word_lsb(&mut self, word: u16) {
         msp430::asm::nop(); // u16 insertions take two cycles, delay to allow back-to-back u16 insertions to finish
-        self.0.crcdirb.write(|w| unsafe { w.bits(word) });
+        self.0.crcdirb().write(|w| unsafe { w.bits(word) });
     }
 
     /// Insert a slice of u16's into the CRC peripheral, assuming that bit 0 and bit 8 are the LSbs of each byte.
@@ -73,7 +73,7 @@ impl Crc {
     pub fn add_byte_msb(&mut self, byte: u8) {
         // We must write *only* to the lower byte of CRCDI
         // The lower byte of CRCDI is the base address of the CRC module
-        unsafe { (CRC::PTR as *mut u8).write_volatile(byte) };
+        unsafe { (_pac::Crc::PTR as *mut u8).write_volatile(byte) };
     }
 
     /// Insert a slice of bytes into the CRC peripheral. The byte at index 0 is included first.
@@ -96,7 +96,7 @@ impl Crc {
     #[inline(always)]
     pub fn add_word_msb(&mut self, word: u16) {
         msp430::asm::nop(); // u16 insertions take two cycles, delay to allow back-to-back u16 insertions to finish
-        self.0.crcdi.write(|w| unsafe { w.bits(word) });
+        self.0.crcdi().write(|w| unsafe { w.bits(word) });
     }
 
     /// Insert a slice of u16's into the CRC peripheral. The u16 at index 0 is included first. The lower byte of each u16 is included first.
@@ -117,19 +117,19 @@ impl Crc {
     #[inline(always)]
     pub fn result(&mut self) -> u16 {
         msp430::asm::nop(); // u16 insertions take two cycles, delay in case a u16 insertion was just performed.
-        self.0.crcinires.read().bits()
+        self.0.crcinires().read().bits()
     }
 
     /// Get the computed CRC signature of the data passed in so far. Bit-reverse the result.
     #[inline(always)]
     pub fn result_reversed(&mut self) -> u16 {
         msp430::asm::nop(); // u16 insertions take two cycles, delay in case a u16 insertion was just performed.
-        self.0.crcresr.read().bits()
+        self.0.crcresr().read().bits()
     }
 
     /// Set the output of the CRC module to the specified seed, effectively resetting the CRC module.
     #[inline(always)]
     pub fn reset(&mut self, seed: u16) {
-        self.0.crcinires.write(|w| unsafe { w.bits(seed) });
+        self.0.crcinires().write(|w| unsafe { w.bits(seed) });
     }
 }

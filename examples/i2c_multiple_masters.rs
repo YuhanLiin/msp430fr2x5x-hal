@@ -19,34 +19,34 @@ use critical_section::Mutex;
 use embedded_hal::{delay::DelayNs, digital::OutputPin, i2c::I2c};
 use msp430::interrupt::enable as enable_interrupts;
 use msp430_rt::entry;
-use msp430fr2355::{interrupt, E_USCI_B1};
+use msp430fr2355::{interrupt, EUsciB1};
 use msp430fr2x5x_hal::{
     clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv}, fram::Fram, gpio::Batch, 
     i2c::{GlitchFilter, I2cConfig, I2cInterruptFlags as Flags, I2cMasterSlave, I2cVector}, pmm::Pmm, prelude::*, watchdog::Wdt
 };
 use panic_msp430 as _;
 
-static I2C_MULTI_MASTER: Mutex<UnsafeCell<Option< I2cMasterSlave<E_USCI_B1> >>> = Mutex::new(UnsafeCell::new(None));
+static I2C_MULTI_MASTER: Mutex<UnsafeCell<Option< I2cMasterSlave<EUsciB1> >>> = Mutex::new(UnsafeCell::new(None));
 // Sets the LED on P1.0 if communication is successful, sets the LED on P6.6 if there is no device with address 0x09 on the bus.
 #[entry]
 fn main() -> ! {
     let periph = msp430fr2355::Peripherals::take().unwrap();
 
-    let mut fram = Fram::new(periph.FRCTL);
-    let _wdt = Wdt::constrain(periph.WDT_A);
+    let mut fram = Fram::new(periph.frctl);
+    let _wdt = Wdt::constrain(periph.wdt_a);
 
-    let pmm = Pmm::new(periph.PMM);
-    let p1 = Batch::new(periph.P1).split(&pmm);
+    let pmm = Pmm::new(periph.pmm);
+    let p1 = Batch::new(periph.p1).split(&pmm);
     let mut red_led = p1.pin0.to_output();
-    let mut green_led = Batch::new(periph.P6).split(&pmm).pin6.to_output();
-    let p4 = Batch::new(periph.P4).split(&pmm);
+    let mut green_led = Batch::new(periph.p6).split(&pmm).pin6.to_output();
+    let p4 = Batch::new(periph.p4).split(&pmm);
     let ms_scl = p4.pin7.pullup().to_alternate1(); // You may need stronger external pullup resistors
     let ms_sda = p4.pin6.pullup().to_alternate1();
 
     let m_scl = p1.pin3.to_alternate1();
     let m_sda = p1.pin2.to_alternate1();
 
-    let (smclk, _aclk, mut delay) = ClockConfig::new(periph.CS)
+    let (smclk, _aclk, mut delay) = ClockConfig::new(periph.cs)
         .mclk_dcoclk(DcoclkFreqSel::_8MHz, MclkDiv::_1)
         .smclk_on(SmclkDiv::_1)
         .aclk_vloclk()
@@ -55,14 +55,14 @@ fn main() -> ! {
     // Configure an I2C device as both master and slave. The device will automatically failover from master to slave when addressed.
     // Attempting any master actions will fail until the slave event has been handled.
     const MASTER_SLAVE_ADDR: u8 = 26;
-    let mut i2c_master_slave = I2cConfig::new(periph.E_USCI_B1, GlitchFilter::Max50ns)
+    let mut i2c_master_slave = I2cConfig::new(periph.e_usci_b1, GlitchFilter::Max50ns)
         .as_master_slave(MASTER_SLAVE_ADDR)
         .use_smclk(&smclk, 80) // 8MHz / 80 = 100kHz
         .configure(ms_scl, ms_sda);
 
     // Make another I2C device to test the master-slave. Since there are now two masters present
     // on the bus this has to be a multi-master, rather than a single-master.
-    let mut i2c_master = I2cConfig::new(periph.E_USCI_B0, GlitchFilter::Max50ns)
+    let mut i2c_master = I2cConfig::new(periph.e_usci_b0, GlitchFilter::Max50ns)
         .as_multi_master()
         .use_smclk(&smclk, 80) // 8MHz / 80 = 100kHz
         .configure(m_scl, m_sda);
