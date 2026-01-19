@@ -40,7 +40,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --examples --features embedded-hal-02
+          args: --examples --features embedded-hal-02,msp430fr2355
       
       - name: Build MSRV examples
         if: matrix.rust_toolchain == 'nightly-2024-09-01'
@@ -54,7 +54,7 @@ jobs:
                 ;;
               *)
                 echo "Building $ex"
-                cargo build --example "$(basename $ex .rs)" --features embedded-hal-02
+                cargo build --example "$(basename $ex .rs)" --features embedded-hal-02,msp430fr2355
                 ;;
             esac
           done
