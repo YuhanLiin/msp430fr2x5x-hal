@@ -23,7 +23,7 @@ pub trait ECompInputs: ECompPeriph {
     type DeviceSpecific3Neg;
 
     // The eCOMP can alternatively source from SAC units or a TIA, if they exist
-    #[cfg(feature = "sac")]
+    #[cfg(feature = "sac_l3")]
     /// The SAC module connected to the positive comparator input
     type SACp;
     #[cfg(feature = "sac")]

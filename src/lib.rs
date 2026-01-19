@@ -71,6 +71,11 @@ pub mod i2c;
 pub mod info_mem;
 
 #[cfg(feature = "sac")]
+#[path="sac_l3.rs"]
+pub mod sac;
+
+#[cfg(feature = "sac_l1")]
+#[path="sac_l1.rs"]
 pub mod sac;
 
 mod device_specific;
