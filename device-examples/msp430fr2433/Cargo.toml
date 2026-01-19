@@ -1,0 +1,38 @@
+[package]
+name = "msp430fr2433-hal-examples"
+version = "0.0.1"
+authors = ["Ross Porter <rossporter506@gmail.com>"]
+edition = "2021"
+description = "MSP430FR2433 examples using the msp430fr2x5x-hal"
+publish = false
+keywords = ["no-std", "msp430", "ti", "launchpad", "embedded-hal"]
+
+[dependencies]
+panic-msp430 = "0.4.0"
+panic-never = "0.1.0"
+msp430 = {version = "0.4.1", features = ["critical-section-single-core"]}
+msp430-rt = "0.4.0"
+msp430fr2433 = { version = "0.2", features = ["rt", "critical-section"]}
+msp430fr2x5x-hal = {path = "../../hal", features = ["msp430fr2433"]}
+critical-section = "1.2.0"
+msp430-atomic = "0.1.5"
+embedded-hal = "1.0"
+embedded-hal-nb = "*"
+embedded-io = "0.6"
+nb = "1.1.0"
+
+[profile.release]
+opt-level = "z"
+codegen-units = 1
+lto = "fat"
+strip = "debuginfo" # Replace with 'true' to make final executable smaller, but unable to analyze with cargo bloat.
+
+[profile.dev]
+opt-level = "z"
+codegen-units = 1
+lto = "fat"
+debug = true
+strip = "debuginfo"
+
+[profile.dev.package."*"]
+opt-level = "z"
