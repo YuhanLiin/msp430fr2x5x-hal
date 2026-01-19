@@ -18,8 +18,9 @@ use crate::hw_traits::gpio::{GpioPeriph, IntrPeriph};
 use crate::util::BitsExt;
 use core::convert::Infallible;
 use core::marker::PhantomData;
-use crate::pac;
-pub use pac::{P1, P2, P3, P4, P5, P6};
+
+// Make PAC GPIO peripherals available as a re-export
+pub use crate::device_specific::gpio::*;
 
 mod sealed {
     use super::*;

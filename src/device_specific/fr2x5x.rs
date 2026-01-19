@@ -1,8 +1,10 @@
 pub use msp430fr2355 as pac;
 /*         GPIO          */
-mod gpio {
+pub mod gpio {
+    // Make PAC GPIO avilable as a re-export
+    pub use crate::pac::{P1, P2, P3, P4, P5, P6};
+    
     use crate::gpio::*;
-    use crate::pac::{P1, P2, P3, P4, P5, P6};
     use crate::hw_traits::gpio::gpio_impl; 
 
     // Define alternate pin transitions
