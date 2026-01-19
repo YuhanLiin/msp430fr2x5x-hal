@@ -1,4 +1,4 @@
-//! Smart Analog Combo (SAC)
+//! Smart Analog Combo L3 (SAC-L3)
 //!
 //! The Smart Analog Combo (SAC) integrates an operational amplifier, a programmable gain amplifier with up to 33x
 //! gain, and a 12-bit Digital to Analog Converter (DAC) core. The SAC can be used for signal
@@ -70,7 +70,7 @@ impl<SAC: SacPeriph> DacConfig<SAC> {
     /// Initialise the DAC within this SAC with the provided values.
     #[inline(always)]
     pub fn configure<'a>(self, vref: VRef<'a>, load_trigger: LoadTrigger<'_>) -> Dac<'a, SAC> {
-        SAC::configure_dac(load_trigger, vref);
+        SAC::configure_dac(load_trigger.into(), vref.into());
         Dac{sac: PhantomData, vref_lifetime: PhantomData}
     }
 }
@@ -139,7 +139,7 @@ impl<SAC:SacPeriph> AmpConfig<NoModeSet, SAC> {
     /// Begin configuring this SAC as an open-loop operational amplifier (no internal feedback).
     #[inline(always)]
     pub fn opamp(self, pos_in: PositiveInput<SAC>, neg_in: NegativeInput<SAC>, power_mode: PowerMode) -> AmpConfig<ModeSet, SAC> {
-        SAC::configure_sacoa(pos_in.psel(), neg_in.nsel(), power_mode);
+        SAC::configure_sacoa(pos_in.psel(), neg_in.nsel(), power_mode.into());
         AmpConfig{ mode: PhantomData, reg: PhantomData }
     }
 
@@ -147,7 +147,7 @@ impl<SAC:SacPeriph> AmpConfig<NoModeSet, SAC> {
     #[inline(always)]
     pub fn inverting_amplifier(self, pos_in: PositiveInput<SAC>, neg_in: NegativeInput<SAC>, gain: InvertingGain, power_mode: PowerMode) -> AmpConfig<ModeSet, SAC> {
         SAC::configure_sacpga(gain as u8, neg_in.msel());
-        SAC::configure_sacoa(pos_in.psel(), NSel::Feedback, power_mode);
+        SAC::configure_sacoa(pos_in.psel(), NSel::Feedback, power_mode.into());
         AmpConfig{ mode: PhantomData, reg: PhantomData }
     }
 
@@ -155,7 +155,7 @@ impl<SAC:SacPeriph> AmpConfig<NoModeSet, SAC> {
     #[inline(always)]
     pub fn noninverting_amplifier(self, pos_in: PositiveInput<SAC>, gain: NoninvertingGain, power_mode: PowerMode) -> AmpConfig<ModeSet, SAC> {
         SAC::configure_sacpga(gain as u8, MSel::NonInverting);
-        SAC::configure_sacoa(pos_in.psel(), NSel::Feedback, power_mode);
+        SAC::configure_sacoa(pos_in.psel(), NSel::Feedback, power_mode.into());
         AmpConfig{ mode: PhantomData, reg: PhantomData }
     }
 
@@ -163,7 +163,7 @@ impl<SAC:SacPeriph> AmpConfig<NoModeSet, SAC> {
     #[inline(always)]
     pub fn buffer(self, source: PositiveInput<SAC>, power_mode: PowerMode) -> AmpConfig<ModeSet, SAC> {
         SAC::configure_sacpga(0, MSel::Follower);
-        SAC::configure_sacoa(source.psel(), NSel::Feedback, power_mode);
+        SAC::configure_sacoa(source.psel(), NSel::Feedback, power_mode.into());
         AmpConfig{ mode: PhantomData, reg: PhantomData }
     }
 }

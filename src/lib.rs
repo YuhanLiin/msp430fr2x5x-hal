@@ -53,7 +53,6 @@ pub mod pmm;
 pub mod prelude;
 pub mod pwm;
 pub mod rtc;
-pub mod sac;
 pub mod serial;
 pub mod spi;
 pub mod timer;
@@ -70,6 +69,9 @@ pub mod i2c;
 
 #[cfg(feature = "info_mem")]
 pub mod info_mem;
+
+#[cfg(feature = "sac")]
+pub mod sac;
 
 mod device_specific;
 mod hw_traits;

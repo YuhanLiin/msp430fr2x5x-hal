@@ -1,9 +1,3 @@
-use crate::{
-    gpio::{Pin, Alternate3, Input, Floating, Pin1, Pin2, Pin3, Pin5, Pin6, Pin7}, 
-    hw_traits::Steal, sac::{LoadTrigger, VRef, PowerMode},
-    pac::{P1, P3, SAC0, SAC1, SAC2, SAC3},
-};
-
 /// Trait representing a Smart Analog Combo (SAC) peripheral.
 pub trait SacPeriph {
     /// Non-inverting opamp input pin
@@ -12,9 +6,9 @@ pub trait SacPeriph {
     type NegInputPin;
     /// Opamp output pin
     type OutputPin;
-    fn configure_sacoa(psel: u8, nsel: NSel, pm: PowerMode);
+    fn configure_sacoa(psel: u8, nsel: NSel, pm: bool);
     fn configure_sacpga(gain: u8, mode: MSel);
-    fn configure_dac(load_condition: LoadTrigger, vref: VRef);
+    fn configure_dac(load_condition: u8, vref: bool);
     fn set_dac_count(val: u16);
 }
 
@@ -36,7 +30,10 @@ pub enum MSel {
 }
 
 macro_rules! impl_sac_periph {
-    ($SAC: ident, $port: ident, $inPp: ident, $inNp: ident, $outp: ident, // Register block, port, pos_in, neg_in, out
+    ($SAC: ident, 
+        $pos_port: ident, $pos_pin: ident, // Positive input
+        $neg_port: ident, $neg_pin: ident, // Negative input
+        $out_port: ident, $out_pin: ident, // Output 
         $sacXoa: ident, $sacXpga: ident, $sacXdac: ident, $sacXdat: ident) => {
         impl Steal for $SAC {
             #[inline(always)]
@@ -45,17 +42,17 @@ macro_rules! impl_sac_periph {
             }
         }
         impl SacPeriph for $SAC {
-            type PosInputPin = Pin<$port, $inPp, Alternate3<Input<Floating>>>;
-            type NegInputPin = Pin<$port, $inNp, Alternate3<Input<Floating>>>;
-            type OutputPin   = Pin<$port, $outp, Alternate3<Input<Floating>>>;
+            type PosInputPin = Pin<$pos_port, $pos_pin, Alternate3<Input<Floating>>>;
+            type NegInputPin = Pin<$neg_port, $neg_pin, Alternate3<Input<Floating>>>;
+            type OutputPin   = Pin<$out_port, $out_pin, Alternate3<Input<Floating>>>;
             #[inline(always)]
-            fn configure_sacoa(psel: u8, nsel: NSel, pm: PowerMode) {
+            fn configure_sacoa(psel: u8, nsel: NSel, pm: bool) {
                 unsafe {
                     let sac = $SAC::steal();
                     sac.$sacXoa.write(|w| w
                         .nsel().bits(nsel as u8)
                         .psel().bits(psel)
-                        .oapm().bit(pm.into())
+                        .oapm().bit(pm)
                         .nmuxen().set_bit()
                         .pmuxen().set_bit()
                         .sacen().set_bit()
@@ -74,12 +71,12 @@ macro_rules! impl_sac_periph {
                 }
             }
             #[inline(always)]
-            fn configure_dac(lsel: LoadTrigger, vref: VRef) {
+            fn configure_dac(lsel: u8, vref: bool) {
                 unsafe{
                     let sac = $SAC::steal();
                     sac.$sacXdac.write(|w| w
-                        .dacsref().bit(vref.into())
-                        .daclsel().bits(lsel.into())
+                        .dacsref().bit(vref)
+                        .daclsel().bits(lsel)
                         .dacdmae().clear_bit()
                         .dacie().clear_bit()
                         .dacen().set_bit()
@@ -98,20 +95,4 @@ macro_rules! impl_sac_periph {
         }
     };
 }
-
-impl_sac_periph!(
-    SAC0, P1, Pin3, Pin2, Pin1, // Register block, port, pos_in, neg_in, out
-    sac0oa, sac0pga, sac0dac, sac0dat
-);
-impl_sac_periph!(
-    SAC1, P1, Pin7, Pin6, Pin5,
-    sac1oa, sac1pga, sac1dac, sac1dat
-);
-impl_sac_periph!(
-    SAC2, P3, Pin3, Pin2, Pin1,
-    sac2oa, sac2pga, sac2dac, sac2dat
-);
-impl_sac_periph!(
-    SAC3, P3, Pin7, Pin6, Pin5,
-    sac3oa, sac3pga, sac3dac, sac3dat
-);
+pub(crate) use impl_sac_periph;

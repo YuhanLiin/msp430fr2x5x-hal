@@ -326,6 +326,41 @@ mod pwm {
     }
 }
 
+/* SAC */
+mod sac {
+    use crate::{gpio::*, hw_traits::{Steal, sac::*}};
+    use crate::pac::{SAC0, SAC1, SAC2, SAC3};
+
+    impl_sac_periph!(
+        SAC0, 
+        P1, Pin3, // Positive input pin
+        P1, Pin2, // Negative input pin
+        P1, Pin1, // Output pin
+        sac0oa, sac0pga, sac0dac, sac0dat
+    );
+    impl_sac_periph!(
+        SAC1, 
+        P1, Pin7, 
+        P1, Pin6, 
+        P1, Pin5,
+        sac1oa, sac1pga, sac1dac, sac1dat
+    );
+    impl_sac_periph!(
+        SAC2, 
+        P3, Pin3, 
+        P3, Pin2, 
+        P3, Pin1,
+        sac2oa, sac2pga, sac2dac, sac2dat
+    );
+    impl_sac_periph!(
+        SAC3, 
+        P3, Pin7, 
+        P3, Pin6, 
+        P3, Pin5,
+        sac3oa, sac3pga, sac3dac, sac3dat
+    );
+}
+
 /* Timer */
 mod timer {
     use crate::{pac, gpio::*, timer::*, hw_traits::{Steal, timerb::*}};
