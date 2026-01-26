@@ -150,7 +150,7 @@ pub mod ecomp {
     use core::convert::Infallible;
 
     use crate::{gpio::*, ecomp::*};
-    use crate::hw_traits::{Steal, ecomp::*};
+    use crate::hw_traits::ecomp::*;
     use crate::pac::{EComp0, EComp1};
     #[cfg(feature = "sac")]
     use crate::{sac::Amplifier, pac::{Sac0, Sac1, Sac2, Sac3}};
@@ -425,7 +425,7 @@ mod pwm {
 
 /* SAC */
 mod sac {
-    use crate::{gpio::*, hw_traits::{Steal, sac::*}};
+    use crate::{gpio::*, hw_traits::sac::*};
     use crate::pac::{Sac0, Sac1, Sac2, Sac3};
 
     impl_sac_periph!(

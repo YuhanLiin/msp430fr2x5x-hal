@@ -35,12 +35,7 @@ macro_rules! impl_sac_periph {
         $neg_port: ident, $neg_pin: ident, // Negative input
         $out_port: ident, $out_pin: ident, // Output 
         $sacXoa: ident, $sacXpga: ident, $sacXdac: ident, $sacXdat: ident) => {
-        impl Steal for $SAC {
-            #[inline(always)]
-            unsafe fn steal() -> Self {
-                $SAC::steal()
-            }
-        }
+
         impl SacPeriph for $SAC {
             type PosInputPin = Pin<$pos_port, $pos_pin, Alternate3<Input<Floating>>>;
             type NegInputPin = Pin<$neg_port, $neg_pin, Alternate3<Input<Floating>>>;

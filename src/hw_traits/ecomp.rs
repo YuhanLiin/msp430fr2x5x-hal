@@ -1,4 +1,3 @@
-use super::Steal;
 use crate::{
     ecomp::{ComparatorDac, BufferSel, DacVRef, FilterStrength, Hysteresis, OutputPolarity, PowerMode}, 
 };
@@ -34,7 +33,7 @@ pub trait ECompInputs: ECompPeriph {
 }
 
 #[allow(non_camel_case_types)]
-pub trait ECompPeriph: Steal {
+pub trait ECompPeriph {
     fn cpxdacctl(enable: bool, vref: DacVRef, buf_mode: DacBufferMode, buf: BufferSel);
     fn set_buf1_val(buf: u8);
     fn set_buf2_val(buf: u8);
@@ -76,12 +75,7 @@ macro_rules! impl_ecomp {
         $cpctl0: ident, $cpctl1: ident,
         $cpdacctl: ident, $cpdacdata: ident,
         $cpint: ident, $cpiv: ident ) => {
-        impl Steal for $COMP {
-            #[inline(always)]
-            unsafe fn steal() -> Self {
-                $COMP::steal()
-            }
-        }
+
         impl ECompPeriph for $COMP {
             #[inline(always)]
             fn cpxdacctl(enable: bool, vref: DacVRef, buf_mode: DacBufferMode, buf: BufferSel) {
