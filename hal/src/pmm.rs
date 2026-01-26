@@ -4,6 +4,8 @@ use core::marker::PhantomData;
 
 use crate::_pac;
 
+const PMM_PASSWORD: u8 = 0xA5;
+
 /// PMM type
 pub struct Pmm(_pac::Pmm);
 
@@ -52,6 +54,9 @@ impl Pmm {
         match pmmctl2.intrefen().bit() {
             true => None,
             false => {
+                // Unlock PMM registers
+                self.0.pmmctl0().modify(|r,w| unsafe { w.pmmpw().bits(PMM_PASSWORD) });
+                
                 self.0.pmmctl2().write(|w| unsafe{ w
                     .bits(pmmctl2.bits()) 
                     .refvsel().bits(vref as u8)
