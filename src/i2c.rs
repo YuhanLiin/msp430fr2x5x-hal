@@ -70,13 +70,7 @@
 use core::convert::Infallible;
 
 use crate::clock::{Aclk, Smclk};
-use crate::gpio::{Pin1, Pin5};
-use crate::hw_traits::eusci::I2CUcbIfgOut;
-use crate::{
-    gpio::{Alternate1, Pin, Pin2, Pin3, Pin6, Pin7, P1, P4},
-    hw_traits::eusci::{EUsciI2C, UcbCtlw0, UcbCtlw1, UcbI2coa, Ucmode, Ucssel},
-    pac,
-};
+use crate::hw_traits::eusci::{EUsciI2C, I2CUcbIfgOut, UcbCtlw0, UcbCtlw1, UcbI2coa, Ucmode, Ucssel};
 
 use core::marker::PhantomData;
 use embedded_hal::i2c::{AddressMode, SevenBitAddress, TenBitAddress};
@@ -147,16 +141,6 @@ pub trait I2cUsci: EUsciI2C {
     /// I2C external clock source pin. Only necessary if UCLKI is selected as a clock source.
     type ExternalClockPin;
 }
-impl I2cUsci for pac::E_USCI_B0 {
-    type ClockPin = UsciB0SCLPin;
-    type DataPin = UsciB0SDAPin;
-    type ExternalClockPin = UsciB0UCLKIPin;
-}
-impl I2cUsci for pac::E_USCI_B1 {
-    type ClockPin = UsciB1SCLPin;
-    type DataPin = UsciB1SDAPin;
-    type ExternalClockPin = UsciB1UCLKIPin;
-}
 
 // Allows a GPIO pin to be converted into an I2C object
 macro_rules! impl_i2c_pin {
@@ -169,30 +153,7 @@ macro_rules! impl_i2c_pin {
         }
     };
 }
-
-/// I2C SCL pin for eUSCI B0
-pub struct UsciB0SCLPin;
-impl_i2c_pin!(UsciB0SCLPin, P1, Pin3);
-
-/// I2C SDA pin for eUSCI B0
-pub struct UsciB0SDAPin;
-impl_i2c_pin!(UsciB0SDAPin, P1, Pin2);
-
-/// UCLKI pin for eUSCI B0. Used as an external clock source.
-pub struct UsciB0UCLKIPin;
-impl_i2c_pin!(UsciB0UCLKIPin, P1, Pin1);
-
-/// I2C SCL pin for eUSCI B1
-pub struct UsciB1SCLPin;
-impl_i2c_pin!(UsciB1SCLPin, P4, Pin7);
-
-/// I2C SDA pin for eUSCI B1
-pub struct UsciB1SDAPin;
-impl_i2c_pin!(UsciB1SDAPin, P4, Pin6);
-
-/// UCLKI pin for eUSCI B1. Used as an external clock source.
-pub struct UsciB1UCLKIPin;
-impl_i2c_pin!(UsciB1UCLKIPin, P4, Pin5);
+pub(crate) use impl_i2c_pin;
 
 /// Typestate for an I2C bus configuration with no clock source selected
 pub struct NoClockSet;

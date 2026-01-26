@@ -1,5 +1,6 @@
+// Functionality common to both TimerA and TimerB
+
 use super::Steal;
-use msp430fr2355 as pac;
 
 pub enum Tbssel {
     Tbxclk,
@@ -65,7 +66,7 @@ pub enum Ccis {
     Vcc,
 }
 
-pub trait TimerB: Steal {
+pub trait TimerBase: Steal {
     /// Reset timer countdown
     fn reset(&self);
 
@@ -105,11 +106,13 @@ pub trait TimerB: Steal {
     fn get_tbxr(&self) -> u16;
 }
 
+#[repr(u8)]
 pub enum RunningMode {
     Up = 0b01,
     Continuous = 0b10,
     UpDown = 0b11,
 }
+#[repr(u8)]
 pub enum Mode {
     Stop = 0b00,
     Up = 0b01,
@@ -169,15 +172,11 @@ macro_rules! ccrn_impl {
 
             #[inline(always)]
             fn config_cap_mode(&self, cm: Cm, ccis: Ccis) {
-                self.$tbxcctln.write(|w| {
-                    w.cap()
-                        .capture()
-                        .scs()
-                        .sync()
-                        .cm()
-                        .bits(cm as u8)
-                        .ccis()
-                        .bits(ccis as u8)
+                self.$tbxcctln.write(|w| unsafe { w
+                    .cap().set_bit()
+                    .scs().set_bit()
+                    .cm().bits(cm as u8)
+                    .ccis().bits(ccis as u8)
                 });
             }
 
@@ -217,8 +216,9 @@ macro_rules! ccrn_impl {
         }
     };
 }
+pub(crate) use ccrn_impl;
 
-macro_rules! timerb_impl {
+macro_rules! timer_base_impl {
     ($TBx:ident, $tbx:ident, $tbxctl:ident, $tbxex:ident, $tbxiv:ident, $tbxr:ident, $([$CCRn:ident, $tbxcctln:ident, $tbxccrn:ident]),*) => {
         impl Steal for pac::$TBx {
             #[inline(always)]
@@ -227,7 +227,7 @@ macro_rules! timerb_impl {
             }
         }
 
-        impl TimerB for pac::$TBx {
+        impl TimerBase for pac::$TBx {
             #[inline(always)]
             fn reset(&self) {
                 unsafe { self.$tbxctl.set_bits(|w| w.tbclr().set_bit()) };
@@ -267,12 +267,12 @@ macro_rules! timerb_impl {
 
             #[inline(always)]
             fn is_stopped(&self) -> bool {
-                self.$tbxctl.read().mc().is_stop()
+                self.$tbxctl.read().mc().bits() == (Mode::Stop as u8)
             }
 
             #[inline(always)]
             fn stop(&self) {
-                unsafe { self.$tbxctl.clear_bits(|w| w.mc().stop()) };
+                unsafe { self.$tbxctl.clear_bits(|w| w.mc().bits(Mode::Stop as u8)) };
             }
 
             #[inline(always)]
@@ -324,55 +324,4 @@ macro_rules! timerb_impl {
         $(ccrn_impl!($TBx, $CCRn, $tbxcctln, $tbxccrn);)*
     };
 }
-
-timerb_impl!(
-    TB0,
-    tb0,
-    tb0ctl,
-    tb0ex0,
-    tb0iv,
-    tb0r,
-    [CCR0, tb0cctl0, tb0ccr0],
-    [CCR1, tb0cctl1, tb0ccr1],
-    [CCR2, tb0cctl2, tb0ccr2]
-);
-
-timerb_impl!(
-    TB1,
-    tb1,
-    tb1ctl,
-    tb1ex0,
-    tb1iv,
-    tb1r,
-    [CCR0, tb1cctl0, tb1ccr0],
-    [CCR1, tb1cctl1, tb1ccr1],
-    [CCR2, tb1cctl2, tb1ccr2]
-);
-
-timerb_impl!(
-    TB2,
-    tb2,
-    tb2ctl,
-    tb2ex0,
-    tb2iv,
-    tb2r,
-    [CCR0, tb2cctl0, tb2ccr0],
-    [CCR1, tb2cctl1, tb2ccr1],
-    [CCR2, tb2cctl2, tb2ccr2]
-);
-
-timerb_impl!(
-    TB3,
-    tb3,
-    tb3ctl,
-    tb3ex0,
-    tb3iv,
-    tb3r,
-    [CCR0, tb3cctl0, tb3ccr0],
-    [CCR1, tb3cctl1, tb3ccr1],
-    [CCR2, tb3cctl2, tb3ccr2],
-    [CCR3, tb3cctl3, tb3ccr3],
-    [CCR4, tb3cctl4, tb3ccr4],
-    [CCR5, tb3cctl5, tb3ccr5],
-    [CCR6, tb3cctl6, tb3ccr6]
-);
+pub(crate) use timer_base_impl;

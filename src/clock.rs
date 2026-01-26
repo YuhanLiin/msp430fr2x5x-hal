@@ -12,10 +12,8 @@ use core::arch::asm;
 
 use crate::delay::SysDelay;
 use crate::fram::{Fram, WaitStates};
-use msp430fr2355 as pac;
-use pac::cs::csctl1::DCORSEL_A;
-use pac::cs::csctl4::{SELA_A, SELMS_A};
-pub use pac::cs::csctl5::{DIVM_A as MclkDiv, DIVS_A as SmclkDiv};
+use crate::_pac::{self, cs::{csctl1::DCORSEL_A, csctl4::{SELA_A, SELMS_A}}};
+pub use crate::_pac::cs::csctl5::{DIVM_A as MclkDiv, DIVS_A as SmclkDiv};
 
 /// REFOCLK frequency
 pub const REFOCLK: u16 = 32768;
@@ -50,14 +48,17 @@ impl MclkSel {
 
 #[derive(Clone, Copy)]
 enum AclkSel {
+    #[cfg(feature = "2x5x")]
     Vloclk,
     Refoclk,
+    // TODO: XT1CLK
 }
 
 impl AclkSel {
     #[inline(always)]
     fn sela(self) -> SELA_A {
         match self {
+            #[cfg(feature = "2x5x")]
             AclkSel::Vloclk => SELA_A::VLOCLK,
             AclkSel::Refoclk => SELA_A::REFOCLK,
         }
@@ -66,6 +67,7 @@ impl AclkSel {
     #[inline(always)]
     fn freq(self) -> u16 {
         match self {
+            #[cfg(feature = "2x5x")]
             AclkSel::Vloclk => VLOCLK,
             AclkSel::Refoclk => REFOCLK,
         }
@@ -88,8 +90,10 @@ pub enum DcoclkFreqSel {
     _12MHz,
     /// 16 MHz
     _16MHz,
+    #[cfg(feature = "2x5x")]
     /// 20 MHz
     _20MHz,
+    #[cfg(feature = "2x5x")]
     /// 24 MHz
     _24MHz,
 }
@@ -104,7 +108,9 @@ impl DcoclkFreqSel {
             DcoclkFreqSel::_8MHz => DCORSEL_A::DCORSEL_3,
             DcoclkFreqSel::_12MHz => DCORSEL_A::DCORSEL_4,
             DcoclkFreqSel::_16MHz => DCORSEL_A::DCORSEL_5,
+            #[cfg(feature = "2x5x")]
             DcoclkFreqSel::_20MHz => DCORSEL_A::DCORSEL_6,
+            #[cfg(feature = "2x5x")]
             DcoclkFreqSel::_24MHz => DCORSEL_A::DCORSEL_7,
         }
     }
@@ -118,7 +124,9 @@ impl DcoclkFreqSel {
             DcoclkFreqSel::_8MHz => 245,
             DcoclkFreqSel::_12MHz => 366,
             DcoclkFreqSel::_16MHz => 490,
+            #[cfg(feature = "2x5x")]
             DcoclkFreqSel::_20MHz => 610,
+            #[cfg(feature = "2x5x")]
             DcoclkFreqSel::_24MHz => 732,
         }
     }
@@ -165,7 +173,7 @@ impl SmclkState for SmclkDisabled {
 /// Can only commit configurations to hardware if both MCLK and SMCLK settings have been
 /// configured. ACLK configurations are optional, with its default source being REFOCLK.
 pub struct ClockConfig<MCLK, SMCLK> {
-    periph: pac::CS,
+    periph: _pac::CS,
     mclk: MCLK,
     mclk_div: MclkDiv,
     aclk_sel: AclkSel,
@@ -186,7 +194,7 @@ macro_rules! make_clkconf {
 
 impl ClockConfig<NoClockDefined, NoClockDefined> {
     /// Converts CS into a fresh, unconfigured clock builder object
-    pub fn new(cs: pac::CS) -> Self {
+    pub fn new(cs: _pac::CS) -> Self {
         ClockConfig {
             periph: cs,
             smclk: NoClockDefined,
@@ -205,6 +213,7 @@ impl<MCLK, SMCLK> ClockConfig<MCLK, SMCLK> {
         self
     }
 
+    #[cfg(feature = "2x5x")]
     /// Select VLOCLK for ACLK
     #[inline]
     pub fn aclk_vloclk(mut self) -> Self {
@@ -223,7 +232,7 @@ impl<MCLK, SMCLK> ClockConfig<MCLK, SMCLK> {
 
     /// Select VLOCLK for MCLK and set the MCLK divider. Frequency is `32768 / mclk_div` Hz.
     #[inline]
-    pub fn mclk_vcoclk(self, mclk_div: MclkDiv) -> ClockConfig<MclkDefined, SMCLK> {
+    pub fn mclk_vloclk(self, mclk_div: MclkDiv) -> ClockConfig<MclkDefined, SMCLK> {
         ClockConfig {
             mclk_div,
             ..make_clkconf!(self, MclkDefined(MclkSel::Vloclk), self.smclk)

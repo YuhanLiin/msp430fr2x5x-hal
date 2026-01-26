@@ -1,7 +1,7 @@
 //! Implementation of [`embedded_hal`] traits for MSP430FR2x5x family of microcontrollers.
 //! Here are the [`datasheet`] and [`User's guide`] for reference.
 //!
-//! As of this writing, the only supported board is the MSP430FR2355.
+//! As of this writing, the only supported MCUs are the MSP430FR2x5x series.
 //!
 //! [`embedded_hal`]: https://github.com/rust-embedded/embedded-hal
 //! [`datasheet`]: http://www.ti.com/lit/ds/symlink/msp430fr2355.pdf
@@ -17,12 +17,16 @@
 //! # Examples
 //!
 //! The `examples/` directory contains binary code examples using the HAL abstractions.
+//! These examples target the MSP430FR2355, particularly the MSP-EXP430FR2355 dev board.
 //! To flash the examples, make sure you have `mspdebug` with `tilib` support installed and in
-//! $PATH. Invoke `cargo run --example whatever` with the board plugged and the scripts should do
+//! $PATH. Invoke `cargo run --features msp430fr2355 --example whatever` with the board plugged and the scripts should do
 //! the trick, assuming your host is Linux and you are connected via Launchpad.
 //!
-//! # Features
+//! # Feature Flags
 //!
+//! Exactly one device feature must be enabled to specify which microcontroller is present. 
+//! More info can be found in the repository README.
+//! 
 //! An implementation of the pre-1.0 version of embedded-hal (e.g. 0.2.7 at time of writing) is
 //! available behind the `embedded-hal-02` feature flag. These traits are implemented on the same
 //! structs as the current embedded-hal implementation, so with this feature enabled you may mix and
@@ -40,33 +44,52 @@
 
 #![deny(missing_docs)]
 
-pub mod adc;
 pub mod bak_mem;
 pub mod batch_gpio;
 pub mod capture;
 pub mod clock;
 pub mod crc;
 pub mod delay;
-pub mod ecomp;
 pub mod fram;
 pub mod gpio;
-pub mod i2c;
-pub mod info_mem;
 pub mod lpm;
 pub mod pmm;
 pub mod prelude;
 pub mod pwm;
 pub mod rtc;
-pub mod sac;
 pub mod serial;
 pub mod spi;
 pub mod timer;
 pub mod watchdog;
 
+#[cfg(feature = "adc")]
+pub mod adc;
+
+#[cfg(feature = "ecomp")]
+pub mod ecomp;
+
+#[cfg(feature = "eusci_b")]
+pub mod i2c;
+
+#[cfg(feature = "info_mem")]
+pub mod info_mem;
+
+#[cfg(feature = "sac")]
+#[path="sac_l3.rs"]
+pub mod sac;
+
+#[cfg(feature = "sac_l1")]
+#[path="sac_l1.rs"]
+pub mod sac;
+
+mod device_specific;
 mod hw_traits;
 mod util;
 
-pub use msp430fr2355 as pac;
+pub use device_specific::pac;
+
+/// PAC with non-standard peripheral names corrected
+pub(crate) use device_specific::_pac;
 
 #[cfg(feature = "embedded-hal-02")]
 pub use embedded_hal_02 as ehal_02;

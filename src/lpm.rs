@@ -48,14 +48,14 @@
 //! the GPIO pins will take on their reset values when LOCKLPM5 is cleared.
 
 use core::arch::asm;
-use msp430fr2355::{Peripherals, RTC};
+use crate::_pac::{Peripherals, RTC};
 
 use crate::{
     rtc::{Rtc, RtcVloclk},
     watchdog::{WatchdogSelect, Wdt},
 };
 
-pub use msp430fr2355::pmm::pmmctl0::SVSHE_A as SvsState;
+pub use crate::pac::pmm::pmmctl0::SVSHE_A as SvsState;
 
 // Status register:
 // SCG1 SCG0 OSC_OFF CPU_OFF GIE N Z C
@@ -209,7 +209,7 @@ fn enter_lpmx_5<MODE: WatchdogSelect>(mut wdt: Wdt<MODE>, svs: SvsState, regs: P
     regs.PMM.pmmctl0.write(|w| w
         .pmmpw().variant(PASSWORD)
         .svshe().variant(svs)
-        .pmmregoff().pmmregoff_1()
+        .pmmregoff().set_bit()
     );
 
     // Write incorrect password to PMM to lock

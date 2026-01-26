@@ -1,11 +1,12 @@
 //! Real time counter
 //!
-//! Can be used as a periodic 16-bit timer
+//! Can be used as a periodic 16-bit timer.
+//! 
+//! Supports using SMCLK or VLOCLK as clock sources (ACLK and XT1CLK not yet supported).
 
 use crate::clock::Smclk;
 use core::{convert::Infallible, marker::PhantomData};
-use msp430fr2355 as pac;
-use pac::{rtc::rtcctl::RTCSS_A, RTC};
+use crate::_pac::{rtc::rtcctl::RTCSS_A, RTC};
 
 mod sealed {
     use super::*;
@@ -52,7 +53,7 @@ impl Rtc<RtcVloclk> {
     }
 }
 
-pub use pac::rtc::rtcctl::RTCPS_A as RtcDiv;
+pub use crate::_pac::rtc::rtcctl::RTCPS_A as RtcDiv;
 
 impl<SRC: RtcClockSrc> Rtc<SRC> {
     /// Configure the RTC to use SMCLK as clock source. Setting comes in effect the next time RTC

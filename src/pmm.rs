@@ -2,7 +2,7 @@
 
 use core::marker::PhantomData;
 
-use msp430fr2355::PMM;
+use crate::_pac::PMM;
 
 /// PMM type
 pub struct Pmm(PMM);
@@ -23,8 +23,12 @@ impl InternalVRef {
 pub enum ReferenceVoltage {
     /// 1.5V
     _1V5 = 0b00,
+
+    #[cfg(feature = "enhanced_ref")]
     /// 2.0V
     _2V0 = 0b01,
+    
+    #[cfg(feature = "enhanced_ref")]
     /// 2.5V
     _2V5 = 0b10,
 }
@@ -37,7 +41,7 @@ pub struct InternalTempSensor<'a>(PhantomData<&'a InternalVRef>);
 impl Pmm {
     /// Sets the LOCKLPM5 bit and returns a `Pmm`
     pub fn new(pmm: PMM) -> Pmm {
-        pmm.pm5ctl0.write(|w| w.locklpm5().locklpm5_0());
+        pmm.pm5ctl0.write(|w| w.locklpm5().clear_bit());
         Pmm(pmm)
     }
 
@@ -51,7 +55,7 @@ impl Pmm {
                 self.0.pmmctl2.write(|w| 
                     unsafe{ w.bits(pmmctl2.bits()) }
                     .refvsel().bits(vref as u8)
-                    .intrefen().intrefen_1());
+                    .intrefen().set_bit());
                 Some(InternalVRef(vref))
             }
         }

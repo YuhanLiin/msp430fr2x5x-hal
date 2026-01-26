@@ -22,9 +22,9 @@
 //! reference to [`InternalVRef`] or [`InternalTempSensor`] respectively. Channels 14 and 15 require no prior
 //! configuration, so the two functions below provide a reference that can be used to read from these channels.
 
-use crate::{clock::{Aclk, Smclk}, gpio::*, pmm::{InternalTempSensor, InternalVRef}};
+use crate::{clock::{Aclk, Smclk}, pmm::{InternalTempSensor, InternalVRef}};
 use core::convert::Infallible;
-use msp430fr2355::ADC;
+use crate::_pac::ADC;
 
 #[cfg(feature = "embedded-hal-02")]
 pub use embedded_hal_02::adc::Channel;
@@ -183,6 +183,7 @@ pub enum Resolution {
     /// 10-bit ADC conversion result. The conversion step takes 12 ADCCLK cycles.
     #[default]
     _10BIT = 0b01,
+    #[cfg(feature = "adc12bit")]
     /// 12-bit ADC conversion result. The conversion step takes 14 ADCCLK cycles.
     _12BIT = 0b10,
 }
@@ -228,19 +229,7 @@ macro_rules! impl_adc_channel_pin {
         }
     };
 }
-
-impl_adc_channel_pin!(P1, Pin0, 0);
-impl_adc_channel_pin!(P1, Pin1, 1);
-impl_adc_channel_pin!(P1, Pin2, 2);
-impl_adc_channel_pin!(P1, Pin3, 3);
-impl_adc_channel_pin!(P1, Pin4, 4);
-impl_adc_channel_pin!(P1, Pin5, 5);
-impl_adc_channel_pin!(P1, Pin6, 6);
-impl_adc_channel_pin!(P1, Pin7, 7);
-impl_adc_channel_pin!(P5, Pin0, 8);
-impl_adc_channel_pin!(P5, Pin1, 9);
-impl_adc_channel_pin!(P5, Pin2, 10);
-impl_adc_channel_pin!(P5, Pin3, 11);
+pub(crate) use impl_adc_channel_pin;
 
 // A few ADC channels don't correspond to pins.
 macro_rules! impl_adc_channel_extra {
@@ -381,7 +370,7 @@ impl AdcConfig<ClockSet> {
         let adcdiv = self.clock_divider.adcdiv();
         adc_reg.adcctl1.write(|w| { w
             .adcssel().bits(adcssel)
-            .adcshp().adcshp_1()
+            .adcshp().set_bit()
             .adcdiv().bits(adcdiv)
         });
 
@@ -477,7 +466,7 @@ impl Adc {
     ///
     /// `ref_voltage_mv` is the reference voltage of the ADC in millivolts.
     pub fn count_to_mv(&self, count: u16, ref_voltage_mv: u16) -> u16 {
-        use crate::pac::adc::adcctl2::ADCRES_A;
+        use crate::_pac::adc::adcctl2::ADCRES_A;
         let resolution = match self.adc_reg.adcctl2.read().adcres().variant() {
             ADCRES_A::ADCRES_0 => 256,  //  8-bit
             ADCRES_A::ADCRES_1 => 1024, // 10-bit
