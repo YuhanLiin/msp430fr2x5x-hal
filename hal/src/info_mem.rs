@@ -1,12 +1,12 @@
 //! Information Memory.
-//! 512 bytes of non-volatile memory.
+//! [INFO_MEM_SIZE] bytes of non-volatile memory.
 //!
 //! Access the information memory by calling one of the `InfoMemory::as_x()` methods,
 //! which disables write protection and directly provides a reference to the information memory as an array.
 //!
 
 use crate::_pac;
-use crate::device_specific::INFO_MEM_SIZE;
+pub use crate::device_specific::INFO_MEM_SIZE;
 
 /// A struct that manages writing and reading from information memory.
 pub struct InfoMemory(());
@@ -21,7 +21,7 @@ const SYSCFG0_PASSWORD: u8 = 0xA5;
 macro_rules! as_x {
     ($fn_name: ident, $arr: ty) => {
         #[doc = "Disable the write protection bit, interpret the information memory as a `&mut"] #[doc = stringify!($arr)] 
-        #[doc = "` and return a mutable reference to it."]
+        #[doc = "` and return a mutable reference to it. See also: [INFO_MEM_SIZE]"]
         #[inline(always)]
         pub fn $fn_name(mut sys: _pac::Sys) -> (&'static mut $arr, System) {
             const { assert!( core::mem::size_of::<$arr>() == INFO_MEM_SIZE ) }

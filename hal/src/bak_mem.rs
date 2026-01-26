@@ -1,5 +1,5 @@
 //! Backup Memory.
-//! 32 bytes of memory that survive system resets.
+//! [BAK_MEM_SIZE] bytes of volatile memory that survives system resets.
 //!
 //! This memory is still volatile however, so it won't survive power loss. The backup memory is powered in all modes except LPM4.5.
 //!
@@ -9,7 +9,8 @@
 //! After choosing the most convenient data type for your application call the relevant method,
 //! such as [`BackupMemory::as_u8s()`], to recieve a mutable reference to the backup memory.
 
-use crate::device_specific::{_pac::Bkmem, BAK_MEM_SIZE};
+use crate::device_specific::_pac::Bkmem;
+pub use crate::device_specific::BAK_MEM_SIZE;
 use core::mem::size_of;
 
 /// Helper struct with static methods for interpreting the backup memory into more usable forms
@@ -17,7 +18,7 @@ pub struct BackupMemory;
 
 macro_rules! as_x {
     ($fn_name: ident, $arr: ty) => {
-        #[doc = "Interpret the backup memory as a `&mut"] #[doc = stringify!($arr)] #[doc = "`"]
+        #[doc = "Interpret the backup memory as a `&mut"] #[doc = stringify!($arr)] #[doc = "`. See also: [BAK_MEM_SIZE]"]
         #[inline(always)]
         pub fn $fn_name(_reg: Bkmem) -> &'static mut $arr {
             const { assert!( core::mem::size_of::<$arr>() == BAK_MEM_SIZE ) }
