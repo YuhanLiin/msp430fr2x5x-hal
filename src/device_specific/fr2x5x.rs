@@ -674,7 +674,7 @@ mod spi {
 
 /* Timer */
 mod timer {
-    use crate::{gpio::*, hw_traits::{self, Steal, timer_b::*}, pac::{self,*}, timer::*};
+    use crate::{gpio::*, hw_traits::{Steal, timer_b::*}, pac::{self,*}, timer::*};
 
     timer_b_impl!(
         Tb0,

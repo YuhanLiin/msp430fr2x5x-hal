@@ -371,8 +371,8 @@ impl AdcConfig<ClockSet> {
         adc_reg.adcctl1().write(|w| { unsafe { w
             .adcssel().bits(adcssel)
             .adcshp().set_bit()
-            .adcdiv().bits(adcdiv) }
-        });
+            .adcdiv().bits(adcdiv) 
+        }});
 
         let adcpdiv = self.predivider.adcpdiv();
         let adcres = self.resolution.adcres();
@@ -380,8 +380,8 @@ impl AdcConfig<ClockSet> {
         adc_reg.adcctl2().write(|w| { unsafe { w
             .adcpdiv().bits(adcpdiv)
             .adcres().bits(adcres)
-            .adcsr().bit(adcsr) }
-        });
+            .adcsr().bit(adcsr) 
+        }});
 
         Adc {
             adc_reg,
