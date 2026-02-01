@@ -48,14 +48,14 @@
 //! the GPIO pins will take on their reset values when LOCKLPM5 is cleared.
 
 use core::arch::asm;
-use crate::_pac::{Peripherals, RTC};
+use crate::_pac;
 
 use crate::{
     rtc::{Rtc, RtcVloclk},
     watchdog::{WatchdogSelect, Wdt},
 };
 
-pub use crate::pac::pmm::pmmctl0::SVSHE_A as SvsState;
+pub use crate::_pac::pmm::pmmctl0::Svshe as SvsState;
 
 // Status register:
 // SCG1 SCG0 OSC_OFF CPU_OFF GIE N Z C
@@ -137,22 +137,22 @@ pub unsafe fn enter_lpm3_5_unchecked<MODE: WatchdogSelect>(wdt: Wdt<MODE>, svs: 
 
 fn lpm3_5<MODE: WatchdogSelect>(wdt: Wdt<MODE>, svs: SvsState) -> ! {
     // Take peripherals. Execution won't return from this fn.
-    let regs = unsafe { crate::pac::Peripherals::conjure() };
+    let regs = unsafe { _pac::Peripherals::steal() };
 
     // If LF XT crystal is not in use, reset everything, otherwise reset everything but XIN, XOUT
     const MASK: u8 = (1 << 6) | (1 << 7);
     let lfxt_in_use =
-        (regs.P2.p2sel1.read().bits() & MASK == MASK) && (regs.P2.p2sel0.read().bits() & MASK == 0);
+        (regs.p2.p2sel1().read().bits() & MASK == MASK) && (regs.p2.p2sel0().read().bits() & MASK == 0);
     if lfxt_in_use {
         // Reset everything except for XIN and XOUT
         unsafe {
-            regs.P2.p2sel1.clear_bits(|w| w.bits(MASK));
-            regs.P2.p2sel0.clear_bits(|w| w.bits(MASK));
+            regs.p2.p2sel1().clear_bits(|w| w.bits(MASK));
+            regs.p2.p2sel0().clear_bits(|w| w.bits(MASK));
         }
     } else {
         // Reset everything
-        regs.P2.p2sel0.reset();
-        regs.P2.p2sel0.reset();
+        regs.p2.p2sel0().reset();
+        regs.p2.p2sel0().reset();
     }
 
     enter_lpmx_5(wdt, svs, regs)
@@ -168,37 +168,37 @@ fn lpm3_5<MODE: WatchdogSelect>(wdt: Wdt<MODE>, svs: SvsState) -> ! {
 ///
 /// Power draw in LPM4.5: Approx 42 nA.
 #[inline]
-pub fn enter_lpm4_5<MODE: WatchdogSelect>(wdt: Wdt<MODE>, rtc_reg: RTC, svs: SvsState) -> ! {
+pub fn enter_lpm4_5<MODE: WatchdogSelect>(wdt: Wdt<MODE>, rtc_reg: _pac::Rtc, svs: SvsState) -> ! {
     // Disable RTC
-    unsafe { rtc_reg.rtcctl.clear_bits(|w| w.rtcss().disabled()) };
+    unsafe { rtc_reg.rtcctl().clear_bits(|w| w.rtcss().disabled()) };
 
     // Take peripherals. Execution won't return from this fn.
-    let regs = unsafe { crate::pac::Peripherals::conjure() };
+    let regs = unsafe { crate::pac::Peripherals::steal() };
 
     // Reset P2SEL, including XIN and XOUT
-    regs.P2.p2sel0.reset();
-    regs.P2.p2sel1.reset();
+    regs.p2.p2sel0().reset();
+    regs.p2.p2sel1().reset();
 
     enter_lpmx_5(wdt, svs, regs)
 }
 
 /// Configuration common to LPM3.5 and 4.5
-fn enter_lpmx_5<MODE: WatchdogSelect>(mut wdt: Wdt<MODE>, svs: SvsState, regs: Peripherals) -> ! {
+fn enter_lpmx_5<MODE: WatchdogSelect>(mut wdt: Wdt<MODE>, svs: SvsState, regs: _pac::Peripherals) -> ! {
     // Pause WDT
     wdt.pause();
 
     // Reset PxSEL
-    regs.P1.p1sel0.reset();
-    regs.P1.p1sel1.reset();
+    regs.p1.p1sel0().reset();
+    regs.p1.p1sel1().reset();
     /* P2 reset by 4.5 and 3.5 fns */
-    regs.P3.p3sel0.reset();
-    regs.P3.p3sel1.reset();
-    regs.P4.p4sel0.reset();
-    regs.P4.p4sel1.reset();
-    regs.P5.p5sel0.reset();
-    regs.P5.p5sel1.reset();
-    regs.P6.p6sel0.reset();
-    regs.P6.p6sel1.reset();
+    regs.p3.p3sel0().reset();
+    regs.p3.p3sel1().reset();
+    regs.p4.p4sel0().reset();
+    regs.p4.p4sel1().reset();
+    regs.p5.p5sel0().reset();
+    regs.p5.p5sel1().reset();
+    regs.p6.p6sel0().reset();
+    regs.p6.p6sel1().reset();
 
     let interrupts_were_enabled = msp430::register::sr::read().gie();
     msp430::interrupt::disable();
@@ -206,15 +206,15 @@ fn enter_lpmx_5<MODE: WatchdogSelect>(mut wdt: Wdt<MODE>, svs: SvsState, regs: P
     // Write PMM password to get PMM control regs
     // Set PMMREGOFF
     const PASSWORD: u8 = 0xA5;
-    regs.PMM.pmmctl0.write(|w| w
-        .pmmpw().variant(PASSWORD)
+    regs.pmm.pmmctl0().write(|w| unsafe { w
+        .pmmpw().bits(PASSWORD)
         .svshe().variant(svs)
         .pmmregoff().set_bit()
-    );
+    });
 
     // Write incorrect password to PMM to lock
     // Only write to the upper byte of PMMCTL0
-    let pmmctl0_h = (regs.PMM.pmmctl0.as_ptr() as *mut u8).wrapping_add(1);
+    let pmmctl0_h = (regs.pmm.pmmctl0().as_ptr() as *mut u8).wrapping_add(1);
     unsafe{ pmmctl0_h.write_volatile(0); }
 
     if interrupts_were_enabled {

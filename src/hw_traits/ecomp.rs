@@ -1,4 +1,3 @@
-use super::Steal;
 use crate::{
     ecomp::{ComparatorDac, BufferSel, DacVRef, FilterStrength, Hysteresis, OutputPolarity, PowerMode}, 
 };
@@ -34,7 +33,7 @@ pub trait ECompInputs: ECompPeriph {
 }
 
 #[allow(non_camel_case_types)]
-pub trait ECompPeriph: Steal {
+pub trait ECompPeriph {
     fn cpxdacctl(enable: bool, vref: DacVRef, buf_mode: DacBufferMode, buf: BufferSel);
     fn set_buf1_val(buf: u8);
     fn set_buf2_val(buf: u8);
@@ -76,18 +75,13 @@ macro_rules! impl_ecomp {
         $cpctl0: ident, $cpctl1: ident,
         $cpdacctl: ident, $cpdacdata: ident,
         $cpint: ident, $cpiv: ident ) => {
-        impl Steal for $COMP {
-            #[inline(always)]
-            unsafe fn steal() -> Self {
-                crate::pac::Peripherals::conjure().$COMP
-            }
-        }
+
         impl ECompPeriph for $COMP {
             #[inline(always)]
             fn cpxdacctl(enable: bool, vref: DacVRef, buf_mode: DacBufferMode, buf: BufferSel) {
                 unsafe {
                     let comp = $COMP::steal();
-                    comp.$cpdacctl.modify(|_, w| w
+                    comp.$cpdacctl().modify(|_, w| w
                         .cpdacen().bit(enable)
                         .cpdacrefs().bit(vref.into())
                         .cpdacbufs().bit(buf_mode.into())
@@ -99,35 +93,35 @@ macro_rules! impl_ecomp {
             fn set_buf1_val(buf: u8) {
                 unsafe {
                     let comp = $COMP::steal();
-                    comp.$cpdacdata.modify(|_, w| w.cpdacbuf1().bits(buf));
+                    comp.$cpdacdata().modify(|_, w| w.cpdacbuf1().bits(buf));
                 }
             }
             #[inline(always)]
             fn set_buf2_val(buf: u8) {
                 unsafe {
                     let comp = $COMP::steal();
-                    comp.$cpdacdata.modify(|_, w| w.cpdacbuf2().bits(buf));
+                    comp.$cpdacdata().modify(|_, w| w.cpdacbuf2().bits(buf));
                 }
             }
             #[inline(always)]
             fn select_buffer(sel: BufferSel) {
                 unsafe {
                     let comp = $COMP::steal();
-                    comp.$cpdacctl.modify(|_, w| w.cpdacsw().bit(sel.into()));
+                    comp.$cpdacctl().modify(|_, w| w.cpdacsw().bit(sel.into()));
                 }
             }
             #[inline(always)]
             fn set_dac_buffer_mode(mode: DacBufferMode) {
                 unsafe {
                     let comp = $COMP::steal();
-                    comp.$cpdacctl.modify(|_, w| w.cpdacbufs().bit(mode.into()));
+                    comp.$cpdacctl().modify(|_, w| w.cpdacbufs().bit(mode.into()));
                 }
             }
             #[inline(always)]
             fn cpxctl0(pos_in: u8, neg_in: u8) {
                 unsafe {
                     let comp = $COMP::steal();
-                    comp.$cpctl0.modify(|_, w| w
+                    comp.$cpctl0().modify(|_, w| w
                         .cppen().set_bit()
                         .cppsel().bits(pos_in.into())
                         .cpnen().set_bit()
@@ -139,7 +133,7 @@ macro_rules! impl_ecomp {
             fn configure_comparator(pol: OutputPolarity, pwr: PowerMode, hstr: Hysteresis, fltr: FilterStrength) {
                 unsafe {
                     let comp = $COMP::steal();
-                    comp.$cpctl1.modify(|_, w| w
+                    comp.$cpctl1().modify(|_, w| w
                         .cphsel().bits(hstr as u8)
                         .cpen().set_bit()
                         .cpmsel().bit(pwr.into())
@@ -153,34 +147,34 @@ macro_rules! impl_ecomp {
             #[inline(always)]
             fn value() -> bool {
                 let comp = unsafe { $COMP::steal() };
-                comp.$cpctl1.read().cpout().bit()
+                comp.$cpctl1().read().cpout().bit()
             }
             #[inline(always)]
             fn en_cpie() {
                 unsafe {
                     let comp = { $COMP::steal() };
-                    comp.$cpctl1.set_bits(|w| w.cpie().set_bit())
+                    comp.$cpctl1().set_bits(|w| w.cpie().set_bit())
                 }
             }
             #[inline(always)]
             fn dis_cpie() {
                 unsafe {
                     let comp = { $COMP::steal() };
-                    comp.$cpctl1.clear_bits(|w| w.cpie().clear_bit())
+                    comp.$cpctl1().clear_bits(|w| w.cpie().clear_bit())
                 }
             }
             #[inline(always)]
             fn en_cpiie() {
                 unsafe {
                     let comp = { $COMP::steal() };
-                    comp.$cpctl1.set_bits(|w| w.cpiie().set_bit())
+                    comp.$cpctl1().set_bits(|w| w.cpiie().set_bit())
                 }
             }
             #[inline(always)]
             fn dis_cpiie() {
                 unsafe {
                     let comp = { $COMP::steal() };
-                    comp.$cpctl1.clear_bits(|w| w.cpiie().clear_bit())
+                    comp.$cpctl1().clear_bits(|w| w.cpiie().clear_bit())
                 }
             }
         }

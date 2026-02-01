@@ -13,16 +13,16 @@ use panic_msp430 as _;
 fn main() -> ! {
     // Take peripherals and disable watchdog
     let periph = msp430fr2355::Peripherals::take().unwrap();
-    let _wdt = Wdt::constrain(periph.WDT_A);
+    let _wdt = Wdt::constrain(periph.wdt_a);
 
     // Configure GPIO
-    let mut pmm = Pmm::new(periph.PMM);
-    let port1 = Batch::new(periph.P1).split(&pmm);
+    let mut pmm = Pmm::new(periph.pmm);
+    let port1 = Batch::new(periph.p1).split(&pmm);
 
     let p1_1 = port1.pin1.to_alternate3();
 
     // Each Smart Analog Combo unit contains a DAC and amplifier.
-    let (dac_config, amp_config) = SacConfig::begin(periph.SAC0);
+    let (dac_config, amp_config) = SacConfig::begin(periph.sac0);
 
     // Configure the DAC within SAC0. Let's use the internal voltage reference too.
     let vref = pmm.enable_internal_reference(ReferenceVoltage::_1V5).unwrap();

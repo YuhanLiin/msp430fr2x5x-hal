@@ -19,25 +19,25 @@ use panic_msp430 as _;
 fn main() -> ! {
     let periph = msp430fr2355::Peripherals::take().unwrap();
 
-    Wdt::constrain(periph.WDT_A);
+    Wdt::constrain(periph.wdt_a);
 
-    let pmm = Pmm::new(periph.PMM);
-    let p1 = Batch::new(periph.P1)
+    let pmm = Pmm::new(periph.pmm);
+    let p1 = Batch::new(periph.p1)
         .config_pin0(|p| p.to_output())
         .split(&pmm);
-    let p2 = Batch::new(periph.P2)
+    let p2 = Batch::new(periph.p2)
         .config_pin3(|p| p.pullup())
         .split(&pmm);
     let mut led = p1.pin0;
     let mut button = p2.pin3;
 
-    let (_smclk, _aclk, _delay) = ClockConfig::new(periph.CS)
+    let (_smclk, _aclk, _delay) = ClockConfig::new(periph.cs)
         .mclk_refoclk(MclkDiv::_1)
         .smclk_on(SmclkDiv::_1)
         .aclk_vloclk()
-        .freeze(&mut Fram::new(periph.FRCTL));
+        .freeze(&mut Fram::new(periph.frctl));
 
-    let mut rtc = Rtc::new(periph.RTC).use_vloclk();
+    let mut rtc = Rtc::new(periph.rtc).use_vloclk();
     rtc.set_clk_div(RtcDiv::_10);
 
     button.select_falling_edge_trigger();

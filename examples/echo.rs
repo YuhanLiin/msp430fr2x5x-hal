@@ -25,22 +25,22 @@ use panic_never as _;
 #[entry]
 fn main() -> ! {
     if let Some(periph) = msp430fr2355::Peripherals::take() {
-        let mut fram = Fram::new(periph.FRCTL);
-        let _wdt = Wdt::constrain(periph.WDT_A);
+        let mut fram = Fram::new(periph.frctl);
+        let _wdt = Wdt::constrain(periph.wdt_a);
 
-        let (_smclk, aclk, _delay) = ClockConfig::new(periph.CS)
+        let (_smclk, aclk, _delay) = ClockConfig::new(periph.cs)
             .mclk_dcoclk(DcoclkFreqSel::_1MHz, MclkDiv::_1)
             .smclk_on(SmclkDiv::_2)
             .aclk_refoclk()
             .freeze(&mut fram);
 
-        let pmm = Pmm::new(periph.PMM);
-        let mut led = Batch::new(periph.P1).split(&pmm).pin0.to_output();
-        let p4 = Batch::new(periph.P4).split(&pmm);
+        let pmm = Pmm::new(periph.pmm);
+        let mut led = Batch::new(periph.p1).split(&pmm).pin0.to_output();
+        let p4 = Batch::new(periph.p4).split(&pmm);
         led.set_low().ok();
 
         let (mut tx, mut rx) = SerialConfig::new(
-            periph.E_USCI_A1,
+            periph.e_usci_a1,
             BitOrder::LsbFirst,
             BitCount::EightBits,
             StopBits::OneStopBit,

@@ -43,23 +43,23 @@ fn setup_uart<S: SerialUsci>(
 fn main() -> ! {
     let periph = msp430fr2355::Peripherals::take().unwrap();
 
-    let mut fram = Fram::new(periph.FRCTL);
-    let _wdt = Wdt::constrain(periph.WDT_A);
+    let mut fram = Fram::new(periph.frctl);
+    let _wdt = Wdt::constrain(periph.wdt_a);
 
-    let (smclk, _aclk, _delay) = ClockConfig::new(periph.CS)
+    let (smclk, _aclk, _delay) = ClockConfig::new(periph.cs)
         .mclk_dcoclk(DcoclkFreqSel::_4MHz, MclkDiv::_1)
         .smclk_on(SmclkDiv::_2)
         .aclk_refoclk()
         .freeze(&mut fram);
 
-    let pmm = Pmm::new(periph.PMM);
-    let p1 = Batch::new(periph.P1).split(&pmm);
-    let p4 = Batch::new(periph.P4).split(&pmm);
+    let pmm = Pmm::new(periph.pmm);
+    let p1 = Batch::new(periph.p1).split(&pmm);
+    let p4 = Batch::new(periph.p4).split(&pmm);
     let mut led = p1.pin0.to_output();
     led.set_low().ok();
 
     let (mut tx0, mut rx0) = setup_uart(
-        periph.E_USCI_A0,
+        periph.e_usci_a0,
         p1.pin7.to_alternate1().into(),
         p1.pin6.to_alternate1().into(),
         Parity::EvenParity,
@@ -69,7 +69,7 @@ fn main() -> ! {
     );
 
     let (mut tx1, mut rx1) = setup_uart(
-        periph.E_USCI_A1,
+        periph.e_usci_a1,
         p4.pin3.to_alternate1().into(),
         p4.pin2.to_alternate1().into(),
         Parity::NoParity,

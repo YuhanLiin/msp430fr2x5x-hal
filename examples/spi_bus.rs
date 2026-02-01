@@ -14,18 +14,18 @@ use panic_msp430 as _;
 fn main() -> ! {
     let periph = msp430fr2355::Peripherals::take().unwrap();
 
-    let mut fram = Fram::new(periph.FRCTL);
-    let _wdt = Wdt::constrain(periph.WDT_A);
+    let mut fram = Fram::new(periph.frctl);
+    let _wdt = Wdt::constrain(periph.wdt_a);
 
-    let pmm = Pmm::new(periph.PMM);
-    let p1 = Batch::new(periph.P1).split(&pmm);
+    let pmm = Pmm::new(periph.pmm);
+    let p1 = Batch::new(periph.p1).split(&pmm);
     let mosi   = p1.pin7.to_alternate1();
     let miso   = p1.pin6.to_alternate1();
     let sck    = p1.pin5.to_alternate1();
     let mut cs = p1.pin4.to_output();
     cs.set_high().ok();
 
-    let (smclk, _aclk, mut delay) = ClockConfig::new(periph.CS)
+    let (smclk, _aclk, mut delay) = ClockConfig::new(periph.cs)
         .mclk_dcoclk(DcoclkFreqSel::_8MHz, MclkDiv::_1)
         .smclk_on(SmclkDiv::_1)
         .aclk_vloclk()
@@ -34,7 +34,7 @@ fn main() -> ! {
     // In single master mode SCK and MOSI are always outputs.
     // Multi-master mode allows another master to control whether this device's SCK
     // and MOSI pins are outputs or high impedance via the STE pin.
-    let mut spi = SpiConfig::new(periph.E_USCI_A0, MODE_0, true)
+    let mut spi = SpiConfig::new(periph.e_usci_a0, MODE_0, true)
         .to_master_using_smclk(&smclk, 16) // 8MHz / 16 = 500kHz
         .single_master_bus(miso, mosi, sck);
 

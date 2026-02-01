@@ -29,9 +29,9 @@ use panic_msp430 as _;
 use panic_never as _;
 
 // We use UnsafeCell as a panic-free version of RefCell. If you aren't using `panic_never` then RefCell is more ergonomic.
-static CAPTURE: Mutex<UnsafeCell<Option<Capture<msp430fr2355::TB0, CCR1>>>> =
+static CAPTURE: Mutex<UnsafeCell<Option<Capture<msp430fr2355::Tb0, CCR1>>>> =
     Mutex::new(UnsafeCell::new(None));
-static VECTOR: Mutex<UnsafeCell<Option<TBxIV<msp430fr2355::TB0>>>> =
+static VECTOR: Mutex<UnsafeCell<Option<TBxIV<msp430fr2355::Tb0>>>> =
     Mutex::new(UnsafeCell::new(None));
 static RED_LED: Mutex<UnsafeCell<Option<Pin<P1, Pin0, Output>>>> =
     Mutex::new(UnsafeCell::new(None));
@@ -41,24 +41,24 @@ static RED_LED: Mutex<UnsafeCell<Option<Pin<P1, Pin0, Output>>>> =
 #[entry]
 fn main() -> ! {
     let Some(periph) = msp430fr2355::Peripherals::take() else { loop {} };
-    let mut fram = Fram::new(periph.FRCTL);
-    Wdt::constrain(periph.WDT_A);
+    let mut fram = Fram::new(periph.frctl);
+    Wdt::constrain(periph.wdt_a);
 
-    let pmm = Pmm::new(periph.PMM);
-    let p1 = Batch::new(periph.P1)
+    let pmm = Pmm::new(periph.pmm);
+    let p1 = Batch::new(periph.p1)
         .config_pin0(|p| p.to_output())
         .split(&pmm);
     let red_led = p1.pin0;
 
     with(|cs| unsafe { *RED_LED.borrow(cs).get() = Some(red_led) });
 
-    let (_smclk, aclk, _delay) = ClockConfig::new(periph.CS)
+    let (_smclk, aclk, _delay) = ClockConfig::new(periph.cs)
         .mclk_dcoclk(DcoclkFreqSel::_1MHz, MclkDiv::_1)
         .smclk_on(SmclkDiv::_1)
         .aclk_vloclk()
         .freeze(&mut fram);
 
-    let captures = CaptureParts3::config(periph.TB0, TimerConfig::aclk(&aclk))
+    let captures = CaptureParts3::config(periph.tb0, TimerConfig::aclk(&aclk))
         .config_cap1_input_A(p1.pin6.to_alternate2())
         .config_cap1_trigger(CapTrigger::FallingEdge)
         .commit();

@@ -26,7 +26,7 @@ use msp430::interrupt::enable as enable_interrupts;
 use embedded_hal::{delay::DelayNs, digital::{OutputPin, StatefulOutputPin}, i2c::I2c};
 use msp430_atomic::AtomicU8;
 use msp430_rt::entry;
-use msp430fr2355::{interrupt, E_USCI_B1};
+use msp430fr2355::{interrupt, EUsciB1};
 use msp430fr2x5x_hal::{
     clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv},
     fram::Fram,
@@ -38,7 +38,7 @@ use msp430fr2x5x_hal::{
 };
 use panic_msp430 as _;
 
-static I2C_SLAVE: Mutex<UnsafeCell<Option< I2cSlave<E_USCI_B1> >>> = Mutex::new(UnsafeCell::new(None));
+static I2C_SLAVE: Mutex<UnsafeCell<Option< I2cSlave<EUsciB1> >>> = Mutex::new(UnsafeCell::new(None));
 
 // Store the exposed 'registers' as Atomic values, so they can be easily read/written to between the interrupt and main fn
 const ARR_LEN: usize = 8;
@@ -49,33 +49,33 @@ static ARR: [AtomicU8; ARR_LEN] = [const { AtomicU8::new(0) }; ARR_LEN];
 fn main() -> ! {
     let periph = msp430fr2355::Peripherals::take().unwrap();
 
-    let mut fram = Fram::new(periph.FRCTL);
-    let _wdt = Wdt::constrain(periph.WDT_A);
+    let mut fram = Fram::new(periph.frctl);
+    let _wdt = Wdt::constrain(periph.wdt_a);
 
-    let pmm = Pmm::new(periph.PMM);
-    let p1 = Batch::new(periph.P1).split(&pmm);
+    let pmm = Pmm::new(periph.pmm);
+    let p1 = Batch::new(periph.p1).split(&pmm);
     let mut red_led = p1.pin0.to_output();
-    let mut green_led = Batch::new(periph.P6).split(&pmm).pin6.to_output();
-    let p4 = Batch::new(periph.P4).split(&pmm);
+    let mut green_led = Batch::new(periph.p6).split(&pmm).pin6.to_output();
+    let p4 = Batch::new(periph.p4).split(&pmm);
     let sl_scl = p4.pin7.to_alternate1();
     let sl_sda = p4.pin6.to_alternate1();
 
     let scl = p1.pin3.pullup().to_alternate1(); // You may need stronger external pullup resistors
     let sda = p1.pin2.pullup().to_alternate1();
 
-    let (smclk, _aclk, mut delay) = ClockConfig::new(periph.CS)
+    let (smclk, _aclk, mut delay) = ClockConfig::new(periph.cs)
         .mclk_dcoclk(DcoclkFreqSel::_8MHz, MclkDiv::_1)
         .smclk_on(SmclkDiv::_1)
         .aclk_vloclk()
         .freeze(&mut fram);
 
-    let mut i2c_master = I2cConfig::new(periph.E_USCI_B0, GlitchFilter::Max50ns)
+    let mut i2c_master = I2cConfig::new(periph.e_usci_b0, GlitchFilter::Max50ns)
         .as_single_master()
         .use_smclk(&smclk, 80) // 8MHz / 80 = 100kHz
         .configure(scl, sda);
 
     const SLAVE_ADDR: u8 = 0x1A;
-    let mut i2c_slave = I2cConfig::new(periph.E_USCI_B1, GlitchFilter::Max50ns)
+    let mut i2c_slave = I2cConfig::new(periph.e_usci_b1, GlitchFilter::Max50ns)
         .as_slave(SLAVE_ADDR)
         .configure(sl_scl, sl_sda);
 

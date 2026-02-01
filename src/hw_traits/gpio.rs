@@ -55,22 +55,22 @@ macro_rules! reg_methods {
     ($reg:ident, $rd:ident, $wr:ident, $set:ident, $clear:ident) => {
         #[inline(always)]
         fn $rd(&self) -> u8 {
-            self.$reg.read().bits()
+            self.$reg().read().bits()
         }
 
         #[inline(always)]
         fn $wr(&self, bits: u8) {
-            self.$reg.write(|w| unsafe { w.bits(bits) });
+            self.$reg().write(|w| unsafe { w.bits(bits) });
         }
 
         #[inline(always)]
         fn $set(&self, bits: u8) {
-            unsafe { self.$reg.set_bits(|w| w.bits(bits)) }
+            unsafe { self.$reg().set_bits(|w| w.bits(bits)) }
         }
 
         #[inline(always)]
         fn $clear(&self, bits: u8) {
-            unsafe { self.$reg.clear_bits(|w| w.bits(bits)) }
+            unsafe { self.$reg().clear_bits(|w| w.bits(bits)) }
         }
     };
 }
@@ -82,29 +82,29 @@ macro_rules! gpio_impl {
      $(, [$pxies:ident, $pxie:ident, $pxifg:ident, $pxiv:ident])?
     ) => {
         mod $px {
-            use crate::{pac, hw_traits::{Steal, gpio::*}};
+            use crate::{pac, gpio::*, hw_traits::{Steal, gpio::*}};
 
             impl Steal for pac::$Px {
                 #[inline(always)]
                 unsafe fn steal() -> Self {
-                    pac::Peripherals::conjure().$Px
+                    $Px::steal()
                 }
             }
 
             impl GpioPeriph for pac::$Px {
                 #[inline(always)]
                 fn pxin_rd(&self) -> u8 {
-                    self.$pxin.read().bits()
+                    self.$pxin().read().bits()
                 }
 
                 #[inline(always)]
                 fn pxselc_wr(&self, bits: u8) {
-                    self.$pxselc.write(|w| unsafe { w.bits(bits) })
+                    self.$pxselc().write(|w| unsafe { w.bits(bits) });
                 }
 
                 #[inline(always)]
                 fn pxout_toggle(&self, bits: u8) {
-                    unsafe { self.$pxout.toggle_bits(|w| w.bits(bits)) };
+                    unsafe { self.$pxout().toggle_bits(|w| w.bits(bits)) };
                 }
 
                 reg_methods!($pxout, pxout_rd, pxout_wr, pxout_set, pxout_clear);
@@ -122,7 +122,7 @@ macro_rules! gpio_impl {
 
                     #[inline(always)]
                     fn pxiv_rd(&self) -> u16 {
-                        self.$pxiv.read().bits()
+                        self.$pxiv().read().bits()
                     }
                 }
             )?

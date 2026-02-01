@@ -1,15 +1,15 @@
 //! FRAM controller
 
-use crate::_pac::FRCTL;
+use crate::_pac;
 
 /// FRAM controller
 pub struct Fram {
-    periph: FRCTL,
+    periph: _pac::Frctl,
 }
 
 impl Fram {
     /// Turn FRCTL into `Fram`
-    pub fn new(fram: FRCTL) -> Self {
+    pub fn new(fram: _pac::Frctl) -> Self {
         Fram { periph: fram }
     }
 }
@@ -44,7 +44,7 @@ impl Fram {
     #[inline]
     pub unsafe fn set_wait_states(&mut self, wait: WaitStates) {
         self.periph
-            .frctl0
+            .frctl0()
             .write(|w| w.frctlpw().bits(PASSWORD).nwaits().bits(wait as u8));
     }
 }

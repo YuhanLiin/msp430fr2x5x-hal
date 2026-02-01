@@ -38,24 +38,24 @@ macro_rules! init_port_as_pulldowns {
 fn main() -> ! {
     let periph = msp430fr2355::Peripherals::take().unwrap();
 
-    let wdt = Wdt::constrain(periph.WDT_A);
-    let pmm = Pmm::new(periph.PMM);
+    let wdt = Wdt::constrain(periph.wdt_a);
+    let pmm = Pmm::new(periph.pmm);
 
     // Floating input pins consume a *huge* amount of energy (relatively speaking).
     // Set unused pins to outputs or enable their pull resistors.
-    let port1 = init_port_as_pulldowns!(periph.P1)
+    let port1 = init_port_as_pulldowns!(periph.p1)
         .config_pin0(|p| p.to_output())
         .split(&pmm);
     let mut red_led = port1.pin0;
 
-    init_unused_gpio(periph.P2, periph.P3, periph.P4, periph.P5, periph.P6, &pmm);
+    init_unused_gpio(periph.p2, periph.p3, periph.p4, periph.p5, periph.p6, &pmm);
 
     // If this reset was a wake up from LPMx.5...
-    if periph.SYS.sysrstiv.read().sysrstiv().is_lpm5wu() {
+    if periph.sys.sysrstiv().read().sysrstiv().is_lpm5wu() {
         // Toggle the LED.
         // I/O registers have their values reset coming out of LPMx.5,
         // so we have to store state in the backup memory.
-        let bak_mem = BackupMemory::as_u8s(periph.BKMEM);
+        let bak_mem = BackupMemory::as_u8s(periph.bkmem);
 
         let old_value = bak_mem[0] == 1;
         red_led.set_state(old_value.into()).ok();
@@ -64,21 +64,21 @@ fn main() -> ! {
         bak_mem[0] = new_value;
 
         // Clear RTC interrupt flag
-        periph.RTC.rtciv.read();
+        periph.rtc.rtciv().read();
 
         // Enter LPM3.5 (without having to configure the RTC, we did that already).
-        unsafe { enter_lpm3_5_unchecked(wdt, SvsState::SVSHE_0) };
+        unsafe { enter_lpm3_5_unchecked(wdt, SvsState::Svshe0) };
     }
     // Otherwise this is a fresh start. Configure the RTC.
     else {
         // Configure RTC for 1 Hz interrupt
-        let mut rtc = Rtc::new(periph.RTC).use_vloclk();
+        let mut rtc = Rtc::new(periph.rtc).use_vloclk();
         rtc.set_clk_div(RtcDiv::_1);
         rtc.start(VLOCLK); // Count up to VLOCLK freq -> 1 Hz period
         rtc.enable_interrupts();
         // Global interrupts are enabled by `enter_lpm3_5()`
         // Leaving LPMx.5 requires a full system reset, so this function will never return.
-        enter_lpm3_5(wdt, rtc, SvsState::SVSHE_0);
+        enter_lpm3_5(wdt, rtc, SvsState::Svshe0);
     }
 }
 

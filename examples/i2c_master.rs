@@ -20,24 +20,24 @@ use panic_msp430 as _;
 fn main() -> ! {
     let periph = msp430fr2355::Peripherals::take().unwrap();
 
-    let mut fram = Fram::new(periph.FRCTL);
-    let _wdt = Wdt::constrain(periph.WDT_A);
+    let mut fram = Fram::new(periph.frctl);
+    let _wdt = Wdt::constrain(periph.wdt_a);
 
-    let pmm = Pmm::new(periph.PMM);
-    let mut red_led = Batch::new(periph.P1).split(&pmm).pin0.to_output();
-    let mut green_led = Batch::new(periph.P6).split(&pmm).pin6.to_output();
-    let p4 = Batch::new(periph.P4).split(&pmm);
+    let pmm = Pmm::new(periph.pmm);
+    let mut red_led = Batch::new(periph.p1).split(&pmm).pin0.to_output();
+    let mut green_led = Batch::new(periph.p6).split(&pmm).pin6.to_output();
+    let p4 = Batch::new(periph.p4).split(&pmm);
 
     let scl = p4.pin7.pullup().to_alternate1(); // You may need stronger external pullup resistors
     let sda = p4.pin6.pullup().to_alternate1();
 
-    let (smclk, _aclk, mut delay) = ClockConfig::new(periph.CS)
+    let (smclk, _aclk, mut delay) = ClockConfig::new(periph.cs)
         .mclk_dcoclk(DcoclkFreqSel::_8MHz, MclkDiv::_1)
         .smclk_on(SmclkDiv::_1)
         .aclk_vloclk()
         .freeze(&mut fram);
 
-    let mut i2c = I2cConfig::new(periph.E_USCI_B1, GlitchFilter::Max50ns)
+    let mut i2c = I2cConfig::new(periph.e_usci_b1, GlitchFilter::Max50ns)
         .as_single_master()
         .use_smclk(&smclk, 80) // 8MHz / 80 = 100kHz
         .configure(scl, sda);

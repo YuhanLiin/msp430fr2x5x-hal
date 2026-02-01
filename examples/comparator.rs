@@ -17,15 +17,15 @@ use panic_msp430 as _;
 fn main() -> ! {
     // Take peripherals and disable watchdog
     let periph = msp430fr2355::Peripherals::take().unwrap();
-    let _wdt = Wdt::constrain(periph.WDT_A);
+    let _wdt = Wdt::constrain(periph.wdt_a);
 
     // Configure GPIO
-    let pmm = Pmm::new(periph.PMM);
-    let port1 = Batch::new(periph.P1).split(&pmm);
+    let pmm = Pmm::new(periph.pmm);
+    let port1 = Batch::new(periph.p1).split(&pmm);
     let mut led = port1.pin0.to_output();
 
     // eCOMP configuration
-    let (_dac_conf, comp_conf) = ECompConfig::begin(periph.E_COMP0);
+    let (_dac_conf, comp_conf) = ECompConfig::begin(periph.e_comp0);
 
     let mut comparator = comp_conf.configure(
             PositiveInput::_1V2,

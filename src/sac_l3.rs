@@ -51,7 +51,7 @@ use core::marker::PhantomData;
 
 use crate::{
     hw_traits::sac::{MSel, NSel, SacPeriph}, pmm::InternalVRef, pwm::{CCR1, CCR2}, timer::SubTimer,
-    pac::TB2,
+    pac::Tb2,
 };
 
 /// A builder for configuring a Smart Analog Combo (SAC) unit
@@ -81,9 +81,9 @@ pub enum LoadTrigger<'a> {
     /// The DAC loads the new value as soon as the register is written to.
     Immediate,
     /// The DAC loads the new value when TB2.1 exhibits a rising edge.
-    TB2_1(&'a SubTimer<TB2, CCR1>),
+    TB2_1(&'a SubTimer<Tb2, CCR1>),
     /// The DAC loads the new value when TB2.2 exhibits a rising edge.
-    TB2_2(&'a SubTimer<TB2, CCR2>),
+    TB2_2(&'a SubTimer<Tb2, CCR2>),
 }
 impl From<LoadTrigger<'_>> for u8 {
     #[inline(always)]

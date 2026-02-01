@@ -108,7 +108,7 @@ pub const BAK_MEM_SIZE: usize = 32;
 mod capture {
     use crate::{pac::*, gpio::*, capture::CapturePeriph};
 
-    impl CapturePeriph for TB0 {
+    impl CapturePeriph for Tb0 {
         type Gpio1 = Pin<P1, Pin6, Alternate2<Input<Floating>>>;
         type Gpio2 = Pin<P1, Pin7, Alternate2<Input<Floating>>>;
         type Gpio3 = ();
@@ -117,7 +117,7 @@ mod capture {
         type Gpio6 = ();
     }
 
-    impl CapturePeriph for TB1 {
+    impl CapturePeriph for Tb1 {
         type Gpio1 = Pin<P2, Pin0, Alternate1<Input<Floating>>>;
         type Gpio2 = Pin<P2, Pin1, Alternate1<Input<Floating>>>;
         type Gpio3 = ();
@@ -126,7 +126,7 @@ mod capture {
         type Gpio6 = ();
     }
 
-    impl CapturePeriph for TB2 {
+    impl CapturePeriph for Tb2 {
         type Gpio1 = Pin<P5, Pin0, Alternate1<Input<Floating>>>;
         type Gpio2 = Pin<P5, Pin1, Alternate1<Input<Floating>>>;
         type Gpio3 = ();
@@ -135,7 +135,7 @@ mod capture {
         type Gpio6 = ();
     }
 
-    impl CapturePeriph for TB3 {
+    impl CapturePeriph for Tb3 {
         type Gpio1 = Pin<P6, Pin0, Alternate1<Input<Floating>>>;
         type Gpio2 = Pin<P6, Pin1, Alternate1<Input<Floating>>>;
         type Gpio3 = Pin<P6, Pin2, Alternate1<Input<Floating>>>;
@@ -150,19 +150,19 @@ pub mod ecomp {
     use core::convert::Infallible;
 
     use crate::{gpio::*, ecomp::*};
-    use crate::hw_traits::{Steal, ecomp::*};
-    use crate::pac::{E_COMP0, E_COMP1};
+    use crate::hw_traits::ecomp::*;
+    use crate::pac::{EComp0, EComp1};
     #[cfg(feature = "sac")]
-    use crate::{sac::Amplifier, pac::{SAC0, SAC1, SAC2, SAC3}};
+    use crate::{sac::Amplifier, pac::{Sac0, Sac1, Sac2, Sac3}};
 
-    impl ECompInputs for E_COMP0 {
+    impl ECompInputs for EComp0 {
         type COMPx_0   = Pin<P1, Pin0, Alternate2<Input<Floating>>>;
         type COMPx_1   = Pin<P1, Pin1, Alternate2<Input<Floating>>>;
         type COMPx_Out = Pin<P2, Pin0, Alternate2<Output>>;
         #[cfg(feature = "sac")]
-        type SACp = Amplifier<SAC0>;
+        type SACp = Amplifier<Sac0>;
         #[cfg(feature = "sac")]
-        type SACn = Amplifier<SAC2>;
+        type SACn = Amplifier<Sac2>;
         
         type DeviceSpecific0    = (); // Internal 1.2V reference. No type required.
         type DeviceSpecific1    = Infallible; // Not used
@@ -171,14 +171,14 @@ pub mod ecomp {
         type DeviceSpecific3Pos = Pin<P1, Pin1, Alternate2<Input<Floating>>>;
         type DeviceSpecific3Neg = Pin<P3, Pin1, Alternate2<Input<Floating>>>;
     }
-    impl ECompInputs for E_COMP1 {
+    impl ECompInputs for EComp1 {
         type COMPx_0 = Pin<P2, Pin5, Alternate2<Input<Floating>>>;
         type COMPx_1 = Pin<P2, Pin4, Alternate2<Input<Floating>>>;
         type COMPx_Out = Pin<P2, Pin1, Alternate2<Output>>;
         #[cfg(feature = "sac")]
-        type SACp = Amplifier<SAC1>;
+        type SACp = Amplifier<Sac1>;
         #[cfg(feature = "sac")]
-        type SACn = Amplifier<SAC3>;
+        type SACn = Amplifier<Sac3>;
 
         type DeviceSpecific0    = (); // Internal 1.2V reference. No type required.
         type DeviceSpecific1    = Infallible; // Not used
@@ -253,14 +253,14 @@ pub mod ecomp {
     }
 
     impl_ecomp!(
-        E_COMP0,
+        EComp0,
         cpctl0, cpctl1,
         cpdacctl, cpdacdata,
         cpint, cpiv
     );
 
     impl_ecomp!(
-        E_COMP1,
+        EComp1,
         cp1ctl0, cp1ctl1,
         cp1dacctl, cp1dacdata,
         cp1int, cp1iv
@@ -271,10 +271,10 @@ pub mod ecomp {
 mod eusci {
     use crate::{pac::*, hw_traits::{Steal, eusci::*}};
 
-    eusci_steal_impl!(E_USCI_A0);
-    eusci_steal_impl!(E_USCI_A1);
-    eusci_steal_impl!(E_USCI_B0);
-    eusci_steal_impl!(E_USCI_B1);
+    eusci_steal_impl!(EUsciA0);
+    eusci_steal_impl!(EUsciA1);
+    eusci_steal_impl!(EUsciB0);
+    eusci_steal_impl!(EUsciB1);
 }
 
 /* I2C */
@@ -282,7 +282,7 @@ mod i2c {
     use crate::{pac::*, gpio::*, hw_traits::eusci::*, i2c::{impl_i2c_pin, I2cUsci}};
 
     eusci_i2c_impl!(
-        E_USCI_B0,
+        EUsciB0,
         ucb0ctlw0,
         ucb0ctlw1,
         ucb0brw,
@@ -303,7 +303,7 @@ mod i2c {
         crate::pac::e_usci_b0::ucb0ifg::R,
     );
     eusci_i2c_impl!(
-        E_USCI_B1,
+        EUsciB1,
         ucb1ctlw0,
         ucb1ctlw1,
         ucb1brw,
@@ -347,12 +347,12 @@ mod i2c {
     pub struct UsciB1UCLKIPin;
     impl_i2c_pin!(UsciB1UCLKIPin, P4, Pin5);
 
-    impl I2cUsci for E_USCI_B0 {
+    impl I2cUsci for EUsciB0 {
         type ClockPin = UsciB0SCLPin;
         type DataPin = UsciB0SDAPin;
         type ExternalClockPin = UsciB0UCLKIPin;
     }
-    impl I2cUsci for E_USCI_B1 {
+    impl I2cUsci for EUsciB1 {
         type ClockPin = UsciB1SCLPin;
         type DataPin = UsciB1SDAPin;
         type ExternalClockPin = UsciB1UCLKIPin;
@@ -367,57 +367,57 @@ mod pwm {
     use crate::{pac::*, gpio::*, pwm::*};
 
     // TB0
-    impl PwmPeriph<CCR1> for TB0 {
+    impl PwmPeriph<CCR1> for Tb0 {
         type Gpio = Pin<P1, Pin6, Alternate2<Output>>;
         const ALT: Alt = Alt::Alt2;
     }
-    impl PwmPeriph<CCR2> for TB0 {
+    impl PwmPeriph<CCR2> for Tb0 {
         type Gpio = Pin<P1, Pin7, Alternate2<Output>>;
         const ALT: Alt = Alt::Alt2;
     }
 
     // TB1
-    impl PwmPeriph<CCR1> for TB1 {
+    impl PwmPeriph<CCR1> for Tb1 {
         type Gpio = Pin<P2, Pin0, Alternate1<Output>>;
         const ALT: Alt = Alt::Alt1;
     }
-    impl PwmPeriph<CCR2> for TB1 {
+    impl PwmPeriph<CCR2> for Tb1 {
         type Gpio = Pin<P2, Pin1, Alternate1<Output>>;
         const ALT: Alt = Alt::Alt1;
     }
 
     // TB2
-    impl PwmPeriph<CCR1> for TB2 {
+    impl PwmPeriph<CCR1> for Tb2 {
         type Gpio = Pin<P5, Pin0, Alternate1<Output>>;
         const ALT: Alt = Alt::Alt1;
     }
-    impl PwmPeriph<CCR2> for TB2 {
+    impl PwmPeriph<CCR2> for Tb2 {
         type Gpio = Pin<P5, Pin1, Alternate1<Output>>;
         const ALT: Alt = Alt::Alt1;
     }
 
     // TB3
-    impl PwmPeriph<CCR1> for TB3 {
+    impl PwmPeriph<CCR1> for Tb3 {
         type Gpio = Pin<P6, Pin0, Alternate1<Output>>;
         const ALT: Alt = Alt::Alt1;
     }
-    impl PwmPeriph<CCR2> for TB3 {
+    impl PwmPeriph<CCR2> for Tb3 {
         type Gpio = Pin<P6, Pin1, Alternate1<Output>>;
         const ALT: Alt = Alt::Alt1;
     }
-    impl PwmPeriph<CCR3> for TB3 {
+    impl PwmPeriph<CCR3> for Tb3 {
         type Gpio = Pin<P6, Pin2, Alternate1<Output>>;
         const ALT: Alt = Alt::Alt1;
     }
-    impl PwmPeriph<CCR4> for TB3 {
+    impl PwmPeriph<CCR4> for Tb3 {
         type Gpio = Pin<P6, Pin3, Alternate1<Output>>;
         const ALT: Alt = Alt::Alt1;
     }
-    impl PwmPeriph<CCR5> for TB3 {
+    impl PwmPeriph<CCR5> for Tb3 {
         type Gpio = Pin<P6, Pin4, Alternate1<Output>>;
         const ALT: Alt = Alt::Alt1;
     }
-    impl PwmPeriph<CCR6> for TB3 {
+    impl PwmPeriph<CCR6> for Tb3 {
         type Gpio = Pin<P6, Pin5, Alternate1<Output>>;
         const ALT: Alt = Alt::Alt1;
     }
@@ -425,32 +425,32 @@ mod pwm {
 
 /* SAC */
 mod sac {
-    use crate::{gpio::*, hw_traits::{Steal, sac::*}};
-    use crate::pac::{SAC0, SAC1, SAC2, SAC3};
+    use crate::{gpio::*, hw_traits::sac::*};
+    use crate::pac::{Sac0, Sac1, Sac2, Sac3};
 
     impl_sac_periph!(
-        SAC0, 
+        Sac0, 
         P1, Pin3, // Positive input pin
         P1, Pin2, // Negative input pin
         P1, Pin1, // Output pin
         sac0oa, sac0pga, sac0dac, sac0dat
     );
     impl_sac_periph!(
-        SAC1, 
+        Sac1, 
         P1, Pin7, 
         P1, Pin6, 
         P1, Pin5,
         sac1oa, sac1pga, sac1dac, sac1dat
     );
     impl_sac_periph!(
-        SAC2, 
+        Sac2, 
         P3, Pin3, 
         P3, Pin2, 
         P3, Pin1,
         sac2oa, sac2pga, sac2dac, sac2dat
     );
     impl_sac_periph!(
-        SAC3, 
+        Sac3, 
         P3, Pin7, 
         P3, Pin6, 
         P3, Pin5,
@@ -463,7 +463,7 @@ mod serial {
     use crate::{pac::*, gpio::*, hw_traits::eusci::*, serial::*};
 
     eusci_uart_impl!(
-        E_USCI_A0,
+        EUsciA0,
         uca0ctlw0,
         uca0ctlw1,
         uca0brw,
@@ -478,7 +478,7 @@ mod serial {
     );
 
     eusci_uart_impl!(
-        E_USCI_A1,
+        EUsciA1,
         uca1ctlw0,
         uca1ctlw1,
         uca1brw,
@@ -492,12 +492,12 @@ mod serial {
         crate::pac::e_usci_a1::uca1statw::R
     );
 
-    impl SerialUsci for E_USCI_A0 {
+    impl SerialUsci for EUsciA0 {
         type ClockPin = UsciA0ClockPin;
         type TxPin = UsciA0TxPin;
         type RxPin = UsciA0RxPin;
     }
-    impl SerialUsci for E_USCI_A1 {
+    impl SerialUsci for EUsciA1 {
         type ClockPin = UsciA1ClockPin;
         type TxPin = UsciA1TxPin;
         type RxPin = UsciA1RxPin;
@@ -532,7 +532,7 @@ mod spi {
     use crate::{pac::*, gpio::*, hw_traits::eusci::*, spi::*};
 
     eusci_spi_impl!(
-        E_USCI_A0,
+        EUsciA0,
         uca0ctlw0_spi,
         uca0brw,
         uca0statw_spi,
@@ -544,7 +544,7 @@ mod spi {
         crate::pac::e_usci_a0::uca0statw_spi::R
     );
     eusci_spi_impl!(
-        E_USCI_A1,
+        EUsciA1,
         uca1ctlw0_spi,
         uca1brw,
         uca1statw_spi,
@@ -556,7 +556,7 @@ mod spi {
         crate::pac::e_usci_a1::uca1statw_spi::R
     );
     eusci_spi_impl!(
-        E_USCI_B0,
+        EUsciB0,
         ucb0ctlw0_spi,
         ucb0brw,
         ucb0statw_spi,
@@ -568,7 +568,7 @@ mod spi {
         crate::pac::e_usci_b0::ucb0statw_spi::R
     );
     eusci_spi_impl!(
-        E_USCI_B1,
+        EUsciB1,
         ucb1ctlw0_spi,
         ucb1brw,
         ucb1statw_spi,
@@ -580,28 +580,28 @@ mod spi {
         crate::pac::e_usci_b1::ucb1statw_spi::R
     );
 
-    impl SpiUsci for E_USCI_A0 {
+    impl SpiUsci for EUsciA0 {
         type MISO = UsciA0MISOPin;
         type MOSI = UsciA0MOSIPin;
         type SCLK = UsciA0SCLKPin;
         type STE = UsciA0STEPin;
     }
 
-    impl SpiUsci for E_USCI_A1 {
+    impl SpiUsci for EUsciA1 {
         type MISO = UsciA1MISOPin;
         type MOSI = UsciA1MOSIPin;
         type SCLK = UsciA1SCLKPin;
         type STE = UsciA1STEPin;
     }
 
-    impl SpiUsci for E_USCI_B0 {
+    impl SpiUsci for EUsciB0 {
         type MISO = UsciB0MISOPin;
         type MOSI = UsciB0MOSIPin;
         type SCLK = UsciB0SCLKPin;
         type STE = UsciB0STEPin;
     }
 
-    impl SpiUsci for E_USCI_B1 {
+    impl SpiUsci for EUsciB1 {
         type MISO = UsciB1MISOPin;
         type MOSI = UsciB1MOSIPin;
         type SCLK = UsciB1SCLKPin;
@@ -674,10 +674,10 @@ mod spi {
 
 /* Timer */
 mod timer {
-    use crate::{pac::{self,*}, gpio::*, timer::*, hw_traits::{Steal, timer_b::*}};
+    use crate::{gpio::*, hw_traits::{Steal, timer_b::*}, pac::{self,*}, timer::*};
 
     timer_b_impl!(
-        TB0,
+        Tb0,
         tb0,
         tb0ctl,
         tb0ex0,
@@ -689,7 +689,7 @@ mod timer {
     );
 
     timer_b_impl!(
-        TB1,
+        Tb1,
         tb1,
         tb1ctl,
         tb1ex0,
@@ -701,7 +701,7 @@ mod timer {
     );
 
     timer_b_impl!(
-        TB2,
+        Tb2,
         tb2,
         tb2ctl,
         tb2ex0,
@@ -713,7 +713,7 @@ mod timer {
     );
 
     timer_b_impl!(
-        TB3,
+        Tb3,
         tb3,
         tb3ctl,
         tb3ex0,
@@ -728,23 +728,23 @@ mod timer {
         [CCR6, tb3cctl6, tb3ccr6]
     );
     
-    impl TimerPeriph for TB0 {
+    impl TimerPeriph for Tb0 {
         type Tbxclk = Pin<P2, Pin7, Alternate1<Input<Floating>>>;
     }
-    impl CapCmpTimer3 for TB0 {}
+    impl CapCmpTimer3 for Tb0 {}
 
-    impl TimerPeriph for TB1 {
+    impl TimerPeriph for Tb1 {
         type Tbxclk = Pin<P2, Pin2, Alternate1<Input<Floating>>>;
     }
-    impl CapCmpTimer3 for TB1 {}
+    impl CapCmpTimer3 for Tb1 {}
 
-    impl TimerPeriph for TB2 {
+    impl TimerPeriph for Tb2 {
         type Tbxclk = Pin<P5, Pin2, Alternate1<Input<Floating>>>;
     }
-    impl CapCmpTimer3 for TB2 {}
+    impl CapCmpTimer3 for Tb2 {}
 
-    impl TimerPeriph for TB3 {
+    impl TimerPeriph for Tb3 {
         type Tbxclk = Pin<P6, Pin6, Alternate1<Input<Floating>>>;
     }
-    impl CapCmpTimer7 for TB3 {}
+    impl CapCmpTimer7 for Tb3 {}
 }

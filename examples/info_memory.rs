@@ -14,11 +14,11 @@ use panic_msp430 as _;
 fn main() -> ! {
     // Take peripherals
     let periph = msp430fr2355::Peripherals::take().unwrap();
-    let _wdt = Wdt::constrain(periph.WDT_A);
+    let _wdt = Wdt::constrain(periph.wdt_a);
 
     // Configure GPIO
-    let pmm = Pmm::new(periph.PMM);
-    let mut led = Batch::new(periph.P1).split(&pmm).pin0.to_output();
+    let pmm = Pmm::new(periph.pmm);
+    let mut led = Batch::new(periph.p1).split(&pmm).pin0.to_output();
 
     // Wait a little bit to 'debounce' any power cycles.
     for _ in 0..100 {
@@ -26,7 +26,7 @@ fn main() -> ! {
     }
 
     // Disable write protection and get the information memory as an array type
-    let (nv_mem, _) = InfoMemory::as_u8s(periph.SYS);
+    let (nv_mem, _) = InfoMemory::as_u8s(periph.sys);
 
     // Toggle the first byte between 0 and 1.
     nv_mem[0] = (nv_mem[0].wrapping_add(1)) & 1;

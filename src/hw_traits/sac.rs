@@ -35,12 +35,7 @@ macro_rules! impl_sac_periph {
         $neg_port: ident, $neg_pin: ident, // Negative input
         $out_port: ident, $out_pin: ident, // Output 
         $sacXoa: ident, $sacXpga: ident, $sacXdac: ident, $sacXdat: ident) => {
-        impl Steal for $SAC {
-            #[inline(always)]
-            unsafe fn steal() -> Self {
-                crate::pac::Peripherals::conjure().$SAC
-            }
-        }
+
         impl SacPeriph for $SAC {
             type PosInputPin = Pin<$pos_port, $pos_pin, Alternate3<Input<Floating>>>;
             type NegInputPin = Pin<$neg_port, $neg_pin, Alternate3<Input<Floating>>>;
@@ -49,7 +44,7 @@ macro_rules! impl_sac_periph {
             fn configure_sacoa(psel: u8, nsel: NSel, pm: bool) {
                 unsafe {
                     let sac = $SAC::steal();
-                    sac.$sacXoa.write(|w| w
+                    sac.$sacXoa().write(|w| w
                         .nsel().bits(nsel as u8)
                         .psel().bits(psel)
                         .oapm().bit(pm)
@@ -64,7 +59,7 @@ macro_rules! impl_sac_periph {
             fn configure_sacpga(gain: u8, msel: MSel) {
                 unsafe{
                     let sac = $SAC::steal();
-                    sac.$sacXpga.write(|w| w
+                    sac.$sacXpga().write(|w| w
                         .gain().bits(gain)
                         .msel().bits(msel as u8)
                     );
@@ -74,7 +69,7 @@ macro_rules! impl_sac_periph {
             fn configure_dac(lsel: u8, vref: bool) {
                 unsafe{
                     let sac = $SAC::steal();
-                    sac.$sacXdac.write(|w| w
+                    sac.$sacXdac().write(|w| w
                         .dacsref().bit(vref)
                         .daclsel().bits(lsel)
                         .dacdmae().clear_bit()
@@ -87,7 +82,7 @@ macro_rules! impl_sac_periph {
             fn set_dac_count(val: u16) {
                 unsafe{
                     let sac = $SAC::steal();
-                    sac.$sacXdat.write(|w| w
+                    sac.$sacXdat().write(|w| w
                         .dacdata().bits(val)
                     );
                 }

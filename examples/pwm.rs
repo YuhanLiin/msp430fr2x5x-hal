@@ -18,19 +18,19 @@ use panic_msp430 as _;
 fn main() -> ! {
     let periph = msp430fr2355::Peripherals::take().unwrap();
 
-    let mut fram = Fram::new(periph.FRCTL);
-    Wdt::constrain(periph.WDT_A);
+    let mut fram = Fram::new(periph.frctl);
+    Wdt::constrain(periph.wdt_a);
 
-    let pmm = Pmm::new(periph.PMM);
-    let p6 = Batch::new(periph.P6).split(&pmm);
+    let pmm = Pmm::new(periph.pmm);
+    let p6 = Batch::new(periph.p6).split(&pmm);
 
-    let (smclk, _aclk, _delay) = ClockConfig::new(periph.CS)
+    let (smclk, _aclk, _delay) = ClockConfig::new(periph.cs)
         .mclk_dcoclk(DcoclkFreqSel::_1MHz, MclkDiv::_1)
         .smclk_on(SmclkDiv::_1)
         .aclk_vloclk()
         .freeze(&mut fram);
 
-    let pwm = PwmParts7::new(periph.TB3, TimerConfig::smclk(&smclk), 5000);
+    let pwm = PwmParts7::new(periph.tb3, TimerConfig::smclk(&smclk), 5000);
     let mut pwm4 = pwm.pwm4.init(p6.pin3.to_output().to_alternate1());
     let mut pwm5 = pwm.pwm5.init(p6.pin4.to_output().to_alternate1());
 

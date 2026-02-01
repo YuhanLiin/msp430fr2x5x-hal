@@ -31,11 +31,11 @@ macro_rules! reg_struct {
 
         #[allow(unused_macros)]
         macro_rules! $macro_wr {
-            ($reg : expr) => { |w|
+            ($reg : expr) => { |w| unsafe {
                 w$($(.$bool_name().bit($reg.$bool_name))*)?
                  $($(.$val_name().bits($reg.$val_name as $size))*)?
                  $($(.$int_name().bits($reg.$int_name as $int_size))*)?
-            };
+            }};
         }
         pub(crate) use $macro_wr;
     };
@@ -367,7 +367,7 @@ macro_rules! eusci_steal_impl {
         impl Steal for $EUsci {
             #[inline(always)]
             unsafe fn steal() -> Self {
-                crate::pac::Peripherals::steal().$EUsci
+                $EUsci::steal()
             }
         }
     };
@@ -426,7 +426,7 @@ macro_rules! eusci_spi_impl {
 
             #[inline(always)]
             fn ie_wr(&self, reg: u16) {
-                self.$ucxie().write(|w| unsafe { w.bits(reg) })
+                self.$ucxie().write(|w| unsafe { w.bits(reg) });
             }
 
             #[inline(always)]
@@ -487,7 +487,7 @@ macro_rules! eusci_spi_impl {
             }
 
             fn is_busy(&self) -> bool {
-                self.$ucxstatw().read().ucbusy()
+                self.$ucxstatw().read().ucbusy().bit()
             }
         }
 
@@ -509,10 +509,7 @@ macro_rules! eusci_spi_impl {
 
             #[inline(always)]
             fn ucbusy(&self) -> bool {
-                // TODO: Update the PAC
-                // The PAC is currently missing the UCBUSY bit in the SPI version of this register
-                const UCBUSY_MASK: u16 = (1 << 0);
-                (self.bits() & UCBUSY_MASK) > 0
+                self.ucbusy().bit()
             }
         }
     };
@@ -528,33 +525,23 @@ macro_rules! eusci_uart_impl {
 
             #[inline(always)]
             fn ctl0_settings(&self, reg: UcaCtlw0) {
-                self.$ucaxctlw0().write(|w| {
-                    w.ucpen()
-                        .bit(reg.ucpen)
-                        .ucpar()
-                        .bit(reg.ucpar)
-                        .ucmsb()
-                        .bit(reg.ucmsb)
-                        .uc7bit()
-                        .bit(reg.uc7bit)
-                        .ucspb()
-                        .bit(reg.ucspb)
-                        .ucssel()
-                        .bits(reg.ucssel as u8)
-                        .ucrxeie()
-                        .bit(reg.ucrxeie)
+                self.$ucaxctlw0().write(|w| unsafe { w
+                    .ucpen().bit(reg.ucpen)
+                    .ucpar().bit(reg.ucpar)
+                    .ucmsb().bit(reg.ucmsb)
+                    .uc7bit().bit(reg.uc7bit)
+                    .ucspb().bit(reg.ucspb)
+                    .ucssel().bits(reg.ucssel as u8)
+                    .ucrxeie().bit(reg.ucrxeie)
                 });
             }
 
             #[inline(always)]
             fn mctlw_settings(&self, ucos16: bool, ucbrs: u8, ucbrf: u8) {
-                self.$ucaxmctlw.write(|w| unsafe {
-                    w.ucos16()
-                        .bit(ucos16)
-                        .ucbrs()
-                        .bits(ucbrs)
-                        .ucbrf()
-                        .bits(ucbrf)
+                self.$ucaxmctlw().write(|w| unsafe { w
+                    .ucos16().bit(ucos16)
+                    .ucbrs().bits(ucbrs)
+                    .ucbrf().bits(ucbrf)
                 });
             }
 
@@ -782,7 +769,7 @@ macro_rules! eusci_i2c_impl {
 
             #[inline(always)]
             fn ctw1_wr(&self, reg: &UcbCtlw1) {
-                self.$ucbxctlw1.write(UcbCtlw1_wr! {reg});
+                self.$ucbxctlw1().write(UcbCtlw1_wr! {reg});
             }
 
             #[inline(always)]
@@ -801,11 +788,11 @@ macro_rules! eusci_i2c_impl {
 
             #[inline(always)]
             fn tbcnt_rd(&self) -> u16 {
-                self.$ucbxtbcnt.read().bits()
+                self.$ucbxtbcnt().read().bits()
             }
             #[inline(always)]
             fn tbcnt_wr(&self, val: u16) {
-                self.$ucbxtbcnt.write(|w| unsafe { w.bits(val) });
+                self.$ucbxtbcnt().write(|w| unsafe { w.bits(val) });
             }
 
             #[inline(always)]
@@ -820,7 +807,7 @@ macro_rules! eusci_i2c_impl {
             fn i2coa_rd(&self, which: u8) -> UcbI2coa {
                 match which {
                     1 => {
-                        let content = self.$ucbxi2coa1.read();
+                        let content = self.$ucbxi2coa1().read();
                         UcbI2coa {
                             ucgcen: false,
                             ucoaen: content.ucoaen().bit(),
@@ -828,7 +815,7 @@ macro_rules! eusci_i2c_impl {
                         }
                     }
                     2 => {
-                        let content = self.$ucbxi2coa2.read();
+                        let content = self.$ucbxi2coa2().read();
                         UcbI2coa {
                             ucgcen: false,
                             ucoaen: content.ucoaen().bit(),
@@ -836,7 +823,7 @@ macro_rules! eusci_i2c_impl {
                         }
                     }
                     3 => {
-                        let content = self.$ucbxi2coa3.read();
+                        let content = self.$ucbxi2coa3().read();
                         UcbI2coa {
                             ucgcen: false,
                             ucoaen: content.ucoaen().bit(),
@@ -844,7 +831,7 @@ macro_rules! eusci_i2c_impl {
                         }
                     }
                     _ => {
-                        let content = self.$ucbxi2coa0.read();
+                        let content = self.$ucbxi2coa0().read();
                         UcbI2coa {
                             ucgcen: content.ucgcen().bit(),
                             ucoaen: content.ucoaen().bit(),
@@ -857,22 +844,22 @@ macro_rules! eusci_i2c_impl {
             fn i2coa_wr(&self, which: u8, reg: &UcbI2coa) {
                 match which {
                     1 => {
-                        self.$ucbxi2coa1.write(|w| unsafe {
+                        self.$ucbxi2coa1().write(|w| unsafe {
                             w.ucoaen().bit(reg.ucoaen).i2coa1().bits(reg.i2coa0 as u16)
                         });
                     }
                     2 => {
-                        self.$ucbxi2coa2.write(|w| unsafe {
+                        self.$ucbxi2coa2().write(|w| unsafe {
                             w.ucoaen().bit(reg.ucoaen).i2coa2().bits(reg.i2coa0 as u16)
                         });
                     }
                     3 => {
-                        self.$ucbxi2coa3.write(|w| unsafe {
+                        self.$ucbxi2coa3().write(|w| unsafe {
                             w.ucoaen().bit(reg.ucoaen).i2coa3().bits(reg.i2coa0 as u16)
                         });
                     }
                     _ => {
-                        self.$ucbxi2coa0.write(|w| unsafe {
+                        self.$ucbxi2coa0().write(|w| unsafe {
                             w.ucgcen()
                                 .bit(reg.ucgcen)
                                 .ucoaen()
@@ -886,25 +873,25 @@ macro_rules! eusci_i2c_impl {
 
             #[inline(always)]
             fn addrx_rd(&self) -> u16 {
-                self.$ucbxaddrx.read().bits()
+                self.$ucbxaddrx().read().bits()
             }
 
             #[inline(always)]
             fn addmask_rd(&self) -> u16 {
-                self.$ucbxaddmask.read().bits()
+                self.$ucbxaddmask().read().bits()
             }
             #[inline(always)]
             fn addmask_wr(&self, val: u16) {
-                self.$ucbxaddmask.write(|w| unsafe { w.bits(val) });
+                self.$ucbxaddmask().write(|w| unsafe { w.bits(val) });
             }
 
             #[inline(always)]
             fn i2csa_rd(&self) -> u16 {
-                self.$ucbxi2csa.read().bits()
+                self.$ucbxi2csa().read().bits()
             }
             #[inline(always)]
             fn i2csa_wr(&self, val: u16) {
-                self.$ucbxi2csa.write(|w| unsafe { w.bits(val) });
+                self.$ucbxi2csa().write(|w| unsafe { w.bits(val) });
             }
 
             #[inline(always)]

@@ -2,10 +2,10 @@
 
 use core::marker::PhantomData;
 
-use crate::_pac::PMM;
+use crate::_pac;
 
 /// PMM type
-pub struct Pmm(PMM);
+pub struct Pmm(_pac::Pmm);
 
 /// Struct indicating that the internal voltage reference has been enabled and configured.
 /// This can be passed to the ADC to read the reference voltage.
@@ -40,22 +40,23 @@ pub struct InternalTempSensor<'a>(PhantomData<&'a InternalVRef>);
 
 impl Pmm {
     /// Sets the LOCKLPM5 bit and returns a `Pmm`
-    pub fn new(pmm: PMM) -> Pmm {
-        pmm.pm5ctl0.write(|w| w.locklpm5().clear_bit());
+    pub fn new(pmm: _pac::Pmm) -> Pmm {
+        pmm.pm5ctl0().write(|w| w.locklpm5().clear_bit());
         Pmm(pmm)
     }
 
     /// Configures the internal voltage reference to the specified voltage and enables it.
     /// Returns a token signifying that the voltage reference has been enabled, unless it was *already* enabled.
     pub fn enable_internal_reference(&mut self, vref: ReferenceVoltage) -> Option<InternalVRef> {
-        let pmmctl2 = self.0.pmmctl2.read();
+        let pmmctl2 = self.0.pmmctl2().read();
         match pmmctl2.intrefen().bit() {
             true => None,
             false => {
-                self.0.pmmctl2.write(|w| 
-                    unsafe{ w.bits(pmmctl2.bits()) }
+                self.0.pmmctl2().write(|w| unsafe{ w
+                    .bits(pmmctl2.bits()) 
                     .refvsel().bits(vref as u8)
-                    .intrefen().set_bit());
+                    .intrefen().set_bit()
+                });
                 Some(InternalVRef(vref))
             }
         }
@@ -63,16 +64,16 @@ impl Pmm {
 
     /// Disables the internal reference voltage
     pub fn disable_internal_reference(&mut self, _vref: InternalVRef) {
-        unsafe { self.0.pmmctl2.clear_bits(|w| w.intrefen().clear_bit()); }
+        unsafe { self.0.pmmctl2().clear_bits(|w| w.intrefen().clear_bit()); }
     }
 
     /// Enables the internal temperature sensor.
     /// Returns a token signifying that the temp sensor has been enabled, unless it was *already* enabled.
     pub fn enable_internal_temp_sensor<'a>(&mut self, _vref: &'a InternalVRef) -> Option<InternalTempSensor<'a>> {
-        match self.0.pmmctl2.read().tsensoren().bit() {
+        match self.0.pmmctl2().read().tsensoren().bit() {
             true  => None,
             false => {
-                unsafe { self.0.pmmctl2.set_bits(|w| w.tsensoren().set_bit()); }
+                unsafe { self.0.pmmctl2().set_bits(|w| w.tsensoren().set_bit()); }
                 Some(InternalTempSensor(PhantomData))
             }
         }
@@ -80,6 +81,6 @@ impl Pmm {
 
     /// Disables the internal temperature sensor
     pub fn disable_internal_temp_sensor(&mut self, _tsense: InternalTempSensor) {
-        unsafe { self.0.pmmctl2.clear_bits(|w| w.tsensoren().clear_bit()); }
+        unsafe { self.0.pmmctl2().clear_bits(|w| w.tsensoren().clear_bit()); }
     }
 }
