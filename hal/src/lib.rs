@@ -16,10 +16,12 @@
 //!
 //! # Examples
 //!
-//! The `examples/` directory contains binary code examples using the HAL abstractions.
-//! These examples target the MSP430FR2355, particularly the MSP-EXP430FR2355 dev board.
+//! The `device-examples/` directory contains projects for various supported devices, each containing a typical project structure and 
+//! a number of examples that show how to use the HAL abstractions. These examples typically target the relevant dev board, 
+//! such as the MSP-EXP430FR2355 for the MSP430FR2355.
+//! 
 //! To flash the examples, make sure you have `mspdebug` with `tilib` support installed and in
-//! $PATH. Invoke `cargo run --features msp430fr2355 --example whatever` with the board plugged and the scripts should do
+//! $PATH. Invoke `cargo run --example whatever` from within the relevant project folder with the board plugged and the scripts should do
 //! the trick, assuming your host is Linux and you are connected via Launchpad.
 //!
 //! # Feature Flags
