@@ -21,7 +21,8 @@ msp430fr2153 = ["2x5x"]           # 16kB FRAM
 msp430fr2433 = ["dep:msp430fr2433", "adc", "eusci_b", "info_mem"]
 
 # Derived features. Do not provide these.
-2x5x = ["dep:msp430fr2355", "info_mem", "enhanced_ref", "adc12bit", "ecomp", "eusci_b"]
+2x5x = ["dep:msp430fr2355", "eusci_aclk", "info_mem", "enhanced_ref", "adc12bit", "ecomp", "eusci_b"]
+eusci_aclk = [] # eUSCI peripherals can source from ACLK
 adc12bit = ["adc"]
 adc = []
 ecomp = []

@@ -94,6 +94,10 @@ mod capture {
     }
 }
 
+/* Clocks */
+/// MODCLK frequency
+pub const MODCLK_FREQ_HZ: u32 = 5_000_000;
+
 /* eUSCI */
 mod eusci {
     use crate::{pac::*, hw_traits::{Steal, eusci::*}};

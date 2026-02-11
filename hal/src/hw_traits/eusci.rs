@@ -44,7 +44,7 @@ macro_rules! reg_struct {
 #[derive(Copy, Clone, Default)]
 pub enum Ucssel {
     Uclk = 0,
-    Aclk = 1,
+    DeviceSpecific = 1,
     #[default]
     Smclk = 2,
 }

@@ -236,6 +236,7 @@ impl<USCI: SerialUsci> SerialConfig<USCI, NoClockSet> {
         )
     }
 
+    #[cfg(feature = "eusci_aclk")]
     /// Configure serial UART to use ACLK.
     #[inline(always)]
     pub fn use_aclk(self, aclk: &Aclk) -> SerialConfig<USCI, ClockSet> {
@@ -243,7 +244,20 @@ impl<USCI: SerialUsci> SerialConfig<USCI, NoClockSet> {
             self,
             ClockSet {
                 baud_config: calculate_baud_config(aclk.freq() as u32, self.state.baudrate),
-                clksel: Ucssel::Aclk,
+                clksel: Ucssel::DeviceSpecific,
+            }
+        )
+    }
+
+    #[cfg(not(feature = "eusci_aclk"))]
+    /// Configure serial UART to use MODCLK.
+    #[inline(always)]
+    pub fn use_modclk(self) -> SerialConfig<USCI, ClockSet> {
+        serial_config!(
+            self,
+            ClockSet {
+                baud_config: calculate_baud_config(crate::device_specific::MODCLK_FREQ_HZ, self.state.baudrate),
+                clksel: Ucssel::DeviceSpecific,
             }
         )
     }

@@ -145,6 +145,11 @@ mod capture {
     }
 }
 
+/* Clocks */
+/// MODCLK frequency
+pub const MODCLK_FREQ_HZ: u32 = 3_800_000;
+
+
 /* eCOMP */
 pub mod ecomp {
     use core::convert::Infallible;
