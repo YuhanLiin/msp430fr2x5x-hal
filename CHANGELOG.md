@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Add initial support for the MSP430FR2433
 - The `REFOCLK` and `VLOCLK` constants have been renamed to the more descriptive `REFOCLK_FREQ_HZ` and `VLOCLK_FREQ_HZ`.
 - The frequency of MODCLK is now exported through the `MODCLK_FREQ_HZ` constant.
+- Batch GPIO configuration now supports configuring pins to alternate modes
 
 ## [v0.5.0] - 2025-10-30
 

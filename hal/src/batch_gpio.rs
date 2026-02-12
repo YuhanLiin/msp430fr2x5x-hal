@@ -81,6 +81,58 @@ impl<PORT: PortNum, PIN: PinNum> PinProxy<PORT, PIN, Output> {
     }
 }
 
+// The transitions between GPIO / alternate modes all have the same shape, we'll make a macro for them.
+/// Implements a PinProxy transition.
+macro_rules! pinproxy_transition {
+    ($from: ty => $into: ty, $fn_name:ident(), $desc:literal) => {
+        impl<PORT: PortNum, PIN: PinNum, DIR: GpioFunction> PinProxy<PORT, PIN, $from> {
+            #[doc = $desc]
+            #[inline(always)]
+            pub fn $fn_name(self) -> PinProxy<PORT, PIN, $into> {
+                make_proxy!()
+            }
+        }
+    };
+    ($from:ty : $trait:path => $into: ty, $fn_name:ident(), $desc:literal) => {
+        impl<PORT: PortNum, PIN: PinNum, DIR: GpioFunction> PinProxy<PORT, PIN, $from> 
+        where Pin<PORT, PIN, DIR>: $trait {
+            #[doc = $desc]
+            #[inline(always)]
+            pub fn $fn_name(self) -> PinProxy<PORT, PIN, $into> {
+                make_proxy!()
+            }
+        }
+    };
+}
+
+// GPIO to alternates
+pinproxy_transition!(DIR: ToAlternate1 => Alternate1<DIR>, to_alternate1(), "Convert pin to GPIO alternate function 1");
+pinproxy_transition!(DIR: ToAlternate2 => Alternate2<DIR>, to_alternate2(), "Convert pin to GPIO alternate function 2");
+pinproxy_transition!(DIR: ToAlternate3 => Alternate3<DIR>, to_alternate3(), "Convert pin to GPIO alternate function 3");
+
+// Alternates to GPIO
+pinproxy_transition!(Alternate1<DIR> => DIR, to_gpio(), "Convert pin to GPIO function");
+pinproxy_transition!(Alternate2<DIR> => DIR, to_gpio(), "Convert pin to GPIO function");
+pinproxy_transition!(Alternate3<DIR> => DIR, to_gpio(), "Convert pin to GPIO function");
+
+// Alternate 1 to other alternates
+pinproxy_transition!(Alternate1<DIR>: ToAlternate2 => Alternate2<DIR>, to_alternate2(), "Convert pin to GPIO alternate function 2");
+pinproxy_transition!(Alternate1<DIR>: ToAlternate3 => Alternate3<DIR>, to_alternate3(), "Convert pin to GPIO alternate function 3");
+
+// Alternate 2 to other alternates
+pinproxy_transition!(Alternate2<DIR>: ToAlternate1 => Alternate1<DIR>, to_alternate1(), "Convert pin to GPIO alternate function 1");
+pinproxy_transition!(Alternate2<DIR>: ToAlternate3 => Alternate3<DIR>, to_alternate3(), "Convert pin to GPIO alternate function 3");
+
+// Alternate 3 to other alternates
+pinproxy_transition!(Alternate3<DIR>: ToAlternate1 => Alternate1<DIR>, to_alternate1(), "Convert pin to GPIO alternate function 1");
+pinproxy_transition!(Alternate3<DIR>: ToAlternate2 => Alternate2<DIR>, to_alternate2(), "Convert pin to GPIO alternate function 2");
+
+// To and from ADCPCTL mode
+#[cfg(not(feature = "sac"))]
+pinproxy_transition!(DIR: ToAdcPctl => AdcMode<DIR>, to_adc_mode(), "Convert pin to ADC mode (ADCPCTL set)");
+#[cfg(not(feature = "sac"))]
+pinproxy_transition!(AdcMode<DIR> => DIR, from_adc_mode(), "Return pin to the mode it was in prior to ADCPCTL mode");
+
 // Traits for deciding the value of a pin's registers
 trait PxdirOn {}
 trait PxoutSet {}
