@@ -17,20 +17,6 @@ use msp430fr2x5x_hal::{
 };
 use panic_msp430 as _;
 
-macro_rules! init_port_as_pulldowns {
-    ($port: expr) => {
-        Batch::new($port)
-            .config_pin0(|p| p.pulldown())
-            .config_pin1(|p| p.pulldown())
-            .config_pin2(|p| p.pulldown())
-            .config_pin3(|p| p.pulldown())
-            .config_pin4(|p| p.pulldown())
-            .config_pin5(|p| p.pulldown())
-            .config_pin6(|p| p.pulldown())
-            .config_pin7(|p| p.pulldown())
-    };
-}
-
 // The RTC will wake the board every second. LED state is stored in and loaded from the backup memory.
 // When programming with mspdebug you need to unplug and replug the board for the example to work, for some reason.
 // Programming via Uniflash or Code Composer Studio works fine.
@@ -43,7 +29,8 @@ fn main() -> ! {
 
     // Floating input pins consume a *huge* amount of energy (relatively speaking).
     // Set unused pins to outputs or enable their pull resistors.
-    let port1 = init_port_as_pulldowns!(periph.p1)
+    let port1 = Batch::new(periph.p1)
+        .pulldown_all()
         .config_pin0(|p| p.to_output())
         .split(&pmm);
     let mut red_led = port1.pin0;
@@ -84,11 +71,11 @@ fn main() -> ! {
 
 /// Enable pulldowns on unused ports to massively reduce power usage.
 fn init_unused_gpio(p2: P2, p3: P3, p4: P4, p5: P5, p6: P6, pmm: &Pmm) {
-    init_port_as_pulldowns!(p2).split(pmm);
-    init_port_as_pulldowns!(p3).split(pmm);
-    init_port_as_pulldowns!(p4).split(pmm);
-    init_port_as_pulldowns!(p5).split(pmm);
-    init_port_as_pulldowns!(p6).split(pmm);
+    Batch::new(p2).pulldown_all().split(pmm);
+    Batch::new(p3).pulldown_all().split(pmm);
+    Batch::new(p4).pulldown_all().split(pmm);
+    Batch::new(p5).pulldown_all().split(pmm);
+    Batch::new(p6).pulldown_all().split(pmm);
 }
 
 // Note: In this case we don't need an ISR when waking from LPMx.5, since power on disables interrupts

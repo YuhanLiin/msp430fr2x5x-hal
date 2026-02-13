@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - The `REFOCLK` and `VLOCLK` constants have been renamed to the more descriptive `REFOCLK_FREQ_HZ` and `VLOCLK_FREQ_HZ`.
 - The frequency of MODCLK is now exported through the `MODCLK_FREQ_HZ` constant.
 - Batch GPIO configuration now supports configuring pins to alternate modes
+- Added Batch GPIO methods to set all pins in a port as inputs with either pullups or pulldowns. Useful for minimising power usage on unused pins, as leaving them in the default floating state can waste a lot of power through noise-induced schmitt trigger activations.
 
 ## [v0.5.0] - 2025-10-30
 

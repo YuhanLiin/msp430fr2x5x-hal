@@ -616,3 +616,43 @@ impl<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
         }
     }
 }
+
+type Pd = Input<Pulldown>;
+impl<PORT: PortNum, D0, D1, D2, D3, D4, D5, D6, D7>
+    Batch<PORT, D0, D1, D2, D3, D4, D5, D6, D7> {
+    /// Set all pins to inputs with pulldowns. Leaving unused pins as floating massively increases power usage (relatively speaking).
+    #[inline(always)]
+    pub fn pulldown_all(self) 
+    -> Batch<PORT, Pd, Pd, Pd, Pd, Pd, Pd, Pd, Pd> {
+        Batch {
+            pin0: make_proxy!(),
+            pin1: make_proxy!(),
+            pin2: make_proxy!(),
+            pin3: make_proxy!(),
+            pin4: make_proxy!(),
+            pin5: make_proxy!(),
+            pin6: make_proxy!(),
+            pin7: make_proxy!(),
+        }
+    }
+}
+
+type Pu = Input<Pullup>;
+impl<PORT: PortNum, D0, D1, D2, D3, D4, D5, D6, D7>
+    Batch<PORT, D0, D1, D2, D3, D4, D5, D6, D7> {
+    /// Set all pins to inputs with pullups. Leaving unused pins as floating massively increases power usage (relatively speaking).
+    #[inline(always)]
+    pub fn pullup_all(self) 
+    -> Batch<PORT, Pu, Pu, Pu, Pu, Pu, Pu, Pu, Pu> {
+        Batch {
+            pin0: make_proxy!(),
+            pin1: make_proxy!(),
+            pin2: make_proxy!(),
+            pin3: make_proxy!(),
+            pin4: make_proxy!(),
+            pin5: make_proxy!(),
+            pin6: make_proxy!(),
+            pin7: make_proxy!(),
+        }
+    }
+}
