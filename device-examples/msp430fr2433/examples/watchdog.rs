@@ -17,7 +17,7 @@ fn main() -> ! {
         .set_vloclk() // ~10kHz
         .set_interval_and_start(WdtClkPeriods::_8192); // ~10kHz / 8192 ~= 1 sec
 
-    let pmm = Pmm::new(periph.pmm);
+    let pmm = Pmm::new(periph.pmm, periph.sys);
     let mut red_led = Batch::new(periph.p1).split(&pmm).pin0.to_output();
 
     red_led.toggle();

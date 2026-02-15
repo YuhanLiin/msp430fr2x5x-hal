@@ -26,7 +26,7 @@ fn main() -> ! {
     let periph = msp430fr2355::Peripherals::take().unwrap();
 
     let _wdt = Wdt::constrain(periph.wdt_a);
-    let pmm = Pmm::new(periph.pmm);
+    let pmm = Pmm::new(periph.pmm, periph.sys);
 
     // Floating input pins consume a *huge* amount of power (relatively speaking).
     // Set unused pins to outputs or enable their pull resistors.

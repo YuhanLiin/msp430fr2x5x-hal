@@ -42,17 +42,16 @@ fn setup_uart<S: SerialUsci>(
 #[entry]
 fn main() -> ! {
     let periph = msp430fr2355::Peripherals::take().unwrap();
-
-    let mut fram = Fram::new(periph.frctl);
     let _wdt = Wdt::constrain(periph.wdt_a);
 
+    let mut fram = Fram::new(periph.frctl);
     let (smclk, _aclk, _delay) = ClockConfig::new(periph.cs)
         .mclk_dcoclk(DcoclkFreqSel::_4MHz, MclkDiv::_1)
         .smclk_on(SmclkDiv::_2)
         .aclk_refoclk()
         .freeze(&mut fram);
 
-    let pmm = Pmm::new(periph.pmm);
+    let pmm = Pmm::new(periph.pmm, periph.sys);
     let p1 = Batch::new(periph.p1).split(&pmm);
     let p4 = Batch::new(periph.p4).split(&pmm);
     let mut led = p1.pin0.to_output();

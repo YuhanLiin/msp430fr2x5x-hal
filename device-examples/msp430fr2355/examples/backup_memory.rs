@@ -18,7 +18,7 @@ fn main() -> ! {
     //let _wdt = Wdt::constrain(periph.wdt_a);
 
     // Configure GPIO
-    let pmm = Pmm::new(periph.pmm);
+    let pmm = Pmm::new(periph.pmm, periph.sys);
     let mut led = Batch::new(periph.p1).split(&pmm).pin0.to_output();
 
     // Interpret register block as a &mut [u8;32]

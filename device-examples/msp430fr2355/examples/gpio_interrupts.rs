@@ -27,15 +27,15 @@ static P2IV: Mutex<RefCell<Option<PxIV<P2>>>> = Mutex::new(RefCell::new(None));
 #[entry]
 fn main() -> ! {
     let periph = msp430fr2355::Peripherals::take().unwrap();
+    let mut wdt = Wdt::constrain(periph.wdt_a).to_interval();
+
     let (_smclk, aclk, _delay) = ClockConfig::new(periph.cs)
-        .mclk_refoclk(MclkDiv::_1)
-        // 32 KHz SMCLK
-        .smclk_on(SmclkDiv::_2)
+        .mclk_refoclk(MclkDiv::_1) // 32 kHz MCLK
+        .smclk_on(SmclkDiv::_2) // 16 kHz SMCLK
         .aclk_vloclk()
         .freeze(&mut Fram::new(periph.frctl));
-    let mut wdt = Wdt::constrain(periph.wdt_a).to_interval();
-    let pmm = Pmm::new(periph.pmm);
 
+    let pmm = Pmm::new(periph.pmm, periph.sys);
     let p1 = Batch::new(periph.p1).split(&pmm);
     let p2 = Batch::new(periph.p2)
         .config_pin3(|p| p.pullup())

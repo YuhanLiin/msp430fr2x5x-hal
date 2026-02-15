@@ -21,7 +21,7 @@ fn main() -> ! {
     let mut fram = Fram::new(periph.fram);
     Wdt::constrain(periph.watchdog_timer);
 
-    let pmm = Pmm::new(periph.pmm);
+    let pmm = Pmm::new(periph.pmm, periph.sys);
     let p1 = Batch::new(periph.p1).split(&pmm);
 
     let (smclk, _aclk, mut delay) = ClockConfig::new(periph.cs)

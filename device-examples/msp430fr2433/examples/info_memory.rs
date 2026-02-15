@@ -17,7 +17,7 @@ fn main() -> ! {
     let _wdt = Wdt::constrain(periph.watchdog_timer);
 
     // Configure GPIO
-    let pmm = Pmm::new(periph.pmm);
+    let pmm = Pmm::new(periph.pmm, periph.sys);
     let mut led = Batch::new(periph.p1).split(&pmm).pin0.to_output();
 
     // Wait a little bit to 'debounce' any power cycles.

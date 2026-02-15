@@ -16,7 +16,7 @@ fn main() -> ! {
 
     // DON'T pause the watchdog
     //let _wdt = Wdt::constrain(periph.WDT_A);
-    let pmm = Pmm::new(periph.pmm);
+    let pmm = Pmm::new(periph.pmm, periph.sys);
 
     let mut red_led = Batch::new(periph.p1).split(&pmm).pin0.to_output();
 

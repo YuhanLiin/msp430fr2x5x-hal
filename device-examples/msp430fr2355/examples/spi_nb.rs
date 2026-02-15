@@ -18,7 +18,7 @@ fn main() -> ! {
     let mut fram = Fram::new(periph.frctl);
     let _wdt = Wdt::constrain(periph.wdt_a);
 
-    let pmm = Pmm::new(periph.pmm);
+    let pmm = Pmm::new(periph.pmm, periph.sys);
     let p1 = Batch::new(periph.p1).split(&pmm);
     let mosi   = p1.pin7.to_alternate1();
     let miso   = p1.pin6.to_alternate1();

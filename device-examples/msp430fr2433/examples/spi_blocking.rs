@@ -17,7 +17,7 @@ fn main() -> ! {
     let mut fram = Fram::new(periph.fram);
     let _wdt = Wdt::constrain(periph.watchdog_timer);
 
-    let pmm = Pmm::new(periph.pmm);
+    let pmm = Pmm::new(periph.pmm, periph.sys);
     let p1 = Batch::new(periph.p1)
         .config_pin0(|p| p.to_output())
         .config_pin3(|p| p.to_output())

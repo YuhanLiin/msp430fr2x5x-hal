@@ -17,7 +17,10 @@ fn main() -> ! {
     let periph = msp430fr2355::Peripherals::take().unwrap();
 
     let wdt = Wdt::constrain(periph.wdt_a);
-    let pmm = Pmm::new(periph.pmm);
+    let pmm = Pmm::new(periph.pmm, periph.sys);
+
+    // The HAL uses some of the SYS registers internally, but we need a copy as well. We promise not to modify any control bits used by the HAL.
+    let sys = unsafe{ msp430fr2355::Sys::steal() };
 
     // Floating input pins consume a *huge* amount of power (relatively speaking).
     // Set unused pins to outputs or enable their pull resistors.
@@ -35,7 +38,7 @@ fn main() -> ! {
     init_unused_gpio(periph.p3, periph.p4, periph.p5, periph.p6, &pmm);
 
     // If this reset was a wake up from LPMx.5...
-    if periph.sys.sysrstiv().read().sysrstiv().is_lpm5wu() {
+    if sys.sysrstiv().read().sysrstiv().is_lpm5wu() {
         loop {
             for _ in 0..10_000 {
                 nop();

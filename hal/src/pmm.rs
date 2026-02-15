@@ -40,7 +40,7 @@ pub struct InternalTempSensor<'a>(PhantomData<&'a InternalVRef>);
 
 impl Pmm {
     /// Sets the LOCKLPM5 bit and returns a `Pmm`
-    pub fn new(pmm: _pac::Pmm) -> Pmm {
+    pub fn new(pmm: _pac::Pmm, _sys: _pac::Sys) -> Pmm {
         pmm.pm5ctl0().write(|w| w.locklpm5().clear_bit());
         Pmm(pmm)
     }

@@ -34,7 +34,7 @@ fn main() -> ! {
             .aclk_refoclk()
             .freeze(&mut fram);
 
-        let pmm = Pmm::new(periph.pmm);
+        let pmm = Pmm::new(periph.pmm, periph.sys);
         let mut led = Batch::new(periph.p1).split(&pmm).pin0.to_output();
         let p4 = Batch::new(periph.p4).split(&pmm);
         led.set_low().ok();

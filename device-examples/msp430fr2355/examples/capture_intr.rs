@@ -44,7 +44,7 @@ fn main() -> ! {
     let mut fram = Fram::new(periph.frctl);
     Wdt::constrain(periph.wdt_a);
 
-    let pmm = Pmm::new(periph.pmm);
+    let pmm = Pmm::new(periph.pmm, periph.sys);
     let p1 = Batch::new(periph.p1)
         .config_pin0(|p| p.to_output())
         .split(&pmm);
