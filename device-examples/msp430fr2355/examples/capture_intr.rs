@@ -11,6 +11,7 @@ use msp430::interrupt::{enable, Mutex};
 use msp430_rt::entry;
 use msp430fr2355::interrupt;
 use msp430fr2x5x_hal::{
+    self as hal,
     capture::{
         CapCmp, CapTrigger, Capture, CaptureParts3, CaptureVector, TBxIV, TimerConfig, CCR1,
     },
@@ -40,7 +41,7 @@ static RED_LED: Mutex<UnsafeCell<Option<Pin<P1, Pin0, Output>>>> =
 // so sometimes inputs are missed.
 #[entry]
 fn main() -> ! {
-    let Some(periph) = msp430fr2355::Peripherals::take() else { loop {} };
+    let Some((periph, _)) = hal::take() else { loop {} };
     let mut fram = Fram::new(periph.frctl);
     Wdt::constrain(periph.wdt_a);
 

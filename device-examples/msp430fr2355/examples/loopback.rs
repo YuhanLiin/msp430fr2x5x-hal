@@ -5,6 +5,7 @@ use embedded_hal::digital::OutputPin;
 use embedded_hal_nb::serial::{Read, Write};
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
+    self as hal,
     clock::{ClockConfig, DcoclkFreqSel, MclkDiv, Smclk, SmclkDiv},
     fram::Fram,
     gpio::Batch,
@@ -41,7 +42,7 @@ fn setup_uart<S: SerialUsci>(
 // Only UART1 settings matter for the host
 #[entry]
 fn main() -> ! {
-    let periph = msp430fr2355::Peripherals::take().unwrap();
+    let (periph, _) = hal::take().unwrap();
     let _wdt = Wdt::constrain(periph.wdt_a);
 
     let mut fram = Fram::new(periph.frctl);

@@ -3,6 +3,7 @@
 
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
+    self as hal,
     gpio::Batch, pmm::Pmm, sac::{NegativeInput, PositiveInput, PowerMode, SacConfig}, watchdog::Wdt
 };
 use panic_msp430 as _;
@@ -12,7 +13,7 @@ use panic_msp430 as _;
 #[entry]
 fn main() -> ! {
     // Take peripherals and disable watchdog
-    let periph = msp430fr2355::Peripherals::take().unwrap();
+    let (periph, _) = hal::take().unwrap();
     let _wdt = Wdt::constrain(periph.wdt_a);
 
     // Configure GPIO

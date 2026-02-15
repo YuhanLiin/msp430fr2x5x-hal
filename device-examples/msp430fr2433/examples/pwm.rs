@@ -4,6 +4,7 @@
 use embedded_hal::{delay::DelayNs, pwm::SetDutyCycle};
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
+    self as hal,
     clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv},
     fram::Fram,
     gpio::Batch,
@@ -16,7 +17,7 @@ use panic_msp430 as _;
 // P1.1 LED should breathe from 0 to 100% brightness
 #[entry]
 fn main() -> ! {
-    let periph = msp430fr2433::Peripherals::take().unwrap();
+    let (periph, _) = hal::take().unwrap();
 
     let mut fram = Fram::new(periph.fram);
     Wdt::constrain(periph.watchdog_timer);

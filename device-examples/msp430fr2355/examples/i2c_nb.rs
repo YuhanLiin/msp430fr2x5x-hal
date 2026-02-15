@@ -16,6 +16,7 @@
 use embedded_hal::{digital::{OutputPin, StatefulOutputPin}, delay::DelayNs};
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
+    self as hal,
     clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv}, fram::Fram, gpio::Batch, 
     i2c::{GlitchFilter, I2cConfig, I2cEvent, TransmissionMode}, pmm::Pmm, prelude::*, watchdog::Wdt
 };
@@ -24,7 +25,7 @@ use panic_msp430 as _;
 // Blink the red LED on P1.0 every time an I2C transaction occurs. Green LED on P6.6 is on if Tx/Rx echo is successful.
 #[entry]
 fn main() -> ! {
-    let periph = msp430fr2355::Peripherals::take().unwrap();
+    let (periph, _) = hal::take().unwrap();
 
     let mut fram = Fram::new(periph.frctl);
     let _wdt = Wdt::constrain(periph.wdt_a);

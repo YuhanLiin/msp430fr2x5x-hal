@@ -4,7 +4,7 @@
 use embedded_hal::digital::*;
 use msp430::asm;
 use msp430_rt::entry;
-use msp430fr2x5x_hal::{gpio::Batch, info_mem::InfoMemory, pmm::Pmm, watchdog::Wdt};
+use msp430fr2x5x_hal::{self as hal, gpio::Batch, info_mem::InfoMemory, pmm::Pmm, watchdog::Wdt};
 use panic_msp430 as _;
 
 // Use the non-volatile information memory to toggle the red onboard LED.
@@ -13,7 +13,7 @@ use panic_msp430 as _;
 #[entry]
 fn main() -> ! {
     // Take peripherals
-    let periph = msp430fr2433::Peripherals::take().unwrap();
+    let (periph, _) = hal::take().unwrap();
     let _wdt = Wdt::constrain(periph.watchdog_timer);
 
     // Configure GPIO

@@ -4,6 +4,7 @@
 use embedded_hal::{delay::DelayNs, digital::*};
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
+    self as hal,
     clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv},
     fram::Fram,
     gpio::Batch,
@@ -16,7 +17,7 @@ use panic_msp430 as _;
 #[entry]
 fn main() -> ! {
     // Take peripherals and disable watchdog
-    let periph = msp430fr2355::Peripherals::take().unwrap();
+    let (periph, _) = hal::take().unwrap();
     let _wdt = Wdt::constrain(periph.wdt_a);
 
     // Configure GPIO

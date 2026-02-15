@@ -4,6 +4,7 @@
 use embedded_hal::digital::*;
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
+    self as hal,
     clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv},
     fram::Fram,
     gpio::Batch,
@@ -16,7 +17,7 @@ use panic_msp430 as _;
 // Red LED should blink 1 second on, 1 second off
 #[entry]
 fn main() -> ! {
-    let periph = msp430fr2355::Peripherals::take().unwrap();
+    let (periph, _) = hal::take().unwrap();
 
     let mut fram = Fram::new(periph.frctl);
     let wdt = Wdt::constrain(periph.wdt_a);

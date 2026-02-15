@@ -3,13 +3,13 @@
 
 use embedded_hal::digital::*;
 use msp430_rt::entry;
-use msp430fr2x5x_hal::{gpio::Batch, pmm::Pmm, watchdog::Wdt};
+use msp430fr2x5x_hal::{self as hal, gpio::Batch, pmm::Pmm, watchdog::Wdt};
 use panic_msp430 as _;
 
 // Green onboard LED should go on when P2.3 button is pressed
 #[entry]
 fn main() -> ! {
-    let periph = msp430fr2355::Peripherals::take().unwrap();
+    let (periph, _) = hal::take().unwrap();
     let _wdt = Wdt::constrain(periph.wdt_a);
 
     let pmm = Pmm::new(periph.pmm, periph.sys);

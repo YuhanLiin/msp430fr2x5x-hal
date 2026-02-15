@@ -10,6 +10,7 @@ use embedded_hal::digital::*;
 use msp430::interrupt::{enable as enable_int, Mutex};
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
+    self as hal,
     clock::{ClockConfig, MclkDiv, SmclkDiv},
     fram::Fram,
     gpio::{Batch, GpioVector, Output, Pin, Pin0, PxIV, P1, P2},
@@ -26,7 +27,7 @@ static P2IV: Mutex<RefCell<Option<PxIV<P2>>>> = Mutex::new(RefCell::new(None));
 // Both green and red LEDs should blink when P2.3 LED is pressed
 #[entry]
 fn main() -> ! {
-    let periph = msp430fr2355::Peripherals::take().unwrap();
+    let (periph, _) = hal::take().unwrap();
     let mut wdt = Wdt::constrain(periph.wdt_a).to_interval();
 
     let (_smclk, aclk, _delay) = ClockConfig::new(periph.cs)

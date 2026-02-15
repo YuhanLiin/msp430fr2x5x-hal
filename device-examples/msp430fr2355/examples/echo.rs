@@ -5,6 +5,7 @@ use embedded_hal::digital::OutputPin;
 use embedded_hal_nb::serial::{Read, Write};
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
+    self as hal,
     clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv},
     fram::Fram,
     gpio::Batch,
@@ -24,7 +25,7 @@ use panic_never as _;
 // Serial settings are listed in the code
 #[entry]
 fn main() -> ! {
-    if let Some(periph) = msp430fr2355::Peripherals::take() {
+    if let Some((periph, _)) = hal::take() {
         let mut fram = Fram::new(periph.frctl);
         let _wdt = Wdt::constrain(periph.wdt_a);
 

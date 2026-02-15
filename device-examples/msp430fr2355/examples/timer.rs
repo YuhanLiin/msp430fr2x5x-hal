@@ -4,6 +4,7 @@
 use embedded_hal::digital::*;
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
+    self as hal,
     clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv},
     fram::Fram,
     gpio::Batch,
@@ -17,7 +18,7 @@ use panic_msp430 as _;
 // 0.5 second on, 0.5 second off
 #[entry]
 fn main() -> ! {
-    let periph = msp430fr2355::Peripherals::take().unwrap();
+    let (periph, _) = hal::take().unwrap();
 
     let mut fram = Fram::new(periph.frctl);
     Wdt::constrain(periph.wdt_a);

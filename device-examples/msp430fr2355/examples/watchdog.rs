@@ -5,14 +5,14 @@
 
 use embedded_hal::digital::*;
 use msp430_rt::entry;
-use msp430fr2x5x_hal::{gpio::Batch, pmm::Pmm};
+use msp430fr2x5x_hal::{self as hal, gpio::Batch, pmm::Pmm};
 use panic_msp430 as _;
 
 // The LED on P1.0 should flash rapidly
 
 #[entry]
 fn main() -> ! {
-    let periph = msp430fr2355::Peripherals::take().unwrap();
+    let (periph, _) = hal::take().unwrap();
 
     // DON'T pause the watchdog
     //let _wdt = Wdt::constrain(periph.WDT_A);
