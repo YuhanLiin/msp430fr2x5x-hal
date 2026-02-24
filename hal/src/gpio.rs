@@ -398,9 +398,9 @@ pub trait ChangeSelectBits {
     fn clear_sel0(&mut self);
     fn clear_sel1(&mut self);
     fn flip_selc(&mut self);
-    #[cfg(not(feature = "sac"))]
+    #[cfg(feature = "adcpctl")]
     fn set_adcpctl(&mut self, mask: u16);
-    #[cfg(not(feature = "sac"))]
+    #[cfg(feature = "adcpctl")]
     fn clr_adcpctl(&mut self, mask: u16);
 }
 
@@ -437,14 +437,14 @@ impl<PORT: PortNum, PIN: PinNum, DIR> ChangeSelectBits for Pin<PORT, PIN, DIR> {
         p.pxselc_wr(0u8.set(PIN::NUM));
     }
 
-    #[cfg(not(feature = "sac"))]
+    #[cfg(feature = "adcpctl")]
     #[inline]
     fn set_adcpctl(&mut self, mask: u16) {
         let p = unsafe { PORT::steal() };
         p.adcpctl_set(mask);
     }
 
-    #[cfg(not(feature = "sac"))]
+    #[cfg(feature = "adcpctl")]
     #[inline]
     fn clr_adcpctl(&mut self, mask: u16) {
         let p = unsafe { PORT::steal() };
@@ -461,7 +461,7 @@ pub struct Alternate2<DIR>(PhantomData<DIR>);
 /// Typestate for GPIO alternate function 3
 pub struct Alternate3<DIR>(PhantomData<DIR>);
 
-#[cfg(not(feature = "sac"))]
+#[cfg(feature = "adcpctl")]
 /// Typestate for GPIO ADC mode (for devices that use ADCPCTLx)
 pub struct AdcMode<DIR>(PhantomData<DIR>);
 
@@ -474,7 +474,7 @@ pub trait ToAlternate2 {}
 /// Marker trait for all Pins that have alternate function 3 available
 pub trait ToAlternate3 {}
 
-#[cfg(not(feature = "sac"))]
+#[cfg(feature = "adcpctl")]
 /// Marker trait for all Pins that have ADC functionality via ADCPCTLx
 pub trait ToAdcPctl: crate::adc::AdcPctlCapable {
     #[doc(hidden)]
@@ -621,7 +621,7 @@ where
     }
 }
 
-#[cfg(not(feature = "sac"))]
+#[cfg(feature = "adcpctl")]
 impl<PORT: PortNum, PIN: PinNum, MODE> Pin<PORT, PIN, MODE>
 where
     Self: ToAdcPctl,
@@ -634,7 +634,7 @@ where
     }
 }
 
-#[cfg(not(feature = "sac"))]
+#[cfg(feature = "adcpctl")]
 impl<PORT: PortNum, PIN: PinNum, MODE> Pin<PORT, PIN, AdcMode<MODE>>
 where
     Self: ToAdcPctl,

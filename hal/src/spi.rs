@@ -133,7 +133,7 @@ impl<USCI: SpiUsci> SpiConfig<USCI, RoleNotSet> {
         self.prescaler = clk_div;
         SpiConfig { usci: self.usci, prescaler: self.prescaler, ctlw0: self.ctlw0, _phantom: PhantomData }
     }
-    #[cfg(not(feature = "eusci_aclk"))]
+    #[cfg(feature = "eusci_modclk")]
     /// This device will act as a master on the SPI bus, deriving SCLK from MODCLK.
     pub fn to_master_using_modclk(mut self, clk_div: u16) -> SpiConfig<USCI, Master> {
         self.ctlw0.ucmst = true;

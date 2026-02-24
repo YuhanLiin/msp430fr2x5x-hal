@@ -235,7 +235,7 @@ macro_rules! impl_adc_channel_pin {
         }
         // If the device doesn't have SAC, then ADC functionality is done via ADCPCTLx instead of Alternate1/2/3.
         // Implement this for all modes
-        #[cfg(not(feature = "sac"))]
+        #[cfg(feature = "adcpctl")]
         impl<MODE> AdcPctlCapable for Pin<$port, $pin, MODE> {
             const ADCPCTLX: u8 = $channel;
         }

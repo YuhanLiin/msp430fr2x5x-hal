@@ -249,7 +249,7 @@ impl<USCI: SerialUsci> SerialConfig<USCI, NoClockSet> {
         )
     }
 
-    #[cfg(not(feature = "eusci_aclk"))]
+    #[cfg(feature = "eusci_modclk")]
     /// Configure serial UART to use MODCLK.
     #[inline(always)]
     pub fn use_modclk(self) -> SerialConfig<USCI, ClockSet> {

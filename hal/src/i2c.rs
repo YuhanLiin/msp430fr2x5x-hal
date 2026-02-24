@@ -308,7 +308,7 @@ impl<USCI: I2cUsci, ROLE: I2cMarker> I2cConfig<USCI, NoClockSet, ROLE> {
         return_self_config!(self)
     }
 
-    #[cfg(not(feature = "eusci_aclk"))]
+    #[cfg(feature = "eusci_modclk")]
     /// Configures this peripheral to use MODCLK
     #[inline]
     pub fn use_modclk(mut self, clk_divisor: u16) -> I2cConfig<USCI, ClockSet, ROLE> {
