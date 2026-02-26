@@ -18,10 +18,14 @@ msp430fr2355 = ["2x5x", "sac_l3"] # 32kB FRAM + SAC unit
 msp430fr2353 = ["2x5x", "sac_l3"] # 16kB FRAM + SAC unit
 msp430fr2155 = ["2x5x"]           # 32kB FRAM
 msp430fr2153 = ["2x5x"]           # 16kB FRAM
+msp430fr2433 = ["dep:msp430fr2433", "eusci_modclk", "adc", "adcpctl", "eusci_b", "info_mem"]
 
 # Derived features. Do not provide these.
-2x5x = ["dep:msp430fr2355", "info_mem", "enhanced_ref", "adc12bit", "ecomp", "eusci_b"]
+2x5x = ["dep:msp430fr2355", "eusci_aclk", "info_mem", "enhanced_ref", "adc12bit", "ecomp", "eusci_b"]
+eusci_aclk = [] # eUSCI peripherals can source from ACLK
+eusci_modclk = [] # eUSCI peripherals can source from MODCLK
 adc12bit = ["adc"]
+adcpctl = [] # ADC functionality controlled via ADCPCTLx
 adc = []
 ecomp = []
 enhanced_ref = []
@@ -35,6 +39,7 @@ info_mem = []
 [dependencies]
 msp430 = "0.4.0"
 msp430fr2355 = { version = "0.6", features = ["rt", "critical-section"], optional = true }
+msp430fr2433 = { version = "0.2", features = ["rt", "critical-section"], optional = true }
 nb = "1.1"
 void = { version = "1.0.2", default-features = false, optional = true }
 embedded-hal-02 = { package = 'embedded-hal', version = "0.2.7", features = ["unproven"], optional = true }

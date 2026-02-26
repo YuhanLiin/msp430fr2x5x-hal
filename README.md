@@ -36,6 +36,7 @@ The device being targetted is must be specified by enabling exactly one device f
 | MSP430FR2353 | `msp430fr2353` |
 | MSP430FR2155 | `msp430fr2155` |
 | MSP430FR2153 | `msp430fr2153` |
+| MSP430FR2433 | `msp430fr2433` |
 
 The documentation on crates.rs (and example programs) target the MSP430FR2355. Documentation for a particular device can be 
 built by running `cargo doc --open --features <device>` from within the `hal/` folder, or `cargo doc --open --package msp430fr2x5x-hal` in a 

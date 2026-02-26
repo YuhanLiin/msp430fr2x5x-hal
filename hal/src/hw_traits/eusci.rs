@@ -44,7 +44,8 @@ macro_rules! reg_struct {
 #[derive(Copy, Clone, Default)]
 pub enum Ucssel {
     Uclk = 0,
-    Aclk = 1,
+    /// ACLK on the 2x5x subfamily, MODCLK on the 2433.
+    DeviceSpecific = 1,
     #[default]
     Smclk = 2,
 }

@@ -8,7 +8,7 @@ use msp430_rt::entry;
 use msp430fr2355::{P2, P3, P4, P5, P6};
 use msp430fr2x5x_hal::{
     bak_mem::BackupMemory,
-    clock::VLOCLK,
+    clock::VLOCLK_FREQ_HZ,
     gpio::Batch,
     lpm::{enter_lpm3_5, enter_lpm3_5_unchecked, SvsState},
     pmm::Pmm,
@@ -74,7 +74,7 @@ fn main() -> ! {
         // Configure RTC for 1 Hz interrupt
         let mut rtc = Rtc::new(periph.rtc).use_vloclk();
         rtc.set_clk_div(RtcDiv::_1);
-        rtc.start(VLOCLK); // Count up to VLOCLK freq -> 1 Hz period
+        rtc.start(VLOCLK_FREQ_HZ); // Count up to VLOCLK freq -> 1 Hz period
         rtc.enable_interrupts();
         // Global interrupts are enabled by `enter_lpm3_5()`
         // Leaving LPMx.5 requires a full system reset, so this function will never return.

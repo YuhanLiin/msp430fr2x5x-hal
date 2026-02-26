@@ -87,18 +87,18 @@ pub mod gpio {
 mod adc {
     use crate::{gpio::*, adc::*};
 
-    impl_adc_channel_pin!(P1, Pin0, 0);
-    impl_adc_channel_pin!(P1, Pin1, 1);
-    impl_adc_channel_pin!(P1, Pin2, 2);
-    impl_adc_channel_pin!(P1, Pin3, 3);
-    impl_adc_channel_pin!(P1, Pin4, 4);
-    impl_adc_channel_pin!(P1, Pin5, 5);
-    impl_adc_channel_pin!(P1, Pin6, 6);
-    impl_adc_channel_pin!(P1, Pin7, 7);
-    impl_adc_channel_pin!(P5, Pin0, 8);
-    impl_adc_channel_pin!(P5, Pin1, 9);
-    impl_adc_channel_pin!(P5, Pin2, 10);
-    impl_adc_channel_pin!(P5, Pin3, 11);
+    impl_adc_channel_pin!(P1, Pin0, Alternate3 => 0);
+    impl_adc_channel_pin!(P1, Pin1, Alternate3 => 1);
+    impl_adc_channel_pin!(P1, Pin2, Alternate3 => 2);
+    impl_adc_channel_pin!(P1, Pin3, Alternate3 => 3);
+    impl_adc_channel_pin!(P1, Pin4, Alternate3 => 4);
+    impl_adc_channel_pin!(P1, Pin5, Alternate3 => 5);
+    impl_adc_channel_pin!(P1, Pin6, Alternate3 => 6);
+    impl_adc_channel_pin!(P1, Pin7, Alternate3 => 7);
+    impl_adc_channel_pin!(P5, Pin0, Alternate3 => 8);
+    impl_adc_channel_pin!(P5, Pin1, Alternate3 => 9);
+    impl_adc_channel_pin!(P5, Pin2, Alternate3 => 10);
+    impl_adc_channel_pin!(P5, Pin3, Alternate3 => 11);
 }
 
 /* Backup Memory */
@@ -144,6 +144,11 @@ mod capture {
         type Gpio6 = Pin<P6, Pin5, Alternate1<Input<Floating>>>;
     }
 }
+
+/* Clocks */
+/// MODCLK frequency
+pub const MODCLK_FREQ_HZ: u32 = 3_800_000;
+
 
 /* eCOMP */
 pub mod ecomp {
@@ -683,6 +688,11 @@ mod timer {
         tb0ex0,
         tb0iv,
         tb0r,
+        tbclr,
+        tbifg,
+        tbidex,
+        tbie,
+        tbssel,
         [CCR0, tb0cctl0, tb0ccr0],
         [CCR1, tb0cctl1, tb0ccr1],
         [CCR2, tb0cctl2, tb0ccr2]
@@ -695,6 +705,11 @@ mod timer {
         tb1ex0,
         tb1iv,
         tb1r,
+        tbclr,
+        tbifg,
+        tbidex,
+        tbie,
+        tbssel,
         [CCR0, tb1cctl0, tb1ccr0],
         [CCR1, tb1cctl1, tb1ccr1],
         [CCR2, tb1cctl2, tb1ccr2]
@@ -707,6 +722,11 @@ mod timer {
         tb2ex0,
         tb2iv,
         tb2r,
+        tbclr,
+        tbifg,
+        tbidex,
+        tbie,
+        tbssel,
         [CCR0, tb2cctl0, tb2ccr0],
         [CCR1, tb2cctl1, tb2ccr1],
         [CCR2, tb2cctl2, tb2ccr2]
@@ -719,6 +739,11 @@ mod timer {
         tb3ex0,
         tb3iv,
         tb3r,
+        tbclr,
+        tbifg,
+        tbidex,
+        tbie,
+        tbssel,
         [CCR0, tb3cctl0, tb3ccr0],
         [CCR1, tb3cctl1, tb3ccr1],
         [CCR2, tb3cctl2, tb3ccr2],

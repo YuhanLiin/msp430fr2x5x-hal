@@ -30,6 +30,17 @@ pub trait GpioPeriph: Steal {
     fn pxsel1_wr(&self, bits: u8);
     fn pxsel1_set(&self, bits: u8);
     fn pxsel1_clear(&self, bits: u8);
+
+    #[cfg(not(feature = "sac"))]
+    fn adcpctl_set(&self, mask: u16) {
+        // TODO: Figure out how to make sure the user can't also access most of syscfg2
+        unsafe { crate::_pac::Sys::steal().syscfg2().set_bits(|w| w.bits(mask)) };
+    }
+    #[cfg(not(feature = "sac"))]
+    fn adcpctl_clr(&self, mask: u16) {
+        // TODO: Figure out how to make sure the user can't also access most of syscfg2
+        unsafe { crate::_pac::Sys::steal().syscfg2().clear_bits(|w| w.bits(mask)) };
+    }
 }
 
 pub trait IntrPeriph: GpioPeriph {

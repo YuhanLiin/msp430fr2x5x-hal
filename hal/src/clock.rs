@@ -16,9 +16,10 @@ use crate::_pac::{self, cs::{csctl1::Dcorsel, csctl4::{Sela, Selms}}};
 pub use crate::_pac::cs::csctl5::{Divm as MclkDiv, Divs as SmclkDiv};
 
 /// REFOCLK frequency
-pub const REFOCLK: u16 = 32768;
+pub const REFOCLK_FREQ_HZ: u16 = 32768;
 /// VLOCLK frequency
-pub const VLOCLK: u16 = 10000;
+pub const VLOCLK_FREQ_HZ: u16 = 10000;
+pub use crate::device_specific::MODCLK_FREQ_HZ;
 
 enum MclkSel {
     Refoclk,
@@ -30,8 +31,8 @@ impl MclkSel {
     #[inline]
     fn freq(&self) -> u32 {
         match self {
-            MclkSel::Vloclk => VLOCLK as u32,
-            MclkSel::Refoclk => REFOCLK as u32,
+            MclkSel::Vloclk => VLOCLK_FREQ_HZ as u32,
+            MclkSel::Refoclk => REFOCLK_FREQ_HZ as u32,
             MclkSel::Dcoclk(sel) => sel.freq(),
         }
     }
@@ -68,8 +69,8 @@ impl AclkSel {
     fn freq(self) -> u16 {
         match self {
             #[cfg(feature = "2x5x")]
-            AclkSel::Vloclk => VLOCLK,
-            AclkSel::Refoclk => REFOCLK,
+            AclkSel::Vloclk => VLOCLK_FREQ_HZ,
+            AclkSel::Refoclk => REFOCLK_FREQ_HZ,
         }
     }
 }
@@ -134,7 +135,7 @@ impl DcoclkFreqSel {
     /// Numerical frequency
     #[inline]
     pub fn freq(self) -> u32 {
-        (self.multiplier() as u32) * (REFOCLK as u32)
+        (self.multiplier() as u32) * (REFOCLK_FREQ_HZ as u32)
     }
 }
 

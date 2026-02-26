@@ -193,12 +193,16 @@ fn enter_lpmx_5<MODE: WatchdogSelect>(mut wdt: Wdt<MODE>, svs: SvsState, regs: _
     /* P2 reset by 4.5 and 3.5 fns */
     regs.p3.p3sel0().reset();
     regs.p3.p3sel1().reset();
-    regs.p4.p4sel0().reset();
-    regs.p4.p4sel1().reset();
-    regs.p5.p5sel0().reset();
-    regs.p5.p5sel1().reset();
-    regs.p6.p6sel0().reset();
-    regs.p6.p6sel1().reset();
+
+    #[cfg(feature = "2x5x")]
+    {
+        regs.p4.p4sel0().reset();
+        regs.p4.p4sel1().reset();
+        regs.p5.p5sel0().reset();
+        regs.p5.p5sel1().reset();
+        regs.p6.p6sel0().reset();
+        regs.p6.p6sel1().reset();
+    }
 
     let interrupts_were_enabled = msp430::register::sr::read().gie();
     msp430::interrupt::disable();

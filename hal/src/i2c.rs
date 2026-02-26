@@ -298,13 +298,25 @@ impl<USCI: I2cUsci, ROLE: I2cMarker> I2cConfig<USCI, NoClockSet, ROLE> {
         self.divisor = clk_divisor;
         return_self_config!(self)
     }
+
+    #[cfg(feature = "eusci_aclk")]
     /// Configures this peripheral to use ACLK
     #[inline]
     pub fn use_aclk(mut self, _aclk: &Aclk, clk_divisor: u16) -> I2cConfig<USCI, ClockSet, ROLE> {
-        self.ctlw0.ucssel = Ucssel::Aclk;
+        self.ctlw0.ucssel = Ucssel::DeviceSpecific;
         self.divisor = clk_divisor;
         return_self_config!(self)
     }
+
+    #[cfg(feature = "eusci_modclk")]
+    /// Configures this peripheral to use MODCLK
+    #[inline]
+    pub fn use_modclk(mut self, clk_divisor: u16) -> I2cConfig<USCI, ClockSet, ROLE> {
+        self.ctlw0.ucssel = Ucssel::DeviceSpecific;
+        self.divisor = clk_divisor;
+        return_self_config!(self)
+    }
+
     /// Configures this peripheral to use UCLK
     #[inline]
     pub fn use_uclk<Pin: Into<USCI::ExternalClockPin> >(mut self, _uclk: Pin, clk_divisor: u16) -> I2cConfig<USCI, ClockSet, ROLE> {
