@@ -2,7 +2,7 @@
 # For debugging
 # runner = "msp430-elf-gdb -q -x mspdebug.gdb"
 # For running
-runner = "../run.sh"
+runner = "./run.sh"
 
 rustflags = [
     "-C", "link-arg=-nostartfiles",
