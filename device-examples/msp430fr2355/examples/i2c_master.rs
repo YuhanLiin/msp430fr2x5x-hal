@@ -6,7 +6,6 @@
 use embedded_hal::{delay::DelayNs, digital::{OutputPin, StatefulOutputPin}, i2c::{I2c, Operation}};
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
-    self as hal,
     clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv},
     fram::Fram,
     gpio::Batch,
@@ -19,12 +18,12 @@ use panic_msp430 as _;
 
 #[entry]
 fn main() -> ! {
-    let (periph, _) = hal::take().unwrap();
+    let periph = msp430fr2355::Peripherals::take().unwrap();
 
     let mut fram = Fram::new(periph.frctl);
     let _wdt = Wdt::constrain(periph.wdt_a);
 
-    let pmm = Pmm::new(periph.pmm, periph.sys);
+    let (pmm, _) = Pmm::new(periph.pmm, periph.sys);
     let mut red_led = Batch::new(periph.p1).split(&pmm).pin0.to_output();
     let mut green_led = Batch::new(periph.p6).split(&pmm).pin6.to_output();
     let p4 = Batch::new(periph.p4).split(&pmm);

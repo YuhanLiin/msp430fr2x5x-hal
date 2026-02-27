@@ -3,21 +3,21 @@
 
 use embedded_hal::digital::*;
 use msp430_rt::entry;
-use msp430fr2x5x_hal::{self as hal, gpio::Batch, pmm::Pmm, watchdog::{Wdt, WdtClkPeriods}};
+use msp430fr2x5x_hal::{gpio::Batch, pmm::Pmm, watchdog::{Wdt, WdtClkPeriods}};
 use panic_msp430 as _;
 
 // The LED on P1.0 should toggle about once per second
 
 #[entry]
 fn main() -> ! {
-    let (periph, _) = hal::take().unwrap();
+    let periph = msp430fr2433::Peripherals::take().unwrap();
 
     // Configure watchdog for ~1 sec timeout
     Wdt::constrain(periph.watchdog_timer)
         .set_vloclk() // ~10kHz
         .set_interval_and_start(WdtClkPeriods::_8192); // ~10kHz / 8192 ~= 1 sec
 
-    let pmm = Pmm::new(periph.pmm, periph.sys);
+    let (pmm, _) = Pmm::new(periph.pmm, periph.sys);
     let mut red_led = Batch::new(periph.p1).split(&pmm).pin0.to_output();
 
     red_led.toggle();

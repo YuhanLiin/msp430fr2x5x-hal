@@ -5,7 +5,6 @@ use embedded_hal::digital::*;
 use embedded_hal_nb::serial::Write;
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
-    self as hal,
     capture::{CapTrigger, CaptureParts3, OverCapture, TimerConfig},
     clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv},
     fram::Fram,
@@ -22,12 +21,12 @@ use panic_msp430 as _;
 // since the last press. Sometimes we get 2 consecutive readings due to lack of debouncing.
 #[entry]
 fn main() -> ! {
-    let (periph, _) = hal::take().unwrap();
+    let periph = msp430fr2355::Peripherals::take().unwrap();
 
     let mut fram = Fram::new(periph.frctl);
     Wdt::constrain(periph.wdt_a);
 
-    let pmm = Pmm::new(periph.pmm, periph.sys);
+    let (pmm, _) = Pmm::new(periph.pmm, periph.sys);
     let p4 = Batch::new(periph.p4).split(&pmm);
     let mut p1 = Batch::new(periph.p1)
         .config_pin0(|p| p.to_output())

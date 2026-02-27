@@ -4,7 +4,6 @@
 use embedded_hal::pwm::SetDutyCycle;
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
-    self as hal,
     clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv},
     fram::Fram,
     gpio::Batch,
@@ -17,12 +16,12 @@ use panic_msp430 as _;
 // P6.4 LED should be bright, P6.3 LED should be dim
 #[entry]
 fn main() -> ! {
-    let (periph, _) = hal::take().unwrap();
+    let periph = msp430fr2355::Peripherals::take().unwrap();
 
     let mut fram = Fram::new(periph.frctl);
     Wdt::constrain(periph.wdt_a);
 
-    let pmm = Pmm::new(periph.pmm, periph.sys);
+    let (pmm, _) = Pmm::new(periph.pmm, periph.sys);
     let p6 = Batch::new(periph.p6).split(&pmm);
 
     let (smclk, _aclk, _delay) = ClockConfig::new(periph.cs)

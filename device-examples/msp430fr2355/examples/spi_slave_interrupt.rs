@@ -23,7 +23,6 @@ use msp430_rt::entry;
 use msp430fr2355::{interrupt, EUsciA0};
 use msp430fr2x5x_hal::spi::{SpiConfig, SpiErr, SpiSlave, StePolarity};
 use msp430fr2x5x_hal::{
-    self as hal,
     clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv}, fram::Fram, gpio::Batch, pmm::Pmm, watchdog::Wdt
 };
 
@@ -31,12 +30,12 @@ use panic_msp430 as _;
 
 #[entry]
 fn main() -> ! {
-    let (periph, _) = hal::take().unwrap();
+    let periph = msp430fr2355::Peripherals::take().unwrap();
 
     let mut fram = Fram::new(periph.frctl);
     let _wdt = Wdt::constrain(periph.wdt_a);
 
-    let pmm = Pmm::new(periph.pmm, periph.sys);
+    let (pmm, _) = Pmm::new(periph.pmm, periph.sys);
     let p1 = Batch::new(periph.p1).split(&pmm);
     let sl_mosi = p1.pin7.to_alternate1();
     let sl_miso = p1.pin6.to_alternate1();

@@ -2,17 +2,17 @@
 #![no_std]
 
 use msp430_rt::entry;
-use msp430fr2x5x_hal::{self as hal, gpio::Batch, pmm::Pmm, watchdog::Wdt};
+use msp430fr2x5x_hal::{gpio::Batch, pmm::Pmm, watchdog::Wdt};
 use panic_msp430 as _;
 
 // Alternate GPIO mode demonstration
 
 #[entry]
 fn main() -> ! {
-    let (periph, _) = hal::take().unwrap();
+    let periph = msp430fr2355::Peripherals::take().unwrap();
     let _wdt = Wdt::constrain(periph.wdt_a);
 
-    let pmm = Pmm::new(periph.pmm, periph.sys);
+    let (pmm, _) = Pmm::new(periph.pmm, periph.sys);
     let p1 = Batch::new(periph.p1).split(&pmm);
 
     // Convert P1.0 to SMCLK output

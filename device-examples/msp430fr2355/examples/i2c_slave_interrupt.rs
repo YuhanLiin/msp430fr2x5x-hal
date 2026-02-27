@@ -28,7 +28,6 @@ use msp430_atomic::AtomicU8;
 use msp430_rt::entry;
 use msp430fr2355::{interrupt, EUsciB1};
 use msp430fr2x5x_hal::{
-    self as hal,
     clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv},
     fram::Fram,
     gpio::Batch,
@@ -48,12 +47,12 @@ static ARR: [AtomicU8; ARR_LEN] = [const { AtomicU8::new(0) }; ARR_LEN];
 // Red LED on P1.0 should blink rapidly. Green LED on pin P6.6 should blink once for every ten red blinks.
 #[entry]
 fn main() -> ! {
-    let (periph, _) = hal::take().unwrap();
+    let periph = msp430fr2355::Peripherals::take().unwrap();
 
     let mut fram = Fram::new(periph.frctl);
     let _wdt = Wdt::constrain(periph.wdt_a);
 
-    let pmm = Pmm::new(periph.pmm, periph.sys);
+    let (pmm, _) = Pmm::new(periph.pmm, periph.sys);
     let p1 = Batch::new(periph.p1).split(&pmm);
     let mut red_led = p1.pin0.to_output();
     let mut green_led = Batch::new(periph.p6).split(&pmm).pin6.to_output();

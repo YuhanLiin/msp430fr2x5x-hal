@@ -14,7 +14,6 @@ use embedded_hal::digital::*;
 use msp430::{asm, interrupt::{enable as enable_interrupts, Mutex}};
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
-    self as hal,
     gpio::{Batch, GpioVector, PxIV}, lpm::enter_lpm0, pmm::Pmm, watchdog::Wdt
 };
 use panic_msp430 as _;
@@ -24,10 +23,10 @@ static P2IV: Mutex<RefCell<Option< PxIV<P2> >>> = Mutex::new(RefCell::new(None))
 // P1.0 should toggle when P2.3 is pressed
 #[entry]
 fn main() -> ! {
-    let (periph, _) = hal::take().unwrap();
+    let periph = msp430fr2355::Peripherals::take().unwrap();
 
     let _wdt = Wdt::constrain(periph.wdt_a);
-    let pmm = Pmm::new(periph.pmm, periph.sys);
+    let (pmm, _) = Pmm::new(periph.pmm, periph.sys);
 
     // Floating input pins consume a *huge* amount of power (relatively speaking).
     // Set unused pins to outputs or enable their pull resistors.

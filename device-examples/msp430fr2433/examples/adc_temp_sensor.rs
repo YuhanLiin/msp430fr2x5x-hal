@@ -4,7 +4,6 @@
 use embedded_hal::digital::*;
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
-    self as hal,
     adc::{AdcConfig, ClockDivider, Predivider, Resolution, SampleTime, SamplingRate},
     gpio::Batch,
     pmm::{Pmm, ReferenceVoltage},
@@ -17,11 +16,11 @@ use panic_msp430 as _;
 #[entry]
 fn main() -> ! {
     // Take peripherals and disable watchdog
-    let (periph, _) = hal::take().unwrap();
+    let periph = msp430fr2433::Peripherals::take().unwrap();
     let _wdt = Wdt::constrain(periph.watchdog_timer);
 
     // Configure GPIO
-    let mut pmm = Pmm::new(periph.pmm, periph.sys);
+    let (mut pmm, _) = Pmm::new(periph.pmm, periph.sys);
     let port1 = Batch::new(periph.p1).split(&pmm);
     let mut led = port1.pin0.to_output();
     led.set_low().ok();

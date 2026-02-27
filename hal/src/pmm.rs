@@ -2,7 +2,7 @@
 
 use core::marker::PhantomData;
 
-use crate::_pac;
+use crate::{_pac, info_mem::InfoMemory};
 
 /// PMM type
 pub struct Pmm(_pac::Pmm);
@@ -39,10 +39,10 @@ pub enum ReferenceVoltage {
 pub struct InternalTempSensor<'a>(PhantomData<&'a InternalVRef>);
 
 impl Pmm {
-    /// Sets the LOCKLPM5 bit and returns a `Pmm`
-    pub fn new(pmm: _pac::Pmm, _sys: _pac::Sys) -> Pmm {
+    /// Sets the LOCKLPM5 bit and returns a `Pmm` (and an `InfoMemory`).
+    pub fn new(pmm: _pac::Pmm, sys: _pac::Sys) -> (Pmm, InfoMemory) {
         pmm.pm5ctl0().write(|w| w.locklpm5().clear_bit());
-        Pmm(pmm)
+        (Pmm(pmm), InfoMemory::new(sys))
     }
 
     /// Configures the internal voltage reference to the specified voltage and enables it.

@@ -6,19 +6,18 @@
 use embedded_hal::{delay::DelayNs, digital::{OutputPin, StatefulOutputPin}, spi::MODE_0};
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
-    self as hal,
     clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv}, fram::Fram, gpio::Batch, pmm::Pmm, spi::SpiConfig, watchdog::Wdt
 };
 use panic_msp430 as _;
 
 #[entry]
 fn main() -> ! {
-    let (periph, _) = hal::take().unwrap();
+    let periph = msp430fr2433::Peripherals::take().unwrap();
 
     let mut fram = Fram::new(periph.fram);
     let _wdt = Wdt::constrain(periph.watchdog_timer);
 
-    let pmm = Pmm::new(periph.pmm, periph.sys);
+    let (pmm, _) = Pmm::new(periph.pmm, periph.sys);
     let p1 = Batch::new(periph.p1)
         .config_pin0(|p| p.to_output())
         .config_pin3(|p| p.to_output())

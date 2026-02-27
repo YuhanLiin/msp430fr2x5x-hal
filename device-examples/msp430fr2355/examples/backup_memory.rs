@@ -3,7 +3,7 @@
 
 use embedded_hal::digital::*;
 use msp430_rt::entry;
-use msp430fr2x5x_hal::{self as hal, bak_mem::BackupMemory, gpio::Batch, pmm::Pmm};
+use msp430fr2x5x_hal::{bak_mem::BackupMemory, gpio::Batch, pmm::Pmm};
 use panic_msp430 as _;
 
 // Use the value of backup memory to toggle the red onboard LED. The red LED should flash.
@@ -12,13 +12,13 @@ use panic_msp430 as _;
 #[entry]
 fn main() -> ! {
     // Take peripherals
-    let (periph, _) = hal::take().unwrap();
+    let periph = msp430fr2355::Peripherals::take().unwrap();
 
     // DON'T disable the watchdog. It will reset us after a few ms.
     //let _wdt = Wdt::constrain(periph.wdt_a);
 
     // Configure GPIO
-    let pmm = Pmm::new(periph.pmm, periph.sys);
+    let (pmm, _) = Pmm::new(periph.pmm, periph.sys);
     let mut led = Batch::new(periph.p1).split(&pmm).pin0.to_output();
 
     // Interpret register block as a &mut [u8;32]

@@ -4,7 +4,7 @@
 use embedded_hal::digital::*;
 use msp430::asm;
 use msp430_rt::entry;
-use msp430fr2x5x_hal::{self as hal, gpio::Batch, info_mem::InfoMemory, pmm::Pmm, watchdog::Wdt};
+use msp430fr2x5x_hal::{gpio::Batch, info_mem::InfoMemory, pmm::Pmm, watchdog::Wdt};
 use panic_msp430 as _;
 
 // Use the non-volatile information memory to toggle the red onboard LED.
@@ -13,11 +13,11 @@ use panic_msp430 as _;
 #[entry]
 fn main() -> ! {
     // Take peripherals
-    let (periph, _) = hal::take().unwrap();
+    let periph = msp430fr2433::Peripherals::take().unwrap();
     let _wdt = Wdt::constrain(periph.watchdog_timer);
 
     // Configure GPIO
-    let pmm = Pmm::new(periph.pmm, periph.sys);
+    let (pmm, mut nv_mem) = Pmm::new(periph.pmm, periph.sys);
     let mut led = Batch::new(periph.p1).split(&pmm).pin0.to_output();
 
     // Wait a little bit to 'debounce' any power cycles.
@@ -26,7 +26,8 @@ fn main() -> ! {
     }
 
     // Disable write protection and get the information memory as an array type
-    let (nv_mem, _) = InfoMemory::as_u8s(periph.sys);
+    // See also: .write() method, which keeps the write protection active except during write operations.
+    let nv_mem = nv_mem.into_unprotected();
 
     // Toggle the first byte between 0 and 1.
     nv_mem[0] = (nv_mem[0].wrapping_add(1)) & 1;

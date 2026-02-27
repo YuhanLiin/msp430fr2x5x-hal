@@ -1,12 +1,12 @@
 //! Information Memory.
 //! [INFO_MEM_SIZE] bytes of non-volatile memory.
 //!
-//! A single instance of [InfoMemory] is returned by [hal::take()](crate::take()), alongside the PAC peripherals. 
+//! A single instance of [InfoMemory] is returned by [`Pmm::new()`](crate::pmm::Pmm::new()).
 //! 
 //! Because the information memory has write protection, access is managed via a write method.
 //! 
-//! For convenience there is also a method [InfoMemory::into_unprotected()] that disables write protection 
-//! permanently and returns the infomation memory directly as an array instead.
+//! For convenience there is also a method [`InfoMemory::into_unprotected()`] that disables write protection 
+//! and returns the infomation memory directly as an array instead.
 //!
 
 use core::ops::Index;
@@ -25,7 +25,7 @@ pub struct InfoMemory {
 impl InfoMemory {
     /// Creates a mutable reference to the information memory segment. Don't call this method more than once.
     #[inline(always)]
-    pub(crate) unsafe fn steal() -> Self {
+    pub(crate) fn new(_sys: _pac::Sys) -> Self {
         Self{ info_mem: unsafe { &mut *(INFO_MEM_START_ADDR as *mut [u8; INFO_MEM_SIZE]) } }
     }
 
@@ -33,13 +33,14 @@ impl InfoMemory {
     ///
     /// Write protection is automatically disabled before calling the closure and restored immediately after it returns.
     #[inline]
-    pub fn write(&mut self, f: impl FnOnce(&mut [u8; INFO_MEM_SIZE])) {
+    pub fn write<T>(&mut self, f: impl FnOnce(&mut [u8; INFO_MEM_SIZE])->T) -> T {
         Self::disable_write_protect();
-        f(&mut self.info_mem);
+        let ret = f(&mut self.info_mem);
         Self::enable_write_protect();
+        ret
     }
 
-    /// Permanently disable write protection and directly return the info memory as an array.
+    /// Disable write protection and directly return the info memory as an array.
     #[inline]
     pub fn into_unprotected(self) -> &'static mut [u8; INFO_MEM_SIZE] {
         Self::disable_write_protect();

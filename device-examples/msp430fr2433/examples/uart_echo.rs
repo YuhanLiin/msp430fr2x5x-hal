@@ -5,7 +5,6 @@ use embedded_hal::digital::OutputPin;
 use embedded_hal_nb::serial::{Read, Write};
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
-    self as hal,
     clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv},
     fram::Fram,
     gpio::Batch,
@@ -25,7 +24,7 @@ use panic_never as _;
 // Serial settings are listed in the code
 #[entry]
 fn main() -> ! {
-    let Some((periph, _)) = hal::take() else { loop{} };
+    let Some(periph) = msp430fr2433::Peripherals::take() else { loop{} };
     let mut fram = Fram::new(periph.fram);
     let _wdt = Wdt::constrain(periph.watchdog_timer);
 
@@ -35,7 +34,7 @@ fn main() -> ! {
         .aclk_refoclk()
         .freeze(&mut fram);
 
-    let pmm = Pmm::new(periph.pmm, periph.sys);
+    let (pmm, _) = Pmm::new(periph.pmm, periph.sys);
     let port1 = Batch::new(periph.p1).split(&pmm);
     let mut led = port1.pin0.to_output();
     let tx_pin = port1.pin4;

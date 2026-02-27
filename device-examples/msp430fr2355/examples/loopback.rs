@@ -5,7 +5,6 @@ use embedded_hal::digital::OutputPin;
 use embedded_hal_nb::serial::{Read, Write};
 use msp430_rt::entry;
 use msp430fr2x5x_hal::{
-    self as hal,
     clock::{ClockConfig, DcoclkFreqSel, MclkDiv, Smclk, SmclkDiv},
     fram::Fram,
     gpio::Batch,
@@ -42,7 +41,7 @@ fn setup_uart<S: SerialUsci>(
 // Only UART1 settings matter for the host
 #[entry]
 fn main() -> ! {
-    let (periph, _) = hal::take().unwrap();
+    let periph = msp430fr2355::Peripherals::take().unwrap();
     let _wdt = Wdt::constrain(periph.wdt_a);
 
     let mut fram = Fram::new(periph.frctl);
@@ -52,7 +51,7 @@ fn main() -> ! {
         .aclk_refoclk()
         .freeze(&mut fram);
 
-    let pmm = Pmm::new(periph.pmm, periph.sys);
+    let (pmm, _) = Pmm::new(periph.pmm, periph.sys);
     let p1 = Batch::new(periph.p1).split(&pmm);
     let p4 = Batch::new(periph.p4).split(&pmm);
     let mut led = p1.pin0.to_output();

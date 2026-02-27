@@ -97,9 +97,3 @@ pub(crate) use device_specific::_pac;
 pub use embedded_hal_02 as ehal_02;
 
 pub use embedded_hal as ehal;
-
-use info_mem::InfoMemory;
-/// Returns all the PAC peripherals (plus [InfoMemory]) *once*.
-pub fn take() -> Option<(pac::Peripherals, InfoMemory)> {
-    Some( (pac::Peripherals::take()?, unsafe{InfoMemory::steal()}) )
-}

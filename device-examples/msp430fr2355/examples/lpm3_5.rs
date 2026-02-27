@@ -7,7 +7,6 @@ use embedded_hal::digital::*;
 use msp430_rt::entry;
 use msp430fr2355::{P2, P3, P4, P5, P6};
 use msp430fr2x5x_hal::{
-    self as hal,
     bak_mem::BackupMemory,
     clock::VLOCLK_FREQ_HZ,
     gpio::Batch,
@@ -23,10 +22,10 @@ use panic_msp430 as _;
 // Programming via Uniflash or Code Composer Studio works fine.
 #[entry]
 fn main() -> ! {
-    let (periph, _) = hal::take().unwrap();
+    let periph = msp430fr2355::Peripherals::take().unwrap();
 
     let wdt = Wdt::constrain(periph.wdt_a);
-    let pmm = Pmm::new(periph.pmm, periph.sys);
+    let (pmm, _) = Pmm::new(periph.pmm, periph.sys);
 
     // The HAL uses some of the SYS registers internally, but we need a copy as well. We promise not to modify any control bits used by the HAL.
     let sys = unsafe{ msp430fr2355::Sys::steal() };
