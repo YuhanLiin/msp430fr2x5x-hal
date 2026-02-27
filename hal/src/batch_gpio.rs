@@ -84,7 +84,7 @@ impl<PORT: PortNum, PIN: PinNum> PinProxy<PORT, PIN, Output> {
 // The transitions between GPIO / alternate modes all have the same shape, we'll make a macro for them.
 /// Implements a PinProxy transition.
 macro_rules! pinproxy_transition {
-    ($from: ty => $into: ty, $fn_name:ident(), $desc:literal) => {
+    ($from:ty => $into:ty, $fn_name:ident(), $desc:literal) => {
         impl<PORT: PortNum, PIN: PinNum, DIR: GpioFunction> PinProxy<PORT, PIN, $from> {
             #[doc = $desc]
             #[inline(always)]
@@ -93,7 +93,7 @@ macro_rules! pinproxy_transition {
             }
         }
     };
-    ($from:ty : $trait:path => $into: ty, $fn_name:ident(), $desc:literal) => {
+    ($from:ty : $trait:path => $into:ty, $fn_name:ident(), $desc:literal) => {
         impl<PORT: PortNum, PIN: PinNum, DIR: GpioFunction> PinProxy<PORT, PIN, $from> 
         where Pin<PORT, PIN, DIR>: $trait {
             #[doc = $desc]
@@ -128,9 +128,9 @@ pinproxy_transition!(Alternate3<DIR>: ToAlternate1 => Alternate1<DIR>, to_altern
 pinproxy_transition!(Alternate3<DIR>: ToAlternate2 => Alternate2<DIR>, to_alternate2(), "Convert pin to GPIO alternate function 2");
 
 // To and from ADCPCTL mode
-#[cfg(not(feature = "sac"))]
+#[cfg(feature = "adcpctl")]
 pinproxy_transition!(DIR: ToAdcPctl => AdcMode<DIR>, to_adc_mode(), "Convert pin to ADC mode (ADCPCTL set)");
-#[cfg(not(feature = "sac"))]
+#[cfg(feature = "adcpctl")]
 pinproxy_transition!(AdcMode<DIR> => DIR, from_adc_mode(), "Return pin to the mode it was in prior to ADCPCTL mode");
 
 // Traits for deciding the value of a pin's registers
@@ -361,6 +361,9 @@ pub struct Batch<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7> 
     pin6: PinProxy<PORT, Pin6, DIR6>,
     pin7: PinProxy<PORT, Pin7, DIR7>,
 }
+
+type Pd = Input<Pulldown>;
+type Pu = Input<Pullup>;
 
 impl<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
     Batch<PORT, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
@@ -615,11 +618,7 @@ impl<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
             pin7: f(self.pin7),
         }
     }
-}
 
-type Pd = Input<Pulldown>;
-impl<PORT: PortNum, D0, D1, D2, D3, D4, D5, D6, D7>
-    Batch<PORT, D0, D1, D2, D3, D4, D5, D6, D7> {
     /// Set all pins to inputs with pulldowns. Leaving unused pins as floating massively increases power usage (relatively speaking).
     #[inline(always)]
     pub fn pulldown_all(self) 
@@ -635,11 +634,7 @@ impl<PORT: PortNum, D0, D1, D2, D3, D4, D5, D6, D7>
             pin7: make_proxy!(),
         }
     }
-}
 
-type Pu = Input<Pullup>;
-impl<PORT: PortNum, D0, D1, D2, D3, D4, D5, D6, D7>
-    Batch<PORT, D0, D1, D2, D3, D4, D5, D6, D7> {
     /// Set all pins to inputs with pullups. Leaving unused pins as floating massively increases power usage (relatively speaking).
     #[inline(always)]
     pub fn pullup_all(self) 
