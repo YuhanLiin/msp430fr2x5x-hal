@@ -81,6 +81,58 @@ impl<PORT: PortNum, PIN: PinNum> PinProxy<PORT, PIN, Output> {
     }
 }
 
+// The transitions between GPIO / alternate modes all have the same shape, we'll make a macro for them.
+/// Implements a PinProxy transition.
+macro_rules! pinproxy_transition {
+    ($from:ty => $into:ty, $fn_name:ident(), $desc:literal) => {
+        impl<PORT: PortNum, PIN: PinNum, DIR: GpioFunction> PinProxy<PORT, PIN, $from> {
+            #[doc = $desc]
+            #[inline(always)]
+            pub fn $fn_name(self) -> PinProxy<PORT, PIN, $into> {
+                make_proxy!()
+            }
+        }
+    };
+    ($from:ty : $trait:path => $into:ty, $fn_name:ident(), $desc:literal) => {
+        impl<PORT: PortNum, PIN: PinNum, DIR: GpioFunction> PinProxy<PORT, PIN, $from> 
+        where Pin<PORT, PIN, DIR>: $trait {
+            #[doc = $desc]
+            #[inline(always)]
+            pub fn $fn_name(self) -> PinProxy<PORT, PIN, $into> {
+                make_proxy!()
+            }
+        }
+    };
+}
+
+// GPIO to alternates
+pinproxy_transition!(DIR: ToAlternate1 => Alternate1<DIR>, to_alternate1(), "Convert pin to GPIO alternate function 1");
+pinproxy_transition!(DIR: ToAlternate2 => Alternate2<DIR>, to_alternate2(), "Convert pin to GPIO alternate function 2");
+pinproxy_transition!(DIR: ToAlternate3 => Alternate3<DIR>, to_alternate3(), "Convert pin to GPIO alternate function 3");
+
+// Alternates to GPIO
+pinproxy_transition!(Alternate1<DIR> => DIR, to_gpio(), "Convert pin to GPIO function");
+pinproxy_transition!(Alternate2<DIR> => DIR, to_gpio(), "Convert pin to GPIO function");
+pinproxy_transition!(Alternate3<DIR> => DIR, to_gpio(), "Convert pin to GPIO function");
+
+// Alternate 1 to other alternates
+pinproxy_transition!(Alternate1<DIR>: ToAlternate2 => Alternate2<DIR>, to_alternate2(), "Convert pin to GPIO alternate function 2");
+pinproxy_transition!(Alternate1<DIR>: ToAlternate3 => Alternate3<DIR>, to_alternate3(), "Convert pin to GPIO alternate function 3");
+
+// Alternate 2 to other alternates
+pinproxy_transition!(Alternate2<DIR>: ToAlternate1 => Alternate1<DIR>, to_alternate1(), "Convert pin to GPIO alternate function 1");
+pinproxy_transition!(Alternate2<DIR>: ToAlternate3 => Alternate3<DIR>, to_alternate3(), "Convert pin to GPIO alternate function 3");
+
+// Alternate 3 to other alternates
+pinproxy_transition!(Alternate3<DIR>: ToAlternate1 => Alternate1<DIR>, to_alternate1(), "Convert pin to GPIO alternate function 1");
+pinproxy_transition!(Alternate3<DIR>: ToAlternate2 => Alternate2<DIR>, to_alternate2(), "Convert pin to GPIO alternate function 2");
+
+// To and from ADCPCTL mode
+#[cfg(feature = "adcpctl")]
+pinproxy_transition!(DIR: ToAdcPctl => AdcMode<DIR>, to_adc_mode(), "Convert pin to ADC mode (ADCPCTL set)");
+#[cfg(feature = "adcpctl")]
+pinproxy_transition!(AdcMode<DIR> => DIR, from_adc_mode(), "Return pin to the mode it was in prior to ADCPCTL mode");
+
 // Traits for deciding the value of a pin's registers
 trait PxdirOn {}
 trait PxoutSet {}
@@ -309,6 +361,9 @@ pub struct Batch<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7> 
     pin6: PinProxy<PORT, Pin6, DIR6>,
     pin7: PinProxy<PORT, Pin7, DIR7>,
 }
+
+type Pd = Input<Pulldown>;
+type Pu = Input<Pullup>;
 
 impl<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
     Batch<PORT, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
@@ -561,6 +616,38 @@ impl<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
             pin5: make_proxy!(),
             pin6: make_proxy!(),
             pin7: f(self.pin7),
+        }
+    }
+
+    /// Set all pins to inputs with pulldowns. Leaving unused pins as floating massively increases power usage (relatively speaking).
+    #[inline(always)]
+    pub fn pulldown_all(self) 
+    -> Batch<PORT, Pd, Pd, Pd, Pd, Pd, Pd, Pd, Pd> {
+        Batch {
+            pin0: make_proxy!(),
+            pin1: make_proxy!(),
+            pin2: make_proxy!(),
+            pin3: make_proxy!(),
+            pin4: make_proxy!(),
+            pin5: make_proxy!(),
+            pin6: make_proxy!(),
+            pin7: make_proxy!(),
+        }
+    }
+
+    /// Set all pins to inputs with pullups. Leaving unused pins as floating massively increases power usage (relatively speaking).
+    #[inline(always)]
+    pub fn pullup_all(self) 
+    -> Batch<PORT, Pu, Pu, Pu, Pu, Pu, Pu, Pu, Pu> {
+        Batch {
+            pin0: make_proxy!(),
+            pin1: make_proxy!(),
+            pin2: make_proxy!(),
+            pin3: make_proxy!(),
+            pin4: make_proxy!(),
+            pin5: make_proxy!(),
+            pin6: make_proxy!(),
+            pin7: make_proxy!(),
         }
     }
 }

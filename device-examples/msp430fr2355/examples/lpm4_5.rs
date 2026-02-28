@@ -12,42 +12,33 @@ use msp430fr2355::{P3, P4, P5, P6};
 use msp430fr2x5x_hal::{gpio::Batch, lpm::{enter_lpm4_5, SvsState}, pmm::Pmm, watchdog::Wdt};
 use panic_msp430 as _;
 
-macro_rules! init_port_as_pulldowns {
-    ($port: expr) => {
-        Batch::new($port)
-            .config_pin0(|p| p.pulldown())
-            .config_pin1(|p| p.pulldown())
-            .config_pin2(|p| p.pulldown())
-            .config_pin3(|p| p.pulldown())
-            .config_pin4(|p| p.pulldown())
-            .config_pin5(|p| p.pulldown())
-            .config_pin6(|p| p.pulldown())
-            .config_pin7(|p| p.pulldown())
-    };
-}
-
 #[entry]
 fn main() -> ! {
     let periph = msp430fr2355::Peripherals::take().unwrap();
 
     let wdt = Wdt::constrain(periph.wdt_a);
-    let pmm = Pmm::new(periph.pmm);
+    let (pmm, _) = Pmm::new(periph.pmm, periph.sys);
+
+    // The HAL uses some of the SYS registers internally, but we need a copy as well. We promise not to modify any control bits used by the HAL.
+    let sys = unsafe{ msp430fr2355::Sys::steal() };
 
     // Floating input pins consume a *huge* amount of power (relatively speaking).
     // Set unused pins to outputs or enable their pull resistors.
-    let port1 = init_port_as_pulldowns!(periph.p1)
+    let port1 = Batch::new(periph.p1)
+        .pulldown_all()
         .config_pin0(|p| p.to_output())
         .split(&pmm);
     let mut red_led = port1.pin0;
 
-    let port2 = init_port_as_pulldowns!(periph.p2)
+    let port2 = Batch::new(periph.p2)
+        .pulldown_all()
         .config_pin3(|p| p.pullup())
         .split(&pmm);
 
     init_unused_gpio(periph.p3, periph.p4, periph.p5, periph.p6, &pmm);
 
     // If this reset was a wake up from LPMx.5...
-    if periph.sys.sysrstiv().read().sysrstiv().is_lpm5wu() {
+    if sys.sysrstiv().read().sysrstiv().is_lpm5wu() {
         loop {
             for _ in 0..10_000 {
                 nop();
@@ -68,10 +59,10 @@ fn main() -> ! {
 
 /// Enable pulldowns on unused ports to massively reduce power usage.
 fn init_unused_gpio(p3: P3, p4: P4, p5: P5, p6: P6, pmm: &Pmm) {
-    init_port_as_pulldowns!(p3).split(pmm);
-    init_port_as_pulldowns!(p4).split(pmm);
-    init_port_as_pulldowns!(p5).split(pmm);
-    init_port_as_pulldowns!(p6).split(pmm);
+    Batch::new(p3).pulldown_all().split(pmm);
+    Batch::new(p4).pulldown_all().split(pmm);
+    Batch::new(p5).pulldown_all().split(pmm);
+    Batch::new(p6).pulldown_all().split(pmm);
 }
 
 // Note: In this case we don't need an ISR when waking from LPMx.5, since power on disables interrupts.

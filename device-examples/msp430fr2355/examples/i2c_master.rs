@@ -23,7 +23,7 @@ fn main() -> ! {
     let mut fram = Fram::new(periph.frctl);
     let _wdt = Wdt::constrain(periph.wdt_a);
 
-    let pmm = Pmm::new(periph.pmm);
+    let (pmm, _) = Pmm::new(periph.pmm, periph.sys);
     let mut red_led = Batch::new(periph.p1).split(&pmm).pin0.to_output();
     let mut green_led = Batch::new(periph.p6).split(&pmm).pin6.to_output();
     let p4 = Batch::new(periph.p4).split(&pmm);

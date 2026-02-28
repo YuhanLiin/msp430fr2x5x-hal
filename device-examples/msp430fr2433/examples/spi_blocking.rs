@@ -17,14 +17,20 @@ fn main() -> ! {
     let mut fram = Fram::new(periph.fram);
     let _wdt = Wdt::constrain(periph.watchdog_timer);
 
-    let pmm = Pmm::new(periph.pmm);
-    let p1 = Batch::new(periph.p1).split(&pmm);
-    let sck    = p1.pin6.to_alternate1();
-    let miso   = p1.pin5.to_alternate1();
-    let mosi   = p1.pin4.to_alternate1();
-    let mut cs = p1.pin3.to_output();
+    let (pmm, _) = Pmm::new(periph.pmm, periph.sys);
+    let p1 = Batch::new(periph.p1)
+        .config_pin0(|p| p.to_output())
+        .config_pin3(|p| p.to_output())
+        .config_pin4(|p| p.to_alternate1())
+        .config_pin5(|p| p.to_alternate1())
+        .config_pin6(|p| p.to_alternate1())
+        .split(&pmm);
+    let sck    = p1.pin6;
+    let miso   = p1.pin5;
+    let mosi   = p1.pin4;
+    let mut cs = p1.pin3;
     cs.set_high();
-    let mut red_led = p1.pin0.to_output();
+    let mut red_led = p1.pin0;
     red_led.set_low();
 
     let (smclk, _aclk, mut delay) = ClockConfig::new(periph.cs)

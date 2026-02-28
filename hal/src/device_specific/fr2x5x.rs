@@ -102,6 +102,7 @@ mod adc {
 }
 
 /* Backup Memory */
+/// Size of the Backup Memory segment on this device, in bytes
 pub const BAK_MEM_SIZE: usize = 32;
 
 /* Capture */
@@ -365,6 +366,7 @@ mod i2c {
 }
 
 /* Information Memory */
+/// Size of the Information Memory segment on this device, in bytes
 pub const INFO_MEM_SIZE: usize = 512;
 
 /* PWM */

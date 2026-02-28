@@ -222,7 +222,7 @@ impl<MCLK, SMCLK> ClockConfig<MCLK, SMCLK> {
         self
     }
 
-    /// Select REFOCLK for MCLK and set the MCLK divider. Frequency is `10000 / mclk_div` Hz.
+    /// Select REFOCLK for MCLK and set the MCLK divider. Frequency is `32_768 / mclk_div` Hz.
     #[inline]
     pub fn mclk_refoclk(self, mclk_div: MclkDiv) -> ClockConfig<MclkDefined, SMCLK> {
         ClockConfig {
@@ -231,7 +231,7 @@ impl<MCLK, SMCLK> ClockConfig<MCLK, SMCLK> {
         }
     }
 
-    /// Select VLOCLK for MCLK and set the MCLK divider. Frequency is `32768 / mclk_div` Hz.
+    /// Select VLOCLK for MCLK and set the MCLK divider. Frequency is `10_000 / mclk_div` Hz.
     #[inline]
     pub fn mclk_vloclk(self, mclk_div: MclkDiv) -> ClockConfig<MclkDefined, SMCLK> {
         ClockConfig {

@@ -16,7 +16,7 @@ fn main() -> ! {
     let _wdt = Wdt::constrain(periph.wdt_a);
 
     // Configure GPIO
-    let mut pmm = Pmm::new(periph.pmm);
+    let (mut pmm, _) = Pmm::new(periph.pmm, periph.sys);
     let port1 = Batch::new(periph.p1).split(&pmm);
 
     let p1_1 = port1.pin1.to_alternate3();

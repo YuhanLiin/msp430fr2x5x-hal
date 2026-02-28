@@ -20,7 +20,7 @@ fn main() -> ! {
     let _wdt = Wdt::constrain(periph.wdt_a);
 
     // Configure GPIO
-    let pmm = Pmm::new(periph.pmm);
+    let (pmm, _) = Pmm::new(periph.pmm, periph.sys);
     let port1 = Batch::new(periph.p1).split(&pmm);
     let mut led = port1.pin0.to_output();
 
