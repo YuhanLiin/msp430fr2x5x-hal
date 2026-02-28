@@ -13,10 +13,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - The frequency of MODCLK is now exported through the `MODCLK_FREQ_HZ` constant.
 - Batch GPIO configuration now supports configuring pins to alternate modes
 - Added Batch GPIO methods to set all pins in a port as inputs with either pullups or pulldowns. Useful for minimising power usage on unused pins, as leaving them in the default floating state can waste a lot of power through noise-induced schmitt trigger activations.
+- The `pac::Sys` register block is now consumed by `Pmm::new()` and additionally returns an instance of `InfoMemory`. The `SYSCFGx` registers are touched internally by several peripherals in the HAL, but there was previously no mechanism to prevent users from accidentally modifying these registers afterwards. An instance of `pac::Sys` can be constructed unsafely using `pac::Sys::steal()` if it is required, but it is up to the user to ensure that control bits used by the HAL are not modified.
 - Refactors to the Information Memory interface:
-  - Rather than `InfoMemory::as_x()` methods consuming the `pac::Sys` register block, the new `hal::take()` method which returns the PAC peripherals and an instance of `InfoMemory`.
+  - As above, rather than `InfoMemory::as_x()` methods consuming the `pac::Sys` register block, the `Pmm::new()` method returns an instance of `InfoMemory`.
   - `InfoMemory` now offers two modes of operation: The information memory is normally write protected, but `.write()` takes a closure where the info memory's write protection is temporarily disabled. Alternatively, `.into_unprotected()` disables the write protection entirely and returns a mutable reference to the underlying array.
-- The `pac::Sys` register block is now consumed by `Pmm::new()`. The `SYSCFGx` registers are touched internally by several peripherals in the HAL, but there was previously no mechanism to prevent users from accidentally modifying these registers afterwards. An instance of `pac::Sys` can be constructed unsafely using `pac::Sys::steal()` if it is required, but it is up to the user to ensure that control bits used by the HAL are not modified.
 - Fixed linker error "undefined reference to `__mspabi_func_epilog`" by linking lgcc last in `.cargo/config.toml`.
 
 ## [v0.5.0] - 2025-10-30
