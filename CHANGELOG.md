@@ -5,9 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## [v0.6.0] - 2026-03-11
 - The library now requires specifying a device feature (e.g. `msp430fr2355`) as part of the process to support more devices. Users must enable exactly one device feature that matches the device being targetted.
-- The underlying PAC version has been bumped to 0.6, which now uses svd2rust 0.37.1. This has changed the capitalisation of peripheral instances from `SCREAMING_CASE` to `snake_case`, e.g.`periph.WDT_A` is now `periph.wdt_a`. Peripheral type names have also changed case, and underscores have been omitted, e.g. `E_USCI_A0` is now `EUsciA0`.
+- The underlying MSP430FR2355 PAC version has been bumped to v0.6, which now uses svd2rust 0.37.1. This has changed the capitalisation of peripheral instances from `SCREAMING_CASE` to `snake_case`, e.g.`periph.WDT_A` is now `periph.wdt_a`. Peripheral type names have also changed case, and underscores have been omitted, e.g. `E_USCI_A0` is now `EUsciA0`. Both the HAL and PAC should be updated together to v0.6.
 - Add initial support for the MSP430FR2433
 - The `REFOCLK` and `VLOCLK` constants have been renamed to the more descriptive `REFOCLK_FREQ_HZ` and `VLOCLK_FREQ_HZ`.
 - The frequency of MODCLK is now exported through the `MODCLK_FREQ_HZ` constant.
@@ -17,7 +17,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Refactors to the Information Memory interface:
   - As above, rather than `InfoMemory::as_x()` methods consuming the `pac::Sys` register block, the `Pmm::new()` method returns an instance of `InfoMemory`.
   - `InfoMemory` now offers two modes of operation: The information memory is normally write protected, but `.write()` takes a closure where the info memory's write protection is temporarily disabled. Alternatively, `.into_unprotected()` disables the write protection entirely and returns a mutable reference to the underlying array.
-- Fixed linker error "undefined reference to `__mspabi_func_epilog`" by linking lgcc last in `.cargo/config.toml`.
+- Fixed linker error in release mode in some examples: "undefined reference to `__mspabi_func_epilog`" by linking lgcc last in `.cargo/config.toml`. If you encounter this error in your project you can make the same fix.
+
 
 ## [v0.5.0] - 2025-10-30
 

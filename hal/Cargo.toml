@@ -1,7 +1,7 @@
 [package]
 name = "msp430fr2x5x-hal"
-version = "0.5.0"
-authors = ["YuhanLiin <linyuhan0315@hotmail.com>"]
+version = "0.6.0"
+authors = ["YuhanLiin <linyuhan0315@hotmail.com>, RossPorter506 <rossporter506@gmail.com>"]
 edition = "2018"
 description = "Implementation of embedded-hal for microcontrollers MSP430FR2355, MSP430FR2353, MSP430FR2153 and MSP430FR2155"
 license = "MIT OR Apache-2.0"
@@ -71,4 +71,5 @@ opt-level = "z"
 
 [package.metadata.docs.rs]
 targets = ["msp430-none-elf"]
+features = ["msp430fr2355"]
 cargo-args = ["-Z", "build-std=core"]
