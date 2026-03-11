@@ -8,18 +8,22 @@ publish = false
 keywords = ["no-std", "msp430", "ti", "launchpad", "embedded-hal"]
 
 [dependencies]
+defmt = "1.0"
+defmt-serial = "0.12"
 panic-msp430 = "0.4.0"
 panic-never = "0.1.0"
 msp430 = {version = "0.4.1", features = ["critical-section-single-core"]}
 msp430-rt = "0.4.0"
 msp430fr2355 = {version = "0.6", features = ["rt", "critical-section"]}
-msp430fr2x5x-hal = {path = "../../hal", features = ["msp430fr2355"]}
+msp430fr2x5x-hal = {path = "../../hal", features = ["msp430fr2355", "defmt"]}
 critical-section = "1.2.0"
 msp430-atomic = "0.1.5"
 embedded-hal = "1.0"
 embedded-hal-nb = "*"
-embedded-io = "0.6"
+embedded-io = "0.7"
 nb = "1.1.0"
+portable-atomic = { version = "1.13", default-features = false }
+static_cell = "2.1"
 
 [profile.release]
 lto = "fat"

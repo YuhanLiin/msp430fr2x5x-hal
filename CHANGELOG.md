@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Unreleased
 - Add support for the MSP430FR247x subfamily.
 - Add support for pin remapping on certain peripherals on certain devices (like the FR247x subfamily). For devices that don't support pin remapping this should be invisible for the most part.
+- Add defmt support through `defmt` feature flag.
 
 ## [v0.6.1] - 2026-03-11
 - Fix missing readme on crates.io

@@ -39,6 +39,8 @@
 //! match crates that require the pre-1.0 version with those that require the latest version. It isn't enabled by
 //! default, as many of the trait names are similar (or identical) to their counterparts in the current
 //! version, which can be confusing.
+//! 
+//! Support for defmt is available behind the `defmt` feature.
 
 #![no_std]
 #![allow(incomplete_features)] // Enable specialization without warnings

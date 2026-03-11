@@ -379,6 +379,7 @@ where
 }
 
 /// SPI transmit/receive errors
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Clone, Copy, Debug)]
 pub enum SpiErr {
     /// Data in the recieve buffer was overwritten before it was read. The contained data is the new contents of the recieve buffer.
