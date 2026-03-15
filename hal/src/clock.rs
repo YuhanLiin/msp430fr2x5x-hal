@@ -49,7 +49,7 @@ impl MclkSel {
 
 #[derive(Clone, Copy)]
 enum AclkSel {
-    #[cfg(feature = "2x5x")]
+    #[cfg(feature = "vloclk_source")]
     Vloclk,
     Refoclk,
     // TODO: XT1CLK
@@ -59,7 +59,7 @@ impl AclkSel {
     #[inline(always)]
     fn sela(self) -> Sela {
         match self {
-            #[cfg(feature = "2x5x")]
+            #[cfg(feature = "vloclk_source")]
             AclkSel::Vloclk => Sela::Vloclk,
             AclkSel::Refoclk => Sela::Refoclk,
         }
@@ -68,7 +68,7 @@ impl AclkSel {
     #[inline(always)]
     fn freq(self) -> u16 {
         match self {
-            #[cfg(feature = "2x5x")]
+            #[cfg(feature = "vloclk_source")]
             AclkSel::Vloclk => VLOCLK_FREQ_HZ,
             AclkSel::Refoclk => REFOCLK_FREQ_HZ,
         }
@@ -214,7 +214,7 @@ impl<MCLK, SMCLK> ClockConfig<MCLK, SMCLK> {
         self
     }
 
-    #[cfg(feature = "2x5x")]
+    #[cfg(feature = "vloclk_source")]
     /// Select VLOCLK for ACLK
     #[inline]
     pub fn aclk_vloclk(mut self) -> Self {

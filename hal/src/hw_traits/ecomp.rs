@@ -8,6 +8,8 @@ use crate::{
 pub trait ECompInputs: ECompPeriph {
     type COMPx_0;
     type COMPx_1;
+    type COMPx_2;
+    type COMPx_3;
     type COMPx_Out;
 
     // The first two device-specific inputs are shared between pos and neg inputs

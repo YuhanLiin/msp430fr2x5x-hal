@@ -3,7 +3,7 @@ name = "msp430fr2x5x-hal"
 version = "0.6.1"
 authors = ["YuhanLiin <linyuhan0315@hotmail.com>, RossPorter506 <rossporter506@gmail.com>"]
 edition = "2018"
-description = "Implementation of embedded-hal for microcontrollers MSP430FR2355, MSP430FR2353, MSP430FR2153 and MSP430FR2155"
+description = "Implementation of embedded-hal for microcontrollers MSP430FR2475, MSP430FR2476, MSP430FR2355, MSP430FR2353, MSP430FR2153 and MSP430FR2155"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/YuhanLiin/msp430fr2x5x-hal"
 keywords = ["no-std", "msp430", "ti", "launchpad", "embedded-hal"]
@@ -20,9 +20,12 @@ msp430fr2353 = ["2x5x", "sac_l3"] # 16kB FRAM + SAC unit
 msp430fr2155 = ["2x5x"]           # 32kB FRAM
 msp430fr2153 = ["2x5x"]           # 16kB FRAM
 msp430fr2433 = ["dep:msp430fr2433", "eusci_modclk", "adc", "adcpctl", "eusci_b", "info_mem"]
+msp430fr2475 = ["247x"]           # 6kB RAM
+msp430fr2476 = ["247x"]           # 8kB RAM
 
 # Derived features. Do not provide these.
-2x5x = ["dep:msp430fr2355", "eusci_aclk", "info_mem", "enhanced_ref", "adc12bit", "ecomp", "eusci_b"]
+2x5x = ["dep:msp430fr2355", "eusci_aclk", "info_mem", "enhanced_ref", "adc12bit", "ecomp", "eusci_b", "vloclk_source"]
+247x = ["dep:msp430fr247x", "eusci_aclk", "info_mem", "enhanced_ref", "adc12bit", "ecomp", "eusci_b", "vloclk_source"]
 eusci_aclk = [] # eUSCI peripherals can source from ACLK
 eusci_modclk = [] # eUSCI peripherals can source from MODCLK
 adc12bit = ["adc"]
@@ -36,11 +39,13 @@ sac_l1 = ["sac"]
 sac = []
 tia = []
 info_mem = []
+vloclk_source = []
 
 [dependencies]
 msp430 = "0.4.0"
 msp430fr2355 = { version = "0.6", features = ["rt", "critical-section"], optional = true }
 msp430fr2433 = { version = "0.2", features = ["rt", "critical-section"], optional = true }
+msp430fr247x = { version = "0.3.1", features = ["rt", "critical-section"], optional = true }
 nb = "1.1"
 void = { version = "1.0.2", default-features = false, optional = true }
 embedded-hal-02 = { package = 'embedded-hal', version = "0.2.7", features = ["unproven"], optional = true }
