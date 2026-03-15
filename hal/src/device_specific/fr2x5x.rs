@@ -185,7 +185,9 @@ pub mod ecomp {
     }
     impl ECompInputs for EComp1 {
         type COMPx_0 = Pin<P2, Pin5, Alternate2<Input<Floating>>>;
-        type COMPx_1 = Pin<P2, Pin4, Alternate2<Input<Floating>>>;
+        type COMPx_1 = Pin<P2, Pin4, Alternate2<Input<Floating>>>;        
+        type COMPx_2   = Infallible; // Not used     
+        type COMPx_3   = Infallible; // Not used
         type COMPx_Out = Pin<P2, Pin1, Alternate2<Output>>;
         #[cfg(feature = "sac")]
         type SACp = Amplifier<Sac1>;
@@ -687,7 +689,7 @@ mod spi {
 
 /* Timer */
 mod timer {
-    use crate::{gpio::*, hw_traits::{Steal, timer_b::*}, pac::{self,*}, timer::*};
+    use crate::{gpio::*, hw_traits::{Steal, timer_b::*}, pac::*, timer::*};
 
     timer_b_impl!(
         Tb0,
