@@ -325,7 +325,7 @@ pub enum SpiVector {
 }
 
 /// Represents a group of pins configured for SPI communication
-pub struct Spi<USCI, M: PinMap>
+pub struct Spi<USCI, M: PinMap = DefaultMapping>
 where
     USCI: SpiUsci<M>,
 {
@@ -351,7 +351,7 @@ where
 }
 
 /// An eUSCI peripheral that has been configured into an SPI slave.
-pub struct SpiSlave<USCI, M: PinMap>
+pub struct SpiSlave<USCI, M: PinMap = DefaultMapping>
 where
     USCI: SpiUsci<M>,
 {

@@ -782,7 +782,7 @@ where
 
 /// An eUSCI peripheral that has been configured as an I2C master.
 /// This variant offers simplified error handling and ease of use, but is not suitable for use on a multi-master bus.
-pub struct I2cSingleMaster<USCI, M> {
+pub struct I2cSingleMaster<USCI, M = DefaultMapping> {
     usci: USCI,
     _pin_map: PhantomData<M>,
 }
@@ -868,7 +868,7 @@ where
 
 /// An eUSCI peripheral that has been configured as an I2C multi-master.
 /// Multi-masters are capable of sharing an I2C bus with other multi-masters, and may also optionally act as a slave device (depending on configuration).
-pub struct I2cMultiMaster<USCI, M> {
+pub struct I2cMultiMaster<USCI, M = DefaultMapping> {
     usci: USCI,
     _pin_map: PhantomData<M>,
 }
@@ -967,7 +967,7 @@ where
 }
 
 /// An eUSCI peripheral that has been configured as an I2C slave.
-pub struct I2cSlave<USCI, M> {
+pub struct I2cSlave<USCI, M = DefaultMapping> {
     usci: USCI,
     _pin_map: PhantomData<M>,
 }
@@ -1039,7 +1039,7 @@ where
 
 /// An eUSCI peripheral that has been configured as an I2C multi-master.
 /// Multi-masters are capable of sharing an I2C bus with other multi-masters, and may also optionally act as a slave device (depending on configuration).
-pub struct I2cMasterSlave<USCI, M> {
+pub struct I2cMasterSlave<USCI, M = DefaultMapping> {
     usci: USCI,
     _pin_map: PhantomData<M>,
 }

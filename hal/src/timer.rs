@@ -206,7 +206,7 @@ where
 }
 
 /// Main periodic countdown timer
-pub struct Timer<T: TimerPeriph<M>, M: PinMap>(PhantomData<T>, PhantomData<M>);
+pub struct Timer<T: TimerPeriph<M>, M: PinMap = DefaultMapping>(PhantomData<T>, PhantomData<M>);
 
 impl<T, M> Timer<T, M>
 where
