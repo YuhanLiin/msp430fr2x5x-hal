@@ -12,11 +12,10 @@
 //! required register operations to enable the selected pin layout before the peripheral
 //! is initialized.
 //!
-//! Three common mapping strategies are provided:
+//! Two common mapping strategies are provided:
 //!
 //! * `DefaultMapping` — Uses the primary pin layout defined by the device.
 //! * `RemappedMapping` — Uses an alternate pin layout enabled through a remapping register.
-//! * `FixedMapping` — For peripherals with a single, non-configurable pin layout.
 //!
 //! Peripheral implementations select one of these mapping strategies when implementing
 //! traits such as `SerialUsci<M>`, allowing the HAL to remain generic while supporting
@@ -32,8 +31,3 @@ impl PinMap for DefaultMapping {}
 /// Use the alternate/secondary pin configuration for the peripheral.
 pub struct RemappedMapping;
 impl PinMap for RemappedMapping {}
-
-/// For peripherals with a single, non-configurable pin layout.
-/// Performs no register operations.
-pub struct FixedMapping;
-impl PinMap for FixedMapping {}

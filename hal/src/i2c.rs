@@ -139,7 +139,7 @@ where
 }
 
 /// Marks a usci capable of I2C communication
-pub trait I2cUsci<M: PinMap = FixedMapping>: EUsciI2C {
+pub trait I2cUsci<M: PinMap = DefaultMapping>: EUsciI2C {
     /// I2C SCL pin
     type ClockPin;
     /// I2C SDA pin

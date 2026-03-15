@@ -11,7 +11,7 @@ documentation = "https://docs.rs/msp430fr2x5x-hal"
 readme = "../README.md"
 
 [features]
-default = []
+default = ["msp430fr2476"]
 embedded-hal-02 = ["dep:embedded-hal-02", "dep:void"]
 
 # Device features. Provide exactly one of these.

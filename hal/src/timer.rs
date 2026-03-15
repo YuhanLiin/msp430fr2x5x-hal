@@ -24,7 +24,7 @@ impl<T: CCRn<C>, C> CapCmp<C> for T {}
 
 // Trait effectively sealed by TimerB
 /// Trait indicating that the peripheral can be used as a timer
-pub trait TimerPeriph<M: PinMap = FixedMapping>: TimerBase + CapCmp<CCR0> {
+pub trait TimerPeriph<M: PinMap = DefaultMapping>: TimerBase + CapCmp<CCR0> {
     /// Pin type used for external TBxCLK of this timer
     type Tbxclk;
 
@@ -35,9 +35,9 @@ pub trait TimerPeriph<M: PinMap = FixedMapping>: TimerBase + CapCmp<CCR0> {
 
 // Traits effectively sealed by CCRn
 /// Trait indicating that the peripheral has 3 capture compare registers
-pub trait CapCmpTimer3<M: PinMap = FixedMapping>: TimerPeriph<M> + CapCmp<CCR1> + CapCmp<CCR2> {}
+pub trait CapCmpTimer3<M: PinMap = DefaultMapping>: TimerPeriph<M> + CapCmp<CCR1> + CapCmp<CCR2> {}
 /// Trait indicating that the peripheral has 7 capture compare registers
-pub trait CapCmpTimer7<M: PinMap = FixedMapping>:
+pub trait CapCmpTimer7<M: PinMap = DefaultMapping>:
     TimerPeriph<M>
     + CapCmp<CCR1>
     + CapCmp<CCR2>

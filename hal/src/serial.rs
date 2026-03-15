@@ -134,7 +134,7 @@ impl Loopback {
 }
 
 /// Marks a USCI type that can be used as a serial UART
-pub trait SerialUsci<M: PinMap = FixedMapping>: EUsciUart {
+pub trait SerialUsci<M: PinMap = DefaultMapping>: EUsciUart {
     /// Pin used for serial UCLK
     type ClockPin;
     /// Pin used for Tx
@@ -452,7 +452,7 @@ where
 }
 
 /// Serial transmitter pin
-pub struct Tx<USCI, M = FixedMapping>(PhantomData<USCI>, PhantomData<M>)
+pub struct Tx<USCI, M = DefaultMapping>(PhantomData<USCI>, PhantomData<M>)
 where
     USCI: SerialUsci<M>,
     M: PinMap;
@@ -510,7 +510,7 @@ where
 }
 
 /// Serial receiver pin
-pub struct Rx<USCI, M = FixedMapping>(PhantomData<USCI>, PhantomData<M>)
+pub struct Rx<USCI, M = DefaultMapping>(PhantomData<USCI>, PhantomData<M>)
 where
     USCI: SerialUsci<M>,
     M: PinMap;

@@ -53,7 +53,7 @@ impl Default for PinConfig {
 }
 
 /// Extension trait for creating capture pins from timer peripherals
-pub trait CapturePeriph<M: PinMap = FixedMapping>: TimerPeriph<M> {
+pub trait CapturePeriph<M: PinMap = DefaultMapping>: TimerPeriph<M> {
     /// GPIO pin that supplies input A for capture pin 0
     type Gpio0;
     /// GPIO pin that supplies input A for capture pin 1
@@ -470,7 +470,7 @@ impl<T: CapCmp<C>, C> InterruptCapture<T, C> {
 
 // TODO: should have default?
 /// Interrupt vector register for determining which capture-register caused an ISR
-pub struct TBxIV<T: TimerPeriph<M>, M: PinMap = FixedMapping>(PhantomData<T>, PhantomData<M>);
+pub struct TBxIV<T: TimerPeriph<M>, M: PinMap = DefaultMapping>(PhantomData<T>, PhantomData<M>);
 
 impl<T: TimerPeriph<M>, M: PinMap> TBxIV<T, M> {
     #[inline]

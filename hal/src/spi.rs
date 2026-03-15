@@ -48,7 +48,7 @@ use nb::Error::WouldBlock;
 use embedded_hal::spi::{Mode, Phase, Polarity};
 
 /// Marks a eUSCI capable of SPI communication (in this case, all euscis do)
-pub trait SpiUsci<M: PinMap = FixedMapping>: EusciSPI {
+pub trait SpiUsci<M: PinMap = DefaultMapping>: EusciSPI {
     /// Master In Slave Out (refered to as SOMI in datasheet)
     type MISO;
     /// Master Out Slave In (refered to as SIMO in datasheet)
