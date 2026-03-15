@@ -1,0 +1,13 @@
+/* DEVICE SELECTION:
+   To use MSP430FR2475: 
+   - Change RAM LENGTH to 0x1800
+   - Change ROM LENGTH to 0x8000
+*/
+
+MEMORY
+{
+  /* Current Values for MSP430FR2476 */
+  RAM     : ORIGIN = 0x2000, LENGTH = 0x2000
+  ROM     : ORIGIN = 0x8000, LENGTH = 0x10000  
+  VECTORS : ORIGIN = 0xFF80, LENGTH = 0x80
+}

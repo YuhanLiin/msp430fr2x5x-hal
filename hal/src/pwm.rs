@@ -8,6 +8,7 @@
 
 use crate::gpio::ChangeSelectBits;
 use crate::hw_traits::timer_base::{CCRn, Outmod};
+use crate::pin_mapping::PinMap;
 use crate::timer::{CapCmpTimer3, CapCmpTimer7};
 use core::marker::PhantomData;
 
@@ -48,23 +49,24 @@ pub trait PwmPeriph<C>: CapCmp<C> + CapCmp<CCR0> {
 }
 
 
-fn setup_pwm<T: TimerPeriph>(timer: &T, config: TimerConfig<T>, period: u16) {
+fn setup_pwm<T: TimerPeriph<M>, M: PinMap>(timer: &T, config: TimerConfig<T, M>, period: u16) {
     config.write_regs(timer);
     CCRn::<CCR0>::set_ccrn(timer, period);
     CCRn::<CCR0>::config_outmod(timer, Outmod::Toggle);
 }
 
 /// Collection of uninitialized PWM pins derived from timer peripheral with 3 capture-compare registers
-pub struct PwmParts3<T: CapCmpTimer3> {
+pub struct PwmParts3<T: CapCmpTimer3<M>, M: PinMap> {
     /// PWM pin 1 (derived from capture-compare register 1)
     pub pwm1: PwmUninit<T, CCR1>,
     /// PWM pin 2 (derived from capture-compare register 2)
     pub pwm2: PwmUninit<T, CCR2>,
+    _pin_map: PhantomData<M>,
 }
 
-impl<T: CapCmpTimer3> PwmParts3<T> {
+impl<T: CapCmpTimer3<M>, M: PinMap> PwmParts3<T, M> {
     /// Create uninitialized PWM pins with the same period
-    pub fn new(timer: T, config: TimerConfig<T>, period: u16) -> Self {
+    pub fn new(timer: T, config: TimerConfig<T, M>, period: u16) -> Self {
         setup_pwm(&timer, config, period);
         // Configure PWM ports
         CCRn::<CCR1>::config_outmod(&timer, Outmod::ResetSet);
@@ -74,12 +76,13 @@ impl<T: CapCmpTimer3> PwmParts3<T> {
         Self {
             pwm1: PwmUninit::new(),
             pwm2: PwmUninit::new(),
+            _pin_map: PhantomData,
         }
     }
 }
 
 /// Collection of uninitialized PWM pins derived from timer peripheral with 7 capture-compare registers
-pub struct PwmParts7<T: CapCmpTimer7> {
+pub struct PwmParts7<T: CapCmpTimer7<M>, M: PinMap> {
     /// PWM pin 1 (derived from capture-compare register 1)
     pub pwm1: PwmUninit<T, CCR1>,
     /// PWM pin 2 (derived from capture-compare register 2)
@@ -92,11 +95,12 @@ pub struct PwmParts7<T: CapCmpTimer7> {
     pub pwm5: PwmUninit<T, CCR5>,
     /// PWM pin 6 (derived from capture-compare register 6)
     pub pwm6: PwmUninit<T, CCR6>,
+    _pin_map: PhantomData<M>,
 }
 
-impl<T: CapCmpTimer7> PwmParts7<T> {
+impl<T: CapCmpTimer7<M>, M: PinMap> PwmParts7<T, M> {
     /// Create uninitialized PWM pins with the same period
-    pub fn new(timer: T, config: TimerConfig<T>, period: u16) -> Self {
+    pub fn new(timer: T, config: TimerConfig<T, M>, period: u16) -> Self {
         setup_pwm(&timer, config, period);
         // Configure PWM ports
         CCRn::<CCR1>::config_outmod(&timer, Outmod::ResetSet);
@@ -114,6 +118,7 @@ impl<T: CapCmpTimer7> PwmParts7<T> {
             pwm4: PwmUninit::new(),
             pwm5: PwmUninit::new(),
             pwm6: PwmUninit::new(),
+            _pin_map: PhantomData,
         }
     }
 }

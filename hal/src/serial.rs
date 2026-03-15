@@ -22,6 +22,7 @@
 
 use crate::clock::{Aclk, Clock, Smclk};
 use crate::hw_traits::eusci::{EUsciUart, UartUcxStatw, UcaCtlw0, Ucssel};
+use crate::pin_mapping::*;
 use core::convert::Infallible;
 use core::marker::PhantomData;
 use core::num::NonZeroU32;
@@ -133,13 +134,17 @@ impl Loopback {
 }
 
 /// Marks a USCI type that can be used as a serial UART
-pub trait SerialUsci: EUsciUart {
+pub trait SerialUsci<M: PinMap = FixedMapping>: EUsciUart {
     /// Pin used for serial UCLK
     type ClockPin;
     /// Pin used for Tx
     type TxPin;
     /// Pin used for Rx
     type RxPin;
+
+    /// Additional configuration
+    #[inline(always)]
+    fn configure_pin_mapping() { }
 }
 
 macro_rules! impl_serial_pin {
@@ -169,7 +174,10 @@ pub struct ClockSet {
 ///
 /// Once the clock source has been selected, the builder can be converted into pins that can
 /// transmit or received bytes via a serial connection.
-pub struct SerialConfig<USCI: SerialUsci, S> {
+pub struct SerialConfig<USCI, M: PinMap, S> 
+where
+    USCI: SerialUsci<M>,
+{
     usci: USCI,
     order: BitOrder,
     cnt: BitCount,
@@ -177,11 +185,12 @@ pub struct SerialConfig<USCI: SerialUsci, S> {
     parity: Parity,
     loopback: Loopback,
     state: S,
+    _map: PhantomData<M>,
 }
 
 macro_rules! serial_config {
     ($conf:expr, $state:expr) => {
-        SerialConfig {
+        SerialConfig::<_, _, _> {
             usci: $conf.usci,
             order: $conf.order,
             cnt: $conf.cnt,
@@ -189,11 +198,16 @@ macro_rules! serial_config {
             parity: $conf.parity,
             loopback: $conf.loopback,
             state: $state,
+            _map: core::marker::PhantomData,
         }
     };
 }
 
-impl<USCI: SerialUsci> SerialConfig<USCI, NoClockSet> {
+impl<USCI, M> SerialConfig<USCI, M, NoClockSet>
+where
+    USCI: SerialUsci<M>,
+    M: PinMap,
+{
     /// Create a new serial configuration using a EUSCI peripheral
     #[inline]
     pub fn new(
@@ -216,6 +230,7 @@ impl<USCI: SerialUsci> SerialConfig<USCI, NoClockSet> {
             state: NoClockSet {
                 baudrate: NonZeroU32::new(baudrate).unwrap_or(ONE),
             },
+            _map: PhantomData,
         }
     }
 
@@ -226,7 +241,7 @@ impl<USCI: SerialUsci> SerialConfig<USCI, NoClockSet> {
         self,
         _clk_pin: P,
         freq: u32,
-    ) -> SerialConfig<USCI, ClockSet> {
+    ) -> SerialConfig<USCI, M, ClockSet> {
         serial_config!(
             self,
             ClockSet {
@@ -239,7 +254,7 @@ impl<USCI: SerialUsci> SerialConfig<USCI, NoClockSet> {
     #[cfg(feature = "eusci_aclk")]
     /// Configure serial UART to use ACLK.
     #[inline(always)]
-    pub fn use_aclk(self, aclk: &Aclk) -> SerialConfig<USCI, ClockSet> {
+    pub fn use_aclk(self, aclk: &Aclk) -> SerialConfig<USCI, M, ClockSet> {
         serial_config!(
             self,
             ClockSet {
@@ -252,7 +267,7 @@ impl<USCI: SerialUsci> SerialConfig<USCI, NoClockSet> {
     #[cfg(feature = "eusci_modclk")]
     /// Configure serial UART to use MODCLK.
     #[inline(always)]
-    pub fn use_modclk(self) -> SerialConfig<USCI, ClockSet> {
+    pub fn use_modclk(self) -> SerialConfig<USCI, M, ClockSet> {
         serial_config!(
             self,
             ClockSet {
@@ -264,7 +279,7 @@ impl<USCI: SerialUsci> SerialConfig<USCI, NoClockSet> {
 
     /// Configure serial UART to use SMCLK.
     #[inline(always)]
-    pub fn use_smclk(self, smclk: &Smclk) -> SerialConfig<USCI, ClockSet> {
+    pub fn use_smclk(self, smclk: &Smclk) -> SerialConfig<USCI, M, ClockSet> {
         serial_config!(
             self,
             ClockSet {
@@ -376,7 +391,11 @@ fn lookup_brs(clk_freq: u32, bps: NonZeroU32) -> u8 {
     }
 }
 
-impl<USCI: SerialUsci> SerialConfig<USCI, ClockSet> {
+impl<USCI, M> SerialConfig<USCI, M, ClockSet>
+where
+    USCI: SerialUsci<M>,
+    M: PinMap,
+{
     #[inline]
     fn config_hw(self) {
         let ClockSet {
@@ -384,6 +403,8 @@ impl<USCI: SerialUsci> SerialConfig<USCI, ClockSet> {
             clksel,
         } = self.state;
         let usci = self.usci;
+
+        USCI::configure_pin_mapping();
 
         usci.ctl0_reset();
         usci.brw_settings(baud_config.br);
@@ -407,30 +428,40 @@ impl<USCI: SerialUsci> SerialConfig<USCI, ClockSet> {
         self,
         _tx: T,
         _rx: R,
-    ) -> (Tx<USCI>, Rx<USCI>) {
+    ) -> (Tx<USCI, M>, Rx<USCI, M>) {
         self.config_hw();
-        (Tx(PhantomData), Rx(PhantomData))
+        (
+            Tx(PhantomData, PhantomData),
+            Rx(PhantomData, PhantomData),
+        )
     }
 
     /// Perform hardware configuration and create Tx pin from appropriate GPIO
     #[inline]
-    pub fn tx_only<T: Into<USCI::TxPin>>(self, _tx: T) -> Tx<USCI> {
+    pub fn tx_only<T: Into<USCI::TxPin>>(self, _tx: T) -> Tx<USCI, M> {
         self.config_hw();
-        Tx(PhantomData)
+        Tx(PhantomData, PhantomData)
     }
 
     /// Perform hardware configuration and create Rx pin from appropriate GPIO
     #[inline]
-    pub fn rx_only<R: Into<USCI::RxPin>>(self, _rx: R) -> Rx<USCI> {
+    pub fn rx_only<R: Into<USCI::RxPin>>(self, _rx: R) -> Rx<USCI, M> {
         self.config_hw();
-        Rx(PhantomData)
+        Rx(PhantomData, PhantomData)
     }
 }
 
 /// Serial transmitter pin
-pub struct Tx<USCI: SerialUsci>(PhantomData<USCI>);
+pub struct Tx<USCI, M = FixedMapping>(PhantomData<USCI>, PhantomData<M>)
+where
+    USCI: SerialUsci<M>,
+    M: PinMap;
 
-impl<USCI: SerialUsci> Tx<USCI> {
+impl<USCI, M> Tx<USCI, M>
+where
+    USCI: SerialUsci<M>,
+    M: PinMap,
+{
     /// Enable Tx interrupts, which fire when ready to send.
     #[inline(always)]
     pub fn enable_tx_interrupts(&mut self) {
@@ -479,9 +510,16 @@ impl<USCI: SerialUsci> Tx<USCI> {
 }
 
 /// Serial receiver pin
-pub struct Rx<USCI: SerialUsci>(PhantomData<USCI>);
+pub struct Rx<USCI, M = FixedMapping>(PhantomData<USCI>, PhantomData<M>)
+where
+    USCI: SerialUsci<M>,
+    M: PinMap;
 
-impl<USCI: SerialUsci> Rx<USCI> {
+impl<USCI, M> Rx<USCI, M>
+where
+    USCI: SerialUsci<M>,
+    M: PinMap,
+{
     /// Enable Rx interrupts, which fire when ready to read
     #[inline(always)]
     pub fn enable_rx_interrupts(&mut self) {
@@ -544,7 +582,13 @@ mod emb_io {
     use embedded_io::{Error, ErrorType, Read, ReadReady, Write, WriteReady};
     use nb::block;
 
-    impl<USCI: SerialUsci> ErrorType for Rx<USCI> { type Error = RecvError; }
+    impl<USCI, M> ErrorType for Rx<USCI, M>
+    where
+        USCI: SerialUsci<M>,
+        M: PinMap,
+    {
+        type Error = RecvError;
+    }
     impl Error for RecvError {
         fn kind(&self) -> embedded_io::ErrorKind {
             match self {
@@ -554,7 +598,11 @@ mod emb_io {
             }
         }
     }
-    impl<USCI: SerialUsci> Read for Rx<USCI> {
+    impl<USCI, M> Read for Rx<USCI, M>
+    where
+        USCI: SerialUsci<M>,
+        M: PinMap,
+    {
         #[inline]
         /// Read one byte into the specified buffer, then returns the number of bytes sent (1).
         /// If a byte isn't currently available to read, this function blocks until one is available.
@@ -566,15 +614,30 @@ mod emb_io {
             Ok(1)
         }
     }
-    impl<USCI: SerialUsci> ReadReady for Rx<USCI> {
+    impl<USCI, M> ReadReady for Rx<USCI, M>
+    where
+        USCI: SerialUsci<M>,
+        M: PinMap,
+    {
         fn read_ready(&mut self) -> Result<bool, Self::Error> {
             let usci = unsafe { USCI::steal() };
             Ok(usci.rxifg_rd())
         }
     }
 
-    impl<USCI: SerialUsci> ErrorType for Tx<USCI> { type Error = Infallible; }
-    impl<USCI: SerialUsci> Write for Tx<USCI> {
+    impl<USCI, M> ErrorType for Tx<USCI, M>
+    where
+        USCI: SerialUsci<M>,
+        M: PinMap,
+    {
+        type Error = Infallible;
+    }
+
+    impl<USCI, M> Write for Tx<USCI, M>
+    where
+        USCI: SerialUsci<M>,
+        M: PinMap,
+    {
         /// Due to errata USCI42, UCTXCPTIFG will fire every time a byte is done transmitting,
         /// even if there's still more buffered. Thus, the implementation uses UCTXIFG instead. When
         /// `flush()` completes, the Tx buffer will be empty but the FIFO may still be sending.
@@ -614,7 +677,11 @@ mod emb_io {
             Ok(())
         }
     }
-    impl<USCI: SerialUsci> WriteReady for Tx<USCI> {
+    impl<USCI, M> WriteReady for Tx<USCI, M>
+    where
+        USCI: SerialUsci<M>,
+        M: PinMap,
+    {
         /// Whether the writer is ready for immediate writing. If this returns `true`, the next call to [`Write::write`] will not block.
         ///
         /// As the error type is `Infallible`, this can be safely unwrapped.
@@ -638,8 +705,19 @@ mod ehal_nb1 {
             }
         }
     }
-    impl<USCI: SerialUsci> ErrorType for Rx<USCI> { type Error = RecvError; }
-    impl<USCI: SerialUsci> Read<u8> for Rx<USCI> {
+    impl<USCI, M> ErrorType for Rx<USCI, M>
+    where
+        USCI: SerialUsci<M>,
+        M: PinMap,
+    {
+        type Error = RecvError;
+    }
+
+    impl<USCI, M> Read<u8> for Rx<USCI, M>
+    where
+        USCI: SerialUsci<M>,
+        M: PinMap,
+    {
         #[inline]
         /// Check if Rx interrupt flag is set. If so, try reading the received byte and clear the flag.
         /// Otherwise return `WouldBlock`. May return errors caused by data corruption or
@@ -649,8 +727,19 @@ mod ehal_nb1 {
         }
     }
 
-    impl<USCI: SerialUsci> ErrorType for Tx<USCI> { type Error = Infallible; }
-    impl<USCI: SerialUsci> Write<u8> for Tx<USCI> {
+    impl<USCI, M> ErrorType for Tx<USCI, M>
+    where
+        USCI: SerialUsci<M>,
+        M: PinMap,
+    {
+        type Error = Infallible;
+    }
+
+    impl<USCI, M> Write<u8> for Tx<USCI, M>
+    where
+        USCI: SerialUsci<M>,
+        M: PinMap,
+    {
         /// Due to errata USCI42, UCTXCPTIFG will fire every time a byte is done transmitting,
         /// even if there's still more buffered. Thus, the implementation uses UCTXIFG instead. When
         /// `flush()` completes, the Tx buffer will be empty but the FIFO may still be sending.
@@ -672,7 +761,11 @@ mod ehal02 {
     use super::*;
     use embedded_hal_02::serial::{Read, Write};
 
-    impl<USCI: SerialUsci> Read<u8> for Rx<USCI> {
+    impl<USCI, M> Read<u8> for Rx<USCI, M>
+    where
+        USCI: SerialUsci<M>,
+        M: PinMap,
+    {
         type Error = RecvError;
 
         #[inline]
@@ -684,7 +777,11 @@ mod ehal02 {
         }
     }
 
-    impl<USCI: SerialUsci> Write<u8> for Tx<USCI> {
+    impl<USCI, M> Write<u8> for Tx<USCI, M>
+    where
+        USCI: SerialUsci<M>,
+        M: PinMap,
+    {
         type Error = void::Void;
 
         /// Due to errata USCI42, UCTXCPTIFG will fire every time a byte is done transmitting,
@@ -702,5 +799,9 @@ mod ehal02 {
         }
     }
 
-    impl<USCI: SerialUsci> embedded_hal_02::blocking::serial::write::Default<u8> for Tx<USCI> {}
+    impl<USCI, M> embedded_hal_02::blocking::serial::write::Default<u8> for Tx<USCI, M>
+    where
+        USCI: SerialUsci<M>,
+        M: PinMap,
+    {}
 }

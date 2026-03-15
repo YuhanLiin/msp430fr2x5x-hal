@@ -110,6 +110,7 @@ mod capture {
     use crate::{pac::*, gpio::*, capture::CapturePeriph};
 
     impl CapturePeriph for Tb0 {
+        type Gpio0 = ();
         type Gpio1 = Pin<P1, Pin6, Alternate2<Input<Floating>>>;
         type Gpio2 = Pin<P1, Pin7, Alternate2<Input<Floating>>>;
         type Gpio3 = ();
@@ -119,6 +120,7 @@ mod capture {
     }
 
     impl CapturePeriph for Tb1 {
+        type Gpio0 = ();
         type Gpio1 = Pin<P2, Pin0, Alternate1<Input<Floating>>>;
         type Gpio2 = Pin<P2, Pin1, Alternate1<Input<Floating>>>;
         type Gpio3 = ();
@@ -128,6 +130,7 @@ mod capture {
     }
 
     impl CapturePeriph for Tb2 {
+        type Gpio0 = ();
         type Gpio1 = Pin<P5, Pin0, Alternate1<Input<Floating>>>;
         type Gpio2 = Pin<P5, Pin1, Alternate1<Input<Floating>>>;
         type Gpio3 = ();
@@ -137,6 +140,7 @@ mod capture {
     }
 
     impl CapturePeriph for Tb3 {
+        type Gpio0 = ();
         type Gpio1 = Pin<P6, Pin0, Alternate1<Input<Floating>>>;
         type Gpio2 = Pin<P6, Pin1, Alternate1<Input<Floating>>>;
         type Gpio3 = Pin<P6, Pin2, Alternate1<Input<Floating>>>;
@@ -164,6 +168,8 @@ pub mod ecomp {
     impl ECompInputs for EComp0 {
         type COMPx_0   = Pin<P1, Pin0, Alternate2<Input<Floating>>>;
         type COMPx_1   = Pin<P1, Pin1, Alternate2<Input<Floating>>>;
+        type COMPx_2   = Infallible; // Not used
+        type COMPx_3   = Infallible; // Not used
         type COMPx_Out = Pin<P2, Pin0, Alternate2<Output>>;
         #[cfg(feature = "sac")]
         type SACp = Amplifier<Sac0>;

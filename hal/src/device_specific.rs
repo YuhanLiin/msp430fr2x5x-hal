@@ -3,12 +3,17 @@
 
 // MSP430FR2x5x series
 #[cfg(feature = "2x5x")]
-#[path="device_specific/fr2x5x.rs"]
+#[path = "device_specific/fr2x5x.rs"]
 pub mod device;
 
 // MSP430FR2433
 #[cfg(feature = "msp430fr2433")]
-#[path="device_specific/fr2433.rs"]
+#[path = "device_specific/fr2433.rs"]
+pub mod device;
+
+// MSP430FR2x5x series
+#[cfg(feature = "247x")]
+#[path = "device_specific/fr247x.rs"]
 pub mod device;
 
 pub use device::*;

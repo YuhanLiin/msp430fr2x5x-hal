@@ -8,6 +8,7 @@
 //! on an individual basis.
 
 use crate::hw_traits::timer_base::{CCRn, Ccis, Cm};
+use crate::pin_mapping::*;
 use crate::timer::{read_tbxiv, CapCmpTimer3, CapCmpTimer7, TimerVector};
 use core::marker::PhantomData;
 
@@ -52,7 +53,9 @@ impl Default for PinConfig {
 }
 
 /// Extension trait for creating capture pins from timer peripherals
-pub trait CapturePeriph: TimerPeriph {
+pub trait CapturePeriph<M: PinMap = FixedMapping>: TimerPeriph<M> {
+    /// GPIO pin that supplies input A for capture pin 0
+    type Gpio0;
     /// GPIO pin that supplies input A for capture pin 1
     type Gpio1;
     /// GPIO pin that supplies input A for capture pin 2
@@ -116,20 +119,25 @@ macro_rules! config_fn {
 /// capture trigger event, which determines the input transitions that actually trigger the
 /// capture. By default, all pins use GND as their input source and trigger a capture on a rising
 /// edge.
-pub struct CaptureConfig3<T: CapturePeriph>
+pub struct CaptureConfig3<T, M>
 where
-    T: CapCmpTimer3,
+    T: CapturePeriph<M> + CapCmpTimer3<M>,
+    M: PinMap,
 {
     timer: T,
-    config: TimerConfig<T>,
+    config: TimerConfig<T, M>,
     cap0: PinConfig,
     cap1: PinConfig,
     cap2: PinConfig,
 }
 
-impl<T: CapturePeriph + CapCmpTimer3> CaptureParts3<T> {
+impl<T, M> CaptureParts3<T, M>
+where
+    T: CapturePeriph<M> + CapCmpTimer3<M>,
+    M: PinMap,
+{
     /// Create capture configuration
-    pub fn config(timer: T, config: TimerConfig<T>) -> CaptureConfig3<T> {
+    pub fn config(timer: T, config: TimerConfig<T, M>) -> CaptureConfig3<T, M> {
         CaptureConfig3 {
             timer,
             config,
@@ -140,12 +148,17 @@ impl<T: CapturePeriph + CapCmpTimer3> CaptureParts3<T> {
     }
 }
 
-impl<T: CapturePeriph + CapCmpTimer3> CaptureConfig3<T> {
+impl<T, M> CaptureConfig3<T, M>
+where 
+    T: CapturePeriph<M> + CapCmpTimer3<M>,
+    M: PinMap,
+{
     config_fn!(
         config_cap0_input_A,
         config_cap0_input_B,
         config_cap0_trigger,
-        cap0
+        cap0,
+        Gpio0
     );
     config_fn!(
         config_cap1_input_A,
@@ -163,7 +176,7 @@ impl<T: CapturePeriph + CapCmpTimer3> CaptureConfig3<T> {
     );
 
     /// Writes all previously configured timer and capture settings into peripheral registers
-    pub fn commit(self) -> CaptureParts3<T> {
+    pub fn commit(self) -> CaptureParts3<T, M> {
         let timer = self.timer;
         self.config.write_regs(&timer);
         CCRn::<CCR0>::config_cap_mode(&timer, self.cap0.trigger.into(), self.cap0.select);
@@ -175,7 +188,7 @@ impl<T: CapturePeriph + CapCmpTimer3> CaptureConfig3<T> {
             cap0: Capture::new(),
             cap1: Capture::new(),
             cap2: Capture::new(),
-            tbxiv: TBxIV(PhantomData),
+            tbxiv: TBxIV(PhantomData, PhantomData),
         }
     }
 }
@@ -187,12 +200,13 @@ impl<T: CapturePeriph + CapCmpTimer3> CaptureConfig3<T> {
 /// capture trigger event, which determines the input transitions that actually trigger the
 /// capture. By default, all pins use GND as their input source and trigger a capture on a rising
 /// edge.
-pub struct CaptureConfig7<T: CapturePeriph>
+pub struct CaptureConfig7<T, M>
 where
-    T: CapCmpTimer7,
+    T: CapturePeriph<M> + CapCmpTimer7<M>,
+    M: PinMap,
 {
     timer: T,
-    config: TimerConfig<T>,
+    config: TimerConfig<T, M>,
     cap0: PinConfig,
     cap1: PinConfig,
     cap2: PinConfig,
@@ -202,9 +216,13 @@ where
     cap6: PinConfig,
 }
 
-impl<T: CapturePeriph + CapCmpTimer7> CaptureParts7<T> {
+impl<T, M> CaptureParts7<T, M>
+where
+    T: CapturePeriph<M> + CapCmpTimer7<M>,
+    M: PinMap,
+{
     /// Create capture configuration
-    pub fn config(timer: T, config: TimerConfig<T>) -> CaptureConfig7<T> {
+    pub fn config(timer: T, config: TimerConfig<T, M>) -> CaptureConfig7<T, M> {
         CaptureConfig7 {
             timer,
             config,
@@ -219,12 +237,17 @@ impl<T: CapturePeriph + CapCmpTimer7> CaptureParts7<T> {
     }
 }
 
-impl<T: CapturePeriph + CapCmpTimer7> CaptureConfig7<T> {
+impl<T, M> CaptureConfig7<T, M>
+where
+    T: CapturePeriph<M> + CapCmpTimer7<M>,
+    M: PinMap,
+{
     config_fn!(
         config_cap0_input_A,
         config_cap0_input_B,
         config_cap0_trigger,
-        cap0
+        cap0,
+        Gpio0
     );
     config_fn!(
         config_cap1_input_A,
@@ -270,7 +293,7 @@ impl<T: CapturePeriph + CapCmpTimer7> CaptureConfig7<T> {
     );
 
     /// Writes all previously configured timer and capture settings into peripheral registers
-    pub fn commit(self) -> CaptureParts7<T> {
+    pub fn commit(self) -> CaptureParts7<T, M> {
         let timer = self.timer;
         self.config.write_regs(&timer);
         CCRn::<CCR0>::config_cap_mode(&timer, self.cap0.trigger.into(), self.cap0.select);
@@ -290,13 +313,17 @@ impl<T: CapturePeriph + CapCmpTimer7> CaptureConfig7<T> {
             cap4: Capture::new(),
             cap5: Capture::new(),
             cap6: Capture::new(),
-            tbxiv: TBxIV(PhantomData),
+            tbxiv: TBxIV(PhantomData, PhantomData),
         }
     }
 }
 
 /// Collection of capture pins derived from timer peripheral with 3 capture-compare registers
-pub struct CaptureParts3<T: CapCmpTimer3> {
+pub struct CaptureParts3<T, M>
+where
+    T: CapCmpTimer3<M>,
+    M: PinMap,
+{
     /// Capture pin 0 (derived from capture-compare register 0)
     pub cap0: Capture<T, CCR0>,
     /// Capture pin 1 (derived from capture-compare register 1)
@@ -304,11 +331,15 @@ pub struct CaptureParts3<T: CapCmpTimer3> {
     /// Capture pin 2 (derived from capture-compare register 2)
     pub cap2: Capture<T, CCR2>,
     /// Interrupt vector register
-    pub tbxiv: TBxIV<T>,
+    pub tbxiv: TBxIV<T, M>,
 }
 
 /// Collection of capture pins derived from timer peripheral with 7 capture-compare registers
-pub struct CaptureParts7<T: CapCmpTimer7> {
+pub struct CaptureParts7<T, M>
+where
+    T: CapCmpTimer7<M>,
+    M: PinMap,
+{
     /// Capture pin 0 (derived from capture-compare register 0)
     pub cap0: Capture<T, CCR0>,
     /// Capture pin 1 (derived from capture-compare register 1)
@@ -324,7 +355,7 @@ pub struct CaptureParts7<T: CapCmpTimer7> {
     /// Capture pin 6 (derived from capture-compare register 6)
     pub cap6: Capture<T, CCR6>,
     /// Interrupt vector register
-    pub tbxiv: TBxIV<T>,
+    pub tbxiv: TBxIV<T, M>,
 }
 
 /// Single capture pin with its own capture register
@@ -437,10 +468,11 @@ impl<T: CapCmp<C>, C> InterruptCapture<T, C> {
     }
 }
 
+// TODO: should have default?
 /// Interrupt vector register for determining which capture-register caused an ISR
-pub struct TBxIV<T: TimerPeriph>(PhantomData<T>);
+pub struct TBxIV<T: TimerPeriph<M>, M: PinMap = FixedMapping>(PhantomData<T>, PhantomData<M>);
 
-impl<T: TimerPeriph> TBxIV<T> {
+impl<T: TimerPeriph<M>, M: PinMap> TBxIV<T, M> {
     #[inline]
     /// Read the capture interrupt vector and resets corresponding interrupt flag. If
     /// the vector corresponds to an available capture, a one-time capture read token will be
