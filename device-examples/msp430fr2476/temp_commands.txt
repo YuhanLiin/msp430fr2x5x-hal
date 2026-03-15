@@ -1,2 +1,0 @@
-prog target\msp430-none-elf\debug\examples\echo_remapped 
-run 
