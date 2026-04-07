@@ -119,7 +119,7 @@ impl From<TransmissionMode> for bool {
 pub use crate::hw_traits::eusci::Ucglit as GlitchFilter;
 
 ///Struct used to configure a I2C bus
-pub struct I2cConfig<USCI, M: PinMap = DefaultMapping, CLKSRC, ROLE>
+pub struct I2cConfig<USCI, CLKSRC, ROLE, M: PinMap = DefaultMapping>
 where
     USCI: I2cUsci<M>,
 {
@@ -209,13 +209,13 @@ macro_rules! return_self_config {
     };
 }
 
-impl<USCI, M> I2cConfig<USCI, M, NoClockSet, NoRoleSet>
+impl<USCI, M> I2cConfig<USCI, NoClockSet, NoRoleSet, M>
 where
     USCI: I2cUsci<M>,
     M: PinMap,
 {
     /// Begin configuration of an eUSCI peripheral as an I2C device.
-    pub fn new(usci: USCI, deglitch_time: GlitchFilter) -> I2cConfig<USCI, M, NoClockSet, NoRoleSet> {
+    pub fn new(usci: USCI, deglitch_time: GlitchFilter) -> I2cConfig<USCI, NoClockSet, NoRoleSet, M> {
         let ctlw0 = UcbCtlw0 {
             ucsync: true,
             ucswrst: true,
@@ -248,14 +248,14 @@ where
         }
     }
     /// Configure this eUSCI peripheral as an I2C master on a bus with no other master devices.
-    pub fn as_single_master(mut self) -> I2cConfig<USCI, M, NoClockSet, SingleMaster> {
+    pub fn as_single_master(mut self) -> I2cConfig<USCI, NoClockSet, SingleMaster, M> {
         self.ctlw0.ucmst = true;
 
         return_self_config!(self)
     }
 
     /// Configure this eUSCI peripheral as an I2C slave.
-    pub fn as_slave<TenOrSevenBit>(mut self, own_address: TenOrSevenBit) -> I2cConfig<USCI, M, ClockSet, Slave>
+    pub fn as_slave<TenOrSevenBit>(mut self, own_address: TenOrSevenBit) -> I2cConfig<USCI, ClockSet, Slave, M>
     where TenOrSevenBit: AddressType {
         self.ctlw0.uca10 = TenOrSevenBit::addr_type().into();
 
@@ -272,7 +272,7 @@ where
     ///
     /// The address comparison unit is disabled so this device can't be addressed as a slave,
     /// though the other masters may still contest the bus.
-    pub fn as_multi_master(mut self) -> I2cConfig<USCI, M, NoClockSet, MultiMaster> {
+    pub fn as_multi_master(mut self) -> I2cConfig<USCI, NoClockSet, MultiMaster, M> {
         self.ctlw0 = UcbCtlw0 {
             ucmst: true,
             ucmm: true,
@@ -284,7 +284,7 @@ where
 
     /// Configure this EUSCI peripheral as an I2C master-slave on a bus with other master devices.
     /// The other masters may contest the bus and/or address this device as a slave.
-    pub fn as_master_slave<TenOrSevenBit>(mut self, own_address: TenOrSevenBit) -> I2cConfig<USCI, M, NoClockSet, MasterSlave>
+    pub fn as_master_slave<TenOrSevenBit>(mut self, own_address: TenOrSevenBit) -> I2cConfig<USCI, NoClockSet, MasterSlave, M>
     where TenOrSevenBit: AddressType {
         self.ctlw0 = UcbCtlw0 {
             uca10: TenOrSevenBit::addr_type().into(),
@@ -306,14 +306,14 @@ where
 }
 
 #[allow(private_bounds)]
-impl<USCI, M, ROLE: I2cMarker> I2cConfig<USCI, M, NoClockSet, ROLE>
+impl<USCI, M, ROLE: I2cMarker> I2cConfig<USCI, NoClockSet, ROLE, M>
 where
     USCI: I2cUsci<M>,
     M: PinMap,
 {
     /// Configures this peripheral to use SMCLK
     #[inline]
-    pub fn use_smclk(mut self, _smclk: &Smclk, clk_divisor: u16) -> I2cConfig<USCI, M, ClockSet, ROLE> {
+    pub fn use_smclk(mut self, _smclk: &Smclk, clk_divisor: u16) -> I2cConfig<USCI, ClockSet, ROLE, M> {
         self.ctlw0.ucssel = Ucssel::Smclk;
         self.divisor = clk_divisor;
         return_self_config!(self)
@@ -322,7 +322,7 @@ where
     #[cfg(feature = "eusci_aclk")]
     /// Configures this peripheral to use ACLK
     #[inline]
-    pub fn use_aclk(mut self, _aclk: &Aclk, clk_divisor: u16) -> I2cConfig<USCI, M, ClockSet, ROLE> {
+    pub fn use_aclk(mut self, _aclk: &Aclk, clk_divisor: u16) -> I2cConfig<USCI, ClockSet, ROLE, M> {
         self.ctlw0.ucssel = Ucssel::DeviceSpecific;
         self.divisor = clk_divisor;
         return_self_config!(self)
@@ -331,7 +331,7 @@ where
     #[cfg(feature = "eusci_modclk")]
     /// Configures this peripheral to use MODCLK
     #[inline]
-    pub fn use_modclk(mut self, clk_divisor: u16) -> I2cConfig<USCI, M, ClockSet, ROLE> {
+    pub fn use_modclk(mut self, clk_divisor: u16) -> I2cConfig<USCI, ClockSet, ROLE, M> {
         self.ctlw0.ucssel = Ucssel::DeviceSpecific;
         self.divisor = clk_divisor;
         return_self_config!(self)
@@ -339,7 +339,7 @@ where
 
     /// Configures this peripheral to use UCLK
     #[inline]
-    pub fn use_uclk<Pin: Into<USCI::ExternalClockPin> >(mut self, _uclk: Pin, clk_divisor: u16) -> I2cConfig<USCI, M, ClockSet, ROLE> {
+    pub fn use_uclk<Pin: Into<USCI::ExternalClockPin> >(mut self, _uclk: Pin, clk_divisor: u16) -> I2cConfig<USCI, ClockSet, ROLE, M> {
         self.ctlw0.ucssel = Ucssel::Uclk;
         self.divisor = clk_divisor;
         return_self_config!(self)
@@ -347,7 +347,7 @@ where
 }
 
 #[allow(private_bounds)]
-impl<USCI, M, RoleSet: I2cMarker> I2cConfig<USCI, M, ClockSet, RoleSet>
+impl<USCI, M, RoleSet: I2cMarker> I2cConfig<USCI, ClockSet, RoleSet, M>
 where
     USCI: I2cUsci<M>,
     M: PinMap,
@@ -377,7 +377,7 @@ where
 
 macro_rules! configure {
     ($role: ty, $out_type: path) => {
-        impl<USCI, M> I2cConfig<USCI, M, ClockSet, $role>
+        impl<USCI, M> I2cConfig<USCI, ClockSet, $role, M>
         where
             USCI: I2cUsci<M>,
             M: PinMap,

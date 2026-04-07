@@ -84,7 +84,7 @@ pub struct Master;
 pub struct Slave;
 
 /// Configuration object for an eUSCI peripheral being set up for SPI mode.
-pub struct SpiConfig<USCI, M: PinMap = DefaultMapping, ROLE>
+pub struct SpiConfig<USCI, ROLE, M: PinMap = DefaultMapping>
 where
     USCI: SpiUsci<M>,
 {
@@ -94,7 +94,7 @@ where
     _phantom: PhantomData<(ROLE, M)>,
 }
 
-impl<USCI, M> SpiConfig<USCI, M, RoleNotSet>
+impl<USCI, M> SpiConfig<USCI, RoleNotSet, M>
 where
     USCI: SpiUsci<M>,
     M: PinMap,
@@ -124,13 +124,13 @@ where
         Self { usci, ctlw0, prescaler: 0, _phantom: PhantomData }
     }
     /// This device will act as a slave on the SPI bus.
-    pub fn to_slave(mut self) -> SpiConfig<USCI, M, Slave> {
+    pub fn to_slave(mut self) -> SpiConfig<USCI, Slave, M> {
         self.ctlw0.ucmst = false;
         // UCSSEL is 'don't care' in slave mode
         SpiConfig { usci: self.usci, prescaler: self.prescaler, ctlw0: self.ctlw0, _phantom: PhantomData }
     }
     /// This device will act as a master on the SPI bus, deriving SCLK from SMCLK.
-    pub fn to_master_using_smclk(mut self, _smclk: &Smclk, clk_div: u16) -> SpiConfig<USCI, M, Master> {
+    pub fn to_master_using_smclk(mut self, _smclk: &Smclk, clk_div: u16) -> SpiConfig<USCI, Master, M> {
         self.ctlw0.ucmst = true;
         self.ctlw0.ucssel = Ucssel::Smclk;
         self.prescaler = clk_div;
@@ -138,7 +138,7 @@ where
     }
     #[cfg(feature = "eusci_aclk")]
     /// This device will act as a master on the SPI bus, deriving SCLK from ACLK.
-    pub fn to_master_using_aclk(mut self, _aclk: &Aclk, clk_div: u16) -> SpiConfig<USCI, M, Master> {
+    pub fn to_master_using_aclk(mut self, _aclk: &Aclk, clk_div: u16) -> SpiConfig<USCI, Master, M> {
         self.ctlw0.ucmst = true;
         self.ctlw0.ucssel = Ucssel::DeviceSpecific;
         self.prescaler = clk_div;
@@ -146,7 +146,7 @@ where
     }
     #[cfg(feature = "eusci_modclk")]
     /// This device will act as a master on the SPI bus, deriving SCLK from MODCLK.
-    pub fn to_master_using_modclk(mut self, clk_div: u16) -> SpiConfig<USCI, M, Master> {
+    pub fn to_master_using_modclk(mut self, clk_div: u16) -> SpiConfig<USCI, Master, M> {
         self.ctlw0.ucmst = true;
         self.ctlw0.ucssel = Ucssel::DeviceSpecific;
         self.prescaler = clk_div;
@@ -154,7 +154,7 @@ where
     }
 }
 
-impl<USCI, M> SpiConfig<USCI, M, Master>
+impl<USCI, M> SpiConfig<USCI, Master, M>
 where
     USCI: SpiUsci<M>,
     M: PinMap,
@@ -177,7 +177,7 @@ where
         Spi { usci: self.usci, _pin_map: PhantomData }
     }
 }
-impl<USCI, M> SpiConfig<USCI, M, Slave>
+impl<USCI, M> SpiConfig<USCI, Slave, M>
 where
     USCI: SpiUsci<M>,
     M: PinMap,
@@ -202,7 +202,7 @@ where
         SpiSlave { usci: self.usci, _pin_map: PhantomData }
     }
 }
-impl<USCI, M, ROLE> SpiConfig<USCI, M, ROLE>
+impl<USCI, M, ROLE> SpiConfig<USCI, ROLE, M>
 where
     USCI: SpiUsci<M>,
     M: PinMap,

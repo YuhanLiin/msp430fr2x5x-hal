@@ -174,7 +174,7 @@ pub struct ClockSet {
 ///
 /// Once the clock source has been selected, the builder can be converted into pins that can
 /// transmit or received bytes via a serial connection.
-pub struct SerialConfig<USCI, M: PinMap = DefaultMapping, S> 
+pub struct SerialConfig<USCI, S, M: PinMap = DefaultMapping> 
 where
     USCI: SerialUsci<M>,
 {
@@ -203,7 +203,7 @@ macro_rules! serial_config {
     };
 }
 
-impl<USCI, M> SerialConfig<USCI, M, NoClockSet>
+impl<USCI, M> SerialConfig<USCI, NoClockSet, M>
 where
     USCI: SerialUsci<M>,
     M: PinMap,
@@ -241,7 +241,7 @@ where
         self,
         _clk_pin: P,
         freq: u32,
-    ) -> SerialConfig<USCI, M, ClockSet> {
+    ) -> SerialConfig<USCI, ClockSet, M> {
         serial_config!(
             self,
             ClockSet {
@@ -254,7 +254,7 @@ where
     #[cfg(feature = "eusci_aclk")]
     /// Configure serial UART to use ACLK.
     #[inline(always)]
-    pub fn use_aclk(self, aclk: &Aclk) -> SerialConfig<USCI, M, ClockSet> {
+    pub fn use_aclk(self, aclk: &Aclk) -> SerialConfig<USCI, ClockSet, M> {
         serial_config!(
             self,
             ClockSet {
@@ -267,7 +267,7 @@ where
     #[cfg(feature = "eusci_modclk")]
     /// Configure serial UART to use MODCLK.
     #[inline(always)]
-    pub fn use_modclk(self) -> SerialConfig<USCI, M, ClockSet> {
+    pub fn use_modclk(self) -> SerialConfig<USCI, ClockSet, M> {
         serial_config!(
             self,
             ClockSet {
@@ -279,7 +279,7 @@ where
 
     /// Configure serial UART to use SMCLK.
     #[inline(always)]
-    pub fn use_smclk(self, smclk: &Smclk) -> SerialConfig<USCI, M, ClockSet> {
+    pub fn use_smclk(self, smclk: &Smclk) -> SerialConfig<USCI, ClockSet, M> {
         serial_config!(
             self,
             ClockSet {
@@ -391,7 +391,7 @@ fn lookup_brs(clk_freq: u32, bps: NonZeroU32) -> u8 {
     }
 }
 
-impl<USCI, M> SerialConfig<USCI, M, ClockSet>
+impl<USCI, M> SerialConfig<USCI, ClockSet, M>
 where
     USCI: SerialUsci<M>,
     M: PinMap,
