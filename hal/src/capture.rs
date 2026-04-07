@@ -119,7 +119,7 @@ macro_rules! config_fn {
 /// capture trigger event, which determines the input transitions that actually trigger the
 /// capture. By default, all pins use GND as their input source and trigger a capture on a rising
 /// edge.
-pub struct CaptureConfig3<T, M>
+pub struct CaptureConfig3<T, M = DefaultMapping>
 where
     T: CapturePeriph<M> + CapCmpTimer3<M>,
     M: PinMap,
@@ -149,7 +149,7 @@ where
 }
 
 impl<T, M> CaptureConfig3<T, M>
-where 
+where
     T: CapturePeriph<M> + CapCmpTimer3<M>,
     M: PinMap,
 {
@@ -200,7 +200,7 @@ where
 /// capture trigger event, which determines the input transitions that actually trigger the
 /// capture. By default, all pins use GND as their input source and trigger a capture on a rising
 /// edge.
-pub struct CaptureConfig7<T, M>
+pub struct CaptureConfig7<T, M = DefaultMapping>
 where
     T: CapturePeriph<M> + CapCmpTimer7<M>,
     M: PinMap,
@@ -319,7 +319,7 @@ where
 }
 
 /// Collection of capture pins derived from timer peripheral with 3 capture-compare registers
-pub struct CaptureParts3<T, M>
+pub struct CaptureParts3<T, M = DefaultMapping>
 where
     T: CapCmpTimer3<M>,
     M: PinMap,
@@ -335,7 +335,7 @@ where
 }
 
 /// Collection of capture pins derived from timer peripheral with 7 capture-compare registers
-pub struct CaptureParts7<T, M>
+pub struct CaptureParts7<T, M = DefaultMapping>
 where
     T: CapCmpTimer7<M>,
     M: PinMap,

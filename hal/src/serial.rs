@@ -174,7 +174,7 @@ pub struct ClockSet {
 ///
 /// Once the clock source has been selected, the builder can be converted into pins that can
 /// transmit or received bytes via a serial connection.
-pub struct SerialConfig<USCI, M: PinMap, S> 
+pub struct SerialConfig<USCI, M: PinMap = DefaultMapping, S> 
 where
     USCI: SerialUsci<M>,
 {

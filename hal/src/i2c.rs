@@ -119,7 +119,7 @@ impl From<TransmissionMode> for bool {
 pub use crate::hw_traits::eusci::Ucglit as GlitchFilter;
 
 ///Struct used to configure a I2C bus
-pub struct I2cConfig<USCI, M: PinMap, CLKSRC, ROLE>
+pub struct I2cConfig<USCI, M: PinMap = DefaultMapping, CLKSRC, ROLE>
 where
     USCI: I2cUsci<M>,
 {

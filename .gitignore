@@ -2,5 +2,3 @@
 **/*.rs.bk
 .vim/*
 Cargo.lock
-
-temp_commands.txt

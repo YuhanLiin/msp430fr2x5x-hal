@@ -84,7 +84,7 @@ pub struct Master;
 pub struct Slave;
 
 /// Configuration object for an eUSCI peripheral being set up for SPI mode.
-pub struct SpiConfig<USCI, M: PinMap, ROLE>
+pub struct SpiConfig<USCI, M: PinMap = DefaultMapping, ROLE>
 where
     USCI: SpiUsci<M>,
 {

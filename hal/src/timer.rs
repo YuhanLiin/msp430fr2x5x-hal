@@ -51,7 +51,7 @@ pub trait CapCmpTimer7<M: PinMap = DefaultMapping>:
 /// Configuration object for the TimerB peripheral
 ///
 /// Used to configure `Timer`, `Capture`, and `Pwm`, which all use the TimerB peripheral.
-pub struct TimerConfig<T, M>
+pub struct TimerConfig<T, M = DefaultMapping>
 where
     T: TimerPeriph<M>,
     M: PinMap,
@@ -126,7 +126,7 @@ where
 }
 
 /// Main timer and sub-timers for timer peripherals with 3 capture-compare registers
-pub struct TimerParts3<T, M>
+pub struct TimerParts3<T, M = DefaultMapping>
 where
     T: CapCmpTimer3<M>,
     M: PinMap,
@@ -160,7 +160,7 @@ where
 }
 
 /// Main timer and sub-timers for timer peripherals with 7 capture-compare registers
-pub struct TimerParts7<T, M>
+pub struct TimerParts7<T, M = DefaultMapping>
 where
     T: CapCmpTimer7<M>,
     M: PinMap,
