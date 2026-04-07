@@ -36,7 +36,7 @@ fn main() -> ! {
 
         led.set_low().ok();
 
-        let (mut tx, mut rx) = SerialConfig::<_, DefaultMapping, _>::new(
+        let (mut tx, mut rx) = SerialConfig::<_, _, DefaultMapping>::new(
             periph.e_usci_a0,
             BitOrder::LsbFirst,
             BitCount::EightBits,

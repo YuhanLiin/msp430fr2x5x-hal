@@ -45,13 +45,13 @@ fn main() -> ! {
         .aclk_vloclk()
         .freeze(&mut fram);
 
-    let mut i2c_master = I2cConfig::<_, DefaultMapping, _, _>::new(periph.e_usci_b0, GlitchFilter::Max50ns)
+    let mut i2c_master = I2cConfig::<_, _, _, DefaultMapping>::new(periph.e_usci_b0, GlitchFilter::Max50ns)
         .as_single_master()
         .use_smclk(&smclk, 80) // 8MHz / 80 = 100kHz
         .configure(m_scl, m_sda);
 
     const SLAVE_ADDR: u8 = 0x1A;
-    let mut i2c_slave = I2cConfig::<_, DefaultMapping, _, _>::new(periph.e_usci_b1, GlitchFilter::Max50ns)
+    let mut i2c_slave = I2cConfig::<_, _, _, DefaultMapping>::new(periph.e_usci_b1, GlitchFilter::Max50ns)
         .as_slave(SLAVE_ADDR)
         .configure(sl_scl, sl_sda);
 

@@ -23,7 +23,7 @@ where
     USCI: SerialUsci<M>,
     M: PinMap,
 {
-    SerialConfig::<USCI, M, NoClockSet>::new(
+    SerialConfig::<USCI, NoClockSet, M>::new(
         usci,
         BitOrder::LsbFirst,
         BitCount::EightBits,

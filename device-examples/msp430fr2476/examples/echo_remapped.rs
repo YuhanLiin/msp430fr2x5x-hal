@@ -41,7 +41,7 @@ fn main() -> ! {
 
         // FIRST: Default UART mapping (P1.4 TX / P1.5 RX)
         {
-            let mut tx = SerialConfig::<_, DefaultMapping, _>::new(
+            let mut tx = SerialConfig::<_, _, DefaultMapping>::new(
                 e_usci_a0,
                 BitOrder::LsbFirst,
                 BitCount::EightBits,
@@ -60,7 +60,7 @@ fn main() -> ! {
         }
 
         // SECOND: Remap UART to P5.2 TX / P5.1 RX
-        let serial = SerialConfig::<_, RemappedMapping, _>::new(
+        let serial = SerialConfig::<_, _, RemappedMapping>::new(
             e_usci_a0,
             BitOrder::LsbFirst,
             BitCount::EightBits,
