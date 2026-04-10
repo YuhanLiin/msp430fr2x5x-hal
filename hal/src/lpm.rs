@@ -194,7 +194,7 @@ fn enter_lpmx_5<MODE: WatchdogSelect>(mut wdt: Wdt<MODE>, svs: SvsState, regs: _
     regs.p3.p3sel0().reset();
     regs.p3.p3sel1().reset();
 
-    #[cfg(feature = "2x5x")]
+    #[cfg(any(feature = "2x5x", feature = "247x"))]
     {
         regs.p4.p4sel0().reset();
         regs.p4.p4sel1().reset();

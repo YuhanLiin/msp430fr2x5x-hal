@@ -40,7 +40,7 @@
 //! | eUSCI_B1 | `P4.7` | `P4.6` | `P4.5` | `P4.4`|
 use crate::{
     clock::{Aclk, Smclk},
-    hw_traits::eusci::{EusciSPI, Ucmode, Ucssel, UcxSpiCtw0},
+    hw_traits::eusci::{EusciSPI, Ucmode, Ucssel, UcxSpiCtw0}, pin_mapping::*,
 };
 use core::{convert::Infallible, marker::PhantomData};
 use nb::Error::WouldBlock;
@@ -48,7 +48,7 @@ use nb::Error::WouldBlock;
 use embedded_hal::spi::{Mode, Phase, Polarity};
 
 /// Marks a eUSCI capable of SPI communication (in this case, all euscis do)
-pub trait SpiUsci: EusciSPI {
+pub trait SpiUsci<M: PinMap = DefaultMapping>: EusciSPI {
     /// Master In Slave Out (refered to as SOMI in datasheet)
     type MISO;
     /// Master Out Slave In (refered to as SIMO in datasheet)
@@ -57,6 +57,10 @@ pub trait SpiUsci: EusciSPI {
     type SCLK;
     /// Slave Transmit Enable (acts like CS)
     type STE;
+
+    /// Additional configuration
+    #[inline(always)]
+    fn configure_pin_mapping() { }
 }
 
 // Allows a GPIO pin to be converted into an SPI object
@@ -80,14 +84,21 @@ pub struct Master;
 pub struct Slave;
 
 /// Configuration object for an eUSCI peripheral being set up for SPI mode.
-pub struct SpiConfig<USCI: SpiUsci, ROLE> {
+pub struct SpiConfig<USCI, ROLE, M: PinMap = DefaultMapping>
+where
+    USCI: SpiUsci<M>,
+{
     usci: USCI,
     ctlw0: UcxSpiCtw0,
     prescaler: u16,
-    _phantom: PhantomData<ROLE>,
+    _phantom: PhantomData<(ROLE, M)>,
 }
 
-impl<USCI: SpiUsci> SpiConfig<USCI, RoleNotSet> {
+impl<USCI, M> SpiConfig<USCI, RoleNotSet, M>
+where
+    USCI: SpiUsci<M>,
+    M: PinMap,
+{
     /// Begin configuring an EUSCI peripheral for SPI mode.
     pub fn new(usci: USCI, mode: Mode, msb_first: bool) -> Self {
         let ctlw0 = UcxSpiCtw0 {
@@ -113,13 +124,13 @@ impl<USCI: SpiUsci> SpiConfig<USCI, RoleNotSet> {
         Self { usci, ctlw0, prescaler: 0, _phantom: PhantomData }
     }
     /// This device will act as a slave on the SPI bus.
-    pub fn to_slave(mut self) -> SpiConfig<USCI, Slave> {
+    pub fn to_slave(mut self) -> SpiConfig<USCI, Slave, M> {
         self.ctlw0.ucmst = false;
         // UCSSEL is 'don't care' in slave mode
         SpiConfig { usci: self.usci, prescaler: self.prescaler, ctlw0: self.ctlw0, _phantom: PhantomData }
     }
     /// This device will act as a master on the SPI bus, deriving SCLK from SMCLK.
-    pub fn to_master_using_smclk(mut self, _smclk: &Smclk, clk_div: u16) -> SpiConfig<USCI, Master> {
+    pub fn to_master_using_smclk(mut self, _smclk: &Smclk, clk_div: u16) -> SpiConfig<USCI, Master, M> {
         self.ctlw0.ucmst = true;
         self.ctlw0.ucssel = Ucssel::Smclk;
         self.prescaler = clk_div;
@@ -127,7 +138,7 @@ impl<USCI: SpiUsci> SpiConfig<USCI, RoleNotSet> {
     }
     #[cfg(feature = "eusci_aclk")]
     /// This device will act as a master on the SPI bus, deriving SCLK from ACLK.
-    pub fn to_master_using_aclk(mut self, _aclk: &Aclk, clk_div: u16) -> SpiConfig<USCI, Master> {
+    pub fn to_master_using_aclk(mut self, _aclk: &Aclk, clk_div: u16) -> SpiConfig<USCI, Master, M> {
         self.ctlw0.ucmst = true;
         self.ctlw0.ucssel = Ucssel::DeviceSpecific;
         self.prescaler = clk_div;
@@ -135,14 +146,19 @@ impl<USCI: SpiUsci> SpiConfig<USCI, RoleNotSet> {
     }
     #[cfg(feature = "eusci_modclk")]
     /// This device will act as a master on the SPI bus, deriving SCLK from MODCLK.
-    pub fn to_master_using_modclk(mut self, clk_div: u16) -> SpiConfig<USCI, Master> {
+    pub fn to_master_using_modclk(mut self, clk_div: u16) -> SpiConfig<USCI, Master, M> {
         self.ctlw0.ucmst = true;
         self.ctlw0.ucssel = Ucssel::DeviceSpecific;
         self.prescaler = clk_div;
         SpiConfig { usci: self.usci, prescaler: self.prescaler, ctlw0: self.ctlw0, _phantom: PhantomData }
     }
 }
-impl<USCI: SpiUsci> SpiConfig<USCI, Master> {
+
+impl<USCI, M> SpiConfig<USCI, Master, M>
+where
+    USCI: SpiUsci<M>,
+    M: PinMap,
+{
     // Note: Errata USCI50 makes this mode a real pain to implement. Leave out for now.
     // /// For an SPI bus with more than one master.
     // /// The STE pin is used by the other master to turn SCLK and MOSI high impedance, so the other master can talk on the bus.
@@ -154,37 +170,47 @@ impl<USCI: SpiUsci> SpiConfig<USCI, Master> {
     // }
     /// For an SPI bus with a single master.
     /// SCLK and MOSI are always outputs. The STE pin is not required.
-    pub fn single_master_bus<MOSI, MISO, SCLK>(mut self, _miso: MISO, _mosi: MOSI, _sclk: SCLK) -> Spi<USCI>
+    pub fn single_master_bus<MOSI, MISO, SCLK>(mut self, _miso: MISO, _mosi: MOSI, _sclk: SCLK) -> Spi<USCI, M>
     where MOSI: Into<USCI::MOSI>, MISO: Into<USCI::MISO>, SCLK: Into<USCI::SCLK> {
         self.ctlw0.ucmode = Ucmode::ThreePinSPI;
         self.configure_hw();
-        Spi { usci: self.usci }
+        Spi { usci: self.usci, _pin_map: PhantomData }
     }
 }
-impl<USCI: SpiUsci> SpiConfig<USCI, Slave> {
+impl<USCI, M> SpiConfig<USCI, Slave, M>
+where
+    USCI: SpiUsci<M>,
+    M: PinMap,
+{
     /// For an SPI bus with more than one slave.
     /// The STE pin is used to turn MISO high impedance, so other slaves can talk on the bus.
-    pub fn shared_bus<MOSI, MISO, SCLK, STE>(mut self, _miso: MISO, _mosi: MOSI, _sclk: SCLK, _ste: STE, ste_pol: StePolarity) -> SpiSlave<USCI> 
+    pub fn shared_bus<MOSI, MISO, SCLK, STE>(mut self, _miso: MISO, _mosi: MOSI, _sclk: SCLK, _ste: STE, ste_pol: StePolarity) -> SpiSlave<USCI, M> 
     where MOSI: Into<USCI::MOSI>, MISO: Into<USCI::MISO>, SCLK: Into<USCI::SCLK>, STE: Into<USCI::STE> {
         self.ctlw0.ucmode = match ste_pol {
             StePolarity::EnabledWhenHigh => Ucmode::FourPinSPI1,
             StePolarity::EnabledWhenLow  => Ucmode::FourPinSPI0,
         };
         self.configure_hw();
-        SpiSlave { usci: self.usci }
+        SpiSlave { usci: self.usci, _pin_map: PhantomData }
     }
     /// For an SPI bus where this device is the only slave.
     /// MOSI is always an output. 
-    pub fn exclusive_bus<MOSI, MISO, SCLK>(mut self, _miso: MISO, _mosi: MOSI, _sclk: SCLK) -> SpiSlave<USCI> 
+    pub fn exclusive_bus<MOSI, MISO, SCLK>(mut self, _miso: MISO, _mosi: MOSI, _sclk: SCLK) -> SpiSlave<USCI, M> 
     where MOSI: Into<USCI::MOSI>, MISO: Into<USCI::MISO>, SCLK: Into<USCI::SCLK> {
         self.ctlw0.ucmode = Ucmode::ThreePinSPI;
         self.configure_hw();
-        SpiSlave { usci: self.usci }
+        SpiSlave { usci: self.usci, _pin_map: PhantomData }
     }
 }
-impl<USCI: SpiUsci, ROLE> SpiConfig<USCI, ROLE> {
+impl<USCI, M, ROLE> SpiConfig<USCI, ROLE, M>
+where
+    USCI: SpiUsci<M>,
+    M: PinMap,
+{
     #[inline]
     fn configure_hw(&self) {
+        USCI::configure_pin_mapping();
+
         self.usci.ctw0_set_rst();
 
         self.usci.ctw0_wr(&self.ctlw0);
@@ -299,8 +325,18 @@ pub enum SpiVector {
 }
 
 /// Represents a group of pins configured for SPI communication
-pub struct Spi<USCI: SpiUsci>{usci: USCI}
-impl<USCI: SpiUsci> Spi<USCI> {
+pub struct Spi<USCI, M: PinMap = DefaultMapping>
+where
+    USCI: SpiUsci<M>,
+{
+    usci: USCI,
+    _pin_map: PhantomData<M>,
+}
+impl<USCI, M> Spi<USCI, M>
+where
+    USCI: SpiUsci<M>,
+    M: PinMap,
+{
     spi_common!();
 
     #[inline(always)]
@@ -315,8 +351,18 @@ impl<USCI: SpiUsci> Spi<USCI> {
 }
 
 /// An eUSCI peripheral that has been configured into an SPI slave.
-pub struct SpiSlave<USCI: SpiUsci>{usci: USCI}
-impl<USCI: SpiUsci> SpiSlave<USCI> {
+pub struct SpiSlave<USCI, M: PinMap = DefaultMapping>
+where
+    USCI: SpiUsci<M>,
+{
+    usci: USCI,
+    _pin_map: PhantomData<M>,
+}
+impl<USCI, M> SpiSlave<USCI, M>
+where
+    USCI: SpiUsci<M>,
+    M: PinMap,
+{
     spi_common!();
 
     /// Try to read from the Rx buffer. Returns `nb::WouldBlock` if the buffer is empty.
@@ -357,11 +403,19 @@ mod ehal1 {
         }
     }
 
-    impl<USCI: SpiUsci> ErrorType for Spi<USCI> {
+    impl<USCI, M> ErrorType for Spi<USCI, M>
+    where
+        USCI: SpiUsci<M>,
+        M: PinMap,
+    {
         type Error = SpiErr;
     }
 
-    impl<USCI: SpiUsci> SpiBus for Spi<USCI> {
+    impl<USCI, M> SpiBus for Spi<USCI, M>
+    where
+        USCI: SpiUsci<M>,
+        M: PinMap,
+    {
         /// Send dummy packets (`0x00`) on MOSI so the slave can respond on MISO. Store the response in `words`.
         fn read(&mut self, words: &mut [u8]) -> Result<(), Self::Error> {
             for word in words {
@@ -430,7 +484,11 @@ mod ehal_nb1 {
     use super::*;
     use embedded_hal_nb::{nb, spi::FullDuplex};
 
-    impl<USCI: SpiUsci> FullDuplex<u8> for Spi<USCI> {
+    impl<USCI, M> FullDuplex<u8> for Spi<USCI, M>    
+    where
+        USCI: SpiUsci<M>,
+        M: PinMap,
+    {
         fn read(&mut self) -> nb::Result<u8, Self::Error> {
             self.recv_byte()
         }
@@ -446,7 +504,11 @@ mod ehal02 {
     use super::*;
     use embedded_hal_02::spi::FullDuplex;
 
-    impl<USCI: SpiUsci> FullDuplex<u8> for Spi<USCI> {
+    impl<USCI, M> FullDuplex<u8> for Spi<USCI, M>
+    where
+        USCI: SpiUsci<M>,
+        M: PinMap,
+    {
         type Error = SpiErr;
         fn read(&mut self) -> nb::Result<u8, Self::Error> {
             self.recv_byte()
@@ -458,8 +520,16 @@ mod ehal02 {
     }
 
     // Implementing FullDuplex above gets us a blocking write and transfer implementation for free
-    impl<USCI: SpiUsci> embedded_hal_02::blocking::spi::write::Default<u8> for Spi<USCI> {}
-    impl<USCI: SpiUsci> embedded_hal_02::blocking::spi::transfer::Default<u8> for Spi<USCI> {}
+    impl<USCI, M> embedded_hal_02::blocking::spi::write::Default<u8> for Spi<USCI, M>
+    where
+        USCI: SpiUsci<M>,
+        M: PinMap,
+    {}
+    impl<USCI, M> embedded_hal_02::blocking::spi::transfer::Default<u8> for Spi<USCI, M>
+    where
+        USCI: SpiUsci<M>,
+        M: PinMap,
+    {}
 }
 
 // Unfortunately the compiler can't always automatically infer this, even though we already have From<Infallible> for SpiErr

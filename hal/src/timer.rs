@@ -9,6 +9,7 @@
 
 use crate::clock::{Aclk, Smclk};
 use crate::hw_traits::timer_base::{CCRn, RunningMode, Tbssel, TimerBase};
+use crate::pin_mapping::*;
 use core::convert::Infallible;
 use core::marker::PhantomData;
 
@@ -23,17 +24,21 @@ impl<T: CCRn<C>, C> CapCmp<C> for T {}
 
 // Trait effectively sealed by TimerB
 /// Trait indicating that the peripheral can be used as a timer
-pub trait TimerPeriph: TimerBase + CapCmp<CCR0> {
+pub trait TimerPeriph<M: PinMap = DefaultMapping>: TimerBase + CapCmp<CCR0> {
     /// Pin type used for external TBxCLK of this timer
     type Tbxclk;
+
+    /// Additional configuration
+    #[inline(always)]
+    fn configure_pin_mapping() { }
 }
 
 // Traits effectively sealed by CCRn
 /// Trait indicating that the peripheral has 3 capture compare registers
-pub trait CapCmpTimer3: TimerPeriph + CapCmp<CCR1> + CapCmp<CCR2> {}
+pub trait CapCmpTimer3<M: PinMap = DefaultMapping>: TimerPeriph<M> + CapCmp<CCR1> + CapCmp<CCR2> {}
 /// Trait indicating that the peripheral has 7 capture compare registers
-pub trait CapCmpTimer7:
-    TimerPeriph
+pub trait CapCmpTimer7<M: PinMap = DefaultMapping>:
+    TimerPeriph<M>
     + CapCmp<CCR1>
     + CapCmp<CCR2>
     + CapCmp<CCR3>
@@ -46,14 +51,23 @@ pub trait CapCmpTimer7:
 /// Configuration object for the TimerB peripheral
 ///
 /// Used to configure `Timer`, `Capture`, and `Pwm`, which all use the TimerB peripheral.
-pub struct TimerConfig<T: TimerPeriph> {
+pub struct TimerConfig<T, M = DefaultMapping>
+where
+    T: TimerPeriph<M>,
+    M: PinMap,
+{
     _timer: PhantomData<T>,
     sel: Tbssel,
     div: TimerDiv,
     ex_div: TimerExDiv,
+    _pin_map: PhantomData<M>
 }
 
-impl<T: TimerPeriph> TimerConfig<T> {
+impl<T, M> TimerConfig<T, M>
+where
+    T: TimerPeriph<M>,
+    M: PinMap,
+{
     /// Configure timer clock source to ACLK
     #[inline]
     pub fn aclk(_aclk: &Aclk) -> Self {
@@ -62,6 +76,7 @@ impl<T: TimerPeriph> TimerConfig<T> {
             sel: Tbssel::Aclk,
             div: TimerDiv::_1,
             ex_div: TimerExDiv::_1,
+            _pin_map: PhantomData,
         }
     }
 
@@ -73,6 +88,7 @@ impl<T: TimerPeriph> TimerConfig<T> {
             sel: Tbssel::Smclk,
             div: TimerDiv::_1,
             ex_div: TimerExDiv::_1,
+            _pin_map: PhantomData,
         }
     }
 
@@ -84,6 +100,7 @@ impl<T: TimerPeriph> TimerConfig<T> {
             sel: Tbssel::Tbxclk,
             div: TimerDiv::_1,
             ex_div: TimerExDiv::_1,
+            _pin_map: PhantomData,
         }
     }
 
@@ -95,11 +112,13 @@ impl<T: TimerPeriph> TimerConfig<T> {
             sel: self.sel,
             div,
             ex_div,
+            _pin_map: PhantomData,
         }
     }
 
     #[inline]
     pub(crate) fn write_regs(self, timer: &T) {
+        T::configure_pin_mapping();
         timer.reset();
         timer.set_tbidex(self.ex_div);
         timer.config_clock(self.sel, self.div);
@@ -107,21 +126,29 @@ impl<T: TimerPeriph> TimerConfig<T> {
 }
 
 /// Main timer and sub-timers for timer peripherals with 3 capture-compare registers
-pub struct TimerParts3<T: CapCmpTimer3> {
+pub struct TimerParts3<T, M = DefaultMapping>
+where
+    T: CapCmpTimer3<M>,
+    M: PinMap,
+{
     /// Main timer
-    pub timer: Timer<T>,
+    pub timer: Timer<T, M>,
     /// Timer interrupt vector
     pub tbxiv: TBxIV<T>,
     /// Sub-timer 1 (derived from CCR1 register)
     pub subtimer1: SubTimer<T, CCR1>,
     /// Sub-timer 2 (derived from CCR2 register)
-    pub subtimer2: SubTimer<T, CCR2>,
+    pub subtimer2: SubTimer<T, CCR2>
 }
 
-impl<T: CapCmpTimer3> TimerParts3<T> {
+impl<T, M> TimerParts3<T, M>
+where
+    T: CapCmpTimer3<M>,
+    M: PinMap,
+{
     /// Create new set of timers out of a TBx peripheral
     #[inline(always)]
-    pub fn new(_timer: T, config: TimerConfig<T>) -> Self {
+    pub fn new(_timer: T, config: TimerConfig<T, M>) -> Self {
         config.write_regs(unsafe { &T::steal() });
         Self {
             timer: Timer::new(),
@@ -133,9 +160,13 @@ impl<T: CapCmpTimer3> TimerParts3<T> {
 }
 
 /// Main timer and sub-timers for timer peripherals with 7 capture-compare registers
-pub struct TimerParts7<T: CapCmpTimer7> {
+pub struct TimerParts7<T, M = DefaultMapping>
+where
+    T: CapCmpTimer7<M>,
+    M: PinMap,
+{
     /// Main timer
-    pub timer: Timer<T>,
+    pub timer: Timer<T, M>,
     /// Timer interrupt vector
     pub tbxiv: TBxIV<T>,
     /// Sub-timer 1 (derived from CCR1 register)
@@ -152,10 +183,14 @@ pub struct TimerParts7<T: CapCmpTimer7> {
     pub subtimer6: SubTimer<T, CCR6>,
 }
 
-impl<T: CapCmpTimer7> TimerParts7<T> {
+impl<T, M> TimerParts7<T, M>
+where
+    T: CapCmpTimer7<M>,
+    M: PinMap,
+{
     /// Create new set of timers out of a TBx peripheral
     #[inline(always)]
-    pub fn new(_timer: T, config: TimerConfig<T>) -> Self {
+    pub fn new(_timer: T, config: TimerConfig<T, M>) -> Self {
         config.write_regs(unsafe { &T::steal() });
         Self {
             timer: Timer::new(),
@@ -171,11 +206,15 @@ impl<T: CapCmpTimer7> TimerParts7<T> {
 }
 
 /// Main periodic countdown timer
-pub struct Timer<T: TimerPeriph>(PhantomData<T>);
+pub struct Timer<T: TimerPeriph<M>, M: PinMap = DefaultMapping>(PhantomData<T>, PhantomData<M>);
 
-impl<T: TimerPeriph> Timer<T> {
+impl<T, M> Timer<T, M>
+where
+    T: TimerPeriph<M>,
+    M: PinMap,
+{
     fn new() -> Self {
-        Self(PhantomData)
+        Self(PhantomData, PhantomData)
     }
 }
 
@@ -238,7 +277,11 @@ impl<T: TimerBase> TBxIV<T> {
     }
 }
 
-impl<T: TimerPeriph> Timer<T> {
+impl<T, M> Timer<T, M>
+where
+    T: TimerPeriph<M>,
+    M: PinMap,
+{
     /// Enable timer countdown expiration interrupts
     #[inline(always)]
     pub fn enable_interrupts(&mut self) {
@@ -340,7 +383,11 @@ mod ehal02 {
     use super::*;
     use embedded_hal_02::timer::{Cancel, CountDown, Periodic};
 
-    impl<T: TimerPeriph + CapCmp<CCR0>> CountDown for Timer<T> {
+    impl<T, M> CountDown for Timer<T, M>
+    where
+        T: TimerPeriph<M> + CapCmp<CCR0>,
+        M: PinMap,
+    {
         type Time = u16;
 
         #[inline]
@@ -354,7 +401,11 @@ mod ehal02 {
         }
     }
 
-    impl<T: TimerPeriph + CapCmp<CCR0>> Cancel for Timer<T> {
+    impl<T, M> Cancel for Timer<T, M>
+    where
+        T: TimerPeriph<M> + CapCmp<CCR0>,
+        M: PinMap,
+    {
         type Error = void::Void;
 
         #[inline(always)]
@@ -364,5 +415,9 @@ mod ehal02 {
         }
     }
 
-    impl<T: TimerPeriph> Periodic for Timer<T> {}
+    impl<T, M> Periodic for Timer<T, M>
+    where
+        T: TimerPeriph<M>,
+        M: PinMap,
+    {}
 }

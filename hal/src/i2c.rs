@@ -71,11 +71,13 @@ use core::convert::Infallible;
 
 use crate::clock::{Aclk, Smclk};
 use crate::hw_traits::eusci::{EUsciI2C, I2CUcbIfgOut, UcbCtlw0, UcbCtlw1, UcbI2coa, Ucmode, Ucssel};
+use crate::pin_mapping::*;
 
 use core::marker::PhantomData;
 use embedded_hal::i2c::{AddressMode, SevenBitAddress, TenBitAddress};
 use msp430::asm;
 use nb::Error::{Other, WouldBlock};
+
 /// Enumerates the two I2C addressing modes: 7-bit and 10-bit.
 ///
 /// Used internally by the HAL.
@@ -117,7 +119,10 @@ impl From<TransmissionMode> for bool {
 pub use crate::hw_traits::eusci::Ucglit as GlitchFilter;
 
 ///Struct used to configure a I2C bus
-pub struct I2cConfig<USCI: I2cUsci, CLKSRC, ROLE> {
+pub struct I2cConfig<USCI, CLKSRC, ROLE, M: PinMap = DefaultMapping>
+where
+    USCI: I2cUsci<M>,
+{
     usci: USCI,
     divisor: u16,
 
@@ -130,16 +135,21 @@ pub struct I2cConfig<USCI: I2cUsci, CLKSRC, ROLE> {
     i2coa3: UcbI2coa,
     clk_src: PhantomData<CLKSRC>,
     role: PhantomData<ROLE>,
+    _pin_map: PhantomData<M>,
 }
 
 /// Marks a usci capable of I2C communication
-pub trait I2cUsci: EUsciI2C {
+pub trait I2cUsci<M: PinMap = DefaultMapping>: EUsciI2C {
     /// I2C SCL pin
     type ClockPin;
     /// I2C SDA pin
     type DataPin;
     /// I2C external clock source pin. Only necessary if UCLKI is selected as a clock source.
     type ExternalClockPin;
+
+    /// Additional configuration
+    #[inline(always)]
+    fn configure_pin_mapping() { }
 }
 
 // Allows a GPIO pin to be converted into an I2C object
@@ -194,13 +204,18 @@ macro_rules! return_self_config {
             i2coa3:  $self.i2coa3,
             clk_src: PhantomData,
             role: PhantomData,
+            _pin_map: PhantomData,
         }
     };
 }
 
-impl<USCI: I2cUsci> I2cConfig<USCI, NoClockSet, NoRoleSet> {
+impl<USCI, M> I2cConfig<USCI, NoClockSet, NoRoleSet, M>
+where
+    USCI: I2cUsci<M>,
+    M: PinMap,
+{
     /// Begin configuration of an eUSCI peripheral as an I2C device.
-    pub fn new(usci: USCI, deglitch_time: GlitchFilter) -> I2cConfig<USCI, NoClockSet, NoRoleSet> {
+    pub fn new(usci: USCI, deglitch_time: GlitchFilter) -> I2cConfig<USCI, NoClockSet, NoRoleSet, M> {
         let ctlw0 = UcbCtlw0 {
             ucsync: true,
             ucswrst: true,
@@ -229,17 +244,18 @@ impl<USCI: I2cUsci> I2cConfig<USCI, NoClockSet, NoRoleSet> {
             i2coa3,
             clk_src: PhantomData,
             role: PhantomData,
+            _pin_map: PhantomData,
         }
     }
     /// Configure this eUSCI peripheral as an I2C master on a bus with no other master devices.
-    pub fn as_single_master(mut self) -> I2cConfig<USCI, NoClockSet, SingleMaster> {
+    pub fn as_single_master(mut self) -> I2cConfig<USCI, NoClockSet, SingleMaster, M> {
         self.ctlw0.ucmst = true;
 
         return_self_config!(self)
     }
 
     /// Configure this eUSCI peripheral as an I2C slave.
-    pub fn as_slave<TenOrSevenBit>(mut self, own_address: TenOrSevenBit) -> I2cConfig<USCI, ClockSet, Slave>
+    pub fn as_slave<TenOrSevenBit>(mut self, own_address: TenOrSevenBit) -> I2cConfig<USCI, ClockSet, Slave, M>
     where TenOrSevenBit: AddressType {
         self.ctlw0.uca10 = TenOrSevenBit::addr_type().into();
 
@@ -256,7 +272,7 @@ impl<USCI: I2cUsci> I2cConfig<USCI, NoClockSet, NoRoleSet> {
     ///
     /// The address comparison unit is disabled so this device can't be addressed as a slave,
     /// though the other masters may still contest the bus.
-    pub fn as_multi_master(mut self) -> I2cConfig<USCI, NoClockSet, MultiMaster> {
+    pub fn as_multi_master(mut self) -> I2cConfig<USCI, NoClockSet, MultiMaster, M> {
         self.ctlw0 = UcbCtlw0 {
             ucmst: true,
             ucmm: true,
@@ -268,7 +284,7 @@ impl<USCI: I2cUsci> I2cConfig<USCI, NoClockSet, NoRoleSet> {
 
     /// Configure this EUSCI peripheral as an I2C master-slave on a bus with other master devices.
     /// The other masters may contest the bus and/or address this device as a slave.
-    pub fn as_master_slave<TenOrSevenBit>(mut self, own_address: TenOrSevenBit) -> I2cConfig<USCI, NoClockSet, MasterSlave>
+    pub fn as_master_slave<TenOrSevenBit>(mut self, own_address: TenOrSevenBit) -> I2cConfig<USCI, NoClockSet, MasterSlave, M>
     where TenOrSevenBit: AddressType {
         self.ctlw0 = UcbCtlw0 {
             uca10: TenOrSevenBit::addr_type().into(),
@@ -290,10 +306,14 @@ impl<USCI: I2cUsci> I2cConfig<USCI, NoClockSet, NoRoleSet> {
 }
 
 #[allow(private_bounds)]
-impl<USCI: I2cUsci, ROLE: I2cMarker> I2cConfig<USCI, NoClockSet, ROLE> {
+impl<USCI, M, ROLE: I2cMarker> I2cConfig<USCI, NoClockSet, ROLE, M>
+where
+    USCI: I2cUsci<M>,
+    M: PinMap,
+{
     /// Configures this peripheral to use SMCLK
     #[inline]
-    pub fn use_smclk(mut self, _smclk: &Smclk, clk_divisor: u16) -> I2cConfig<USCI, ClockSet, ROLE> {
+    pub fn use_smclk(mut self, _smclk: &Smclk, clk_divisor: u16) -> I2cConfig<USCI, ClockSet, ROLE, M> {
         self.ctlw0.ucssel = Ucssel::Smclk;
         self.divisor = clk_divisor;
         return_self_config!(self)
@@ -302,7 +322,7 @@ impl<USCI: I2cUsci, ROLE: I2cMarker> I2cConfig<USCI, NoClockSet, ROLE> {
     #[cfg(feature = "eusci_aclk")]
     /// Configures this peripheral to use ACLK
     #[inline]
-    pub fn use_aclk(mut self, _aclk: &Aclk, clk_divisor: u16) -> I2cConfig<USCI, ClockSet, ROLE> {
+    pub fn use_aclk(mut self, _aclk: &Aclk, clk_divisor: u16) -> I2cConfig<USCI, ClockSet, ROLE, M> {
         self.ctlw0.ucssel = Ucssel::DeviceSpecific;
         self.divisor = clk_divisor;
         return_self_config!(self)
@@ -311,7 +331,7 @@ impl<USCI: I2cUsci, ROLE: I2cMarker> I2cConfig<USCI, NoClockSet, ROLE> {
     #[cfg(feature = "eusci_modclk")]
     /// Configures this peripheral to use MODCLK
     #[inline]
-    pub fn use_modclk(mut self, clk_divisor: u16) -> I2cConfig<USCI, ClockSet, ROLE> {
+    pub fn use_modclk(mut self, clk_divisor: u16) -> I2cConfig<USCI, ClockSet, ROLE, M> {
         self.ctlw0.ucssel = Ucssel::DeviceSpecific;
         self.divisor = clk_divisor;
         return_self_config!(self)
@@ -319,7 +339,7 @@ impl<USCI: I2cUsci, ROLE: I2cMarker> I2cConfig<USCI, NoClockSet, ROLE> {
 
     /// Configures this peripheral to use UCLK
     #[inline]
-    pub fn use_uclk<Pin: Into<USCI::ExternalClockPin> >(mut self, _uclk: Pin, clk_divisor: u16) -> I2cConfig<USCI, ClockSet, ROLE> {
+    pub fn use_uclk<Pin: Into<USCI::ExternalClockPin> >(mut self, _uclk: Pin, clk_divisor: u16) -> I2cConfig<USCI, ClockSet, ROLE, M> {
         self.ctlw0.ucssel = Ucssel::Uclk;
         self.divisor = clk_divisor;
         return_self_config!(self)
@@ -327,10 +347,16 @@ impl<USCI: I2cUsci, ROLE: I2cMarker> I2cConfig<USCI, NoClockSet, ROLE> {
 }
 
 #[allow(private_bounds)]
-impl<USCI: I2cUsci, RoleSet: I2cMarker> I2cConfig<USCI, ClockSet, RoleSet> {
+impl<USCI, M, RoleSet: I2cMarker> I2cConfig<USCI, ClockSet, RoleSet, M>
+where
+    USCI: I2cUsci<M>,
+    M: PinMap,
+{
     /// Performs hardware configuration
     #[inline]
     fn configure_regs(&self) {
+        USCI::configure_pin_mapping();
+
         self.usci.ctw0_set_rst();
 
         self.usci.ctw0_wr(&self.ctlw0);
@@ -351,7 +377,11 @@ impl<USCI: I2cUsci, RoleSet: I2cMarker> I2cConfig<USCI, ClockSet, RoleSet> {
 
 macro_rules! configure {
     ($role: ty, $out_type: path) => {
-        impl<USCI: I2cUsci> I2cConfig<USCI, ClockSet, $role> {
+        impl<USCI, M> I2cConfig<USCI, ClockSet, $role, M>
+        where
+            USCI: I2cUsci<M>,
+            M: PinMap,
+        {
             /// Performs hardware configuration and creates the I2C bus
             #[inline(always)]
             pub fn configure<SCL, SDA>(self, _scl: SCL, _sda: SDA) -> $out_type
@@ -360,22 +390,25 @@ macro_rules! configure {
                 SDA: Into<USCI::DataPin>,
             {
                 self.configure_regs();
-                $out_type { usci: self.usci }
+                $out_type { usci: self.usci, _pin_map: PhantomData }
             }
         }
     };
 }
 
-configure!(SingleMaster, I2cSingleMaster<USCI>);
-configure!(MultiMaster,  I2cMultiMaster<USCI>);
-configure!(Slave,        I2cSlave<USCI>);
-configure!(MasterSlave,  I2cMasterSlave<USCI>);
+configure!(SingleMaster, I2cSingleMaster<USCI, M>);
+configure!(MultiMaster,  I2cMultiMaster<USCI, M>);
+configure!(Slave,        I2cSlave<USCI, M>);
+configure!(MasterSlave,  I2cMasterSlave<USCI, M>);
 
 mod sealed {
     use super::*;
 
-    pub trait I2cRoleBase {
-        type USCI: I2cUsci;
+    pub trait I2cRoleBase<M>
+    where
+        M: PinMap,
+    {
+        type USCI: I2cUsci<M>;
         fn usci(&self) -> &Self::USCI;
     }
 
@@ -385,7 +418,10 @@ mod sealed {
     }
 
     /// Internal methods common to all I2C roles capable of master operations
-    pub trait I2cRoleMasterPrivate: I2cRoleBase {
+    pub trait I2cRoleMasterPrivate<M>: I2cRoleBase<M>
+    where
+        M: PinMap,
+    {
         type ErrorType: I2cError;
         fn set_addressing_mode(&mut self, mode: AddressingMode) {
             self.usci().set_ucsla10(mode.into())
@@ -562,7 +598,10 @@ mod sealed {
     }
 
     /// Internal methods common to all I2C roles capable of slave operations
-    pub trait I2cRoleSlavePrivate: I2cRoleBase {
+    pub trait I2cRoleSlavePrivate<M>: I2cRoleBase<M>
+    where
+        M: PinMap,
+    {
         #[inline]
         fn sl_write_tx_buf(&mut self, byte: u8) -> nb::Result<(), Infallible> {
             if !self.usci().ifg_rd().uctxifg0() {
@@ -583,7 +622,10 @@ mod sealed {
 use sealed::*;
 
 /// Common methods available to all I2C roles.
-pub trait I2cRoleCommon: I2cRoleBase {
+pub trait I2cRoleCommon<M>: I2cRoleBase<M>
+where
+    M: PinMap,
+{
     /// Queue a NACK to be sent on the I2C bus. If this is called in response to a packet being received the NACK will be sent on the following byte.
     /// 
     /// Used as part of the non-blocking / interrupt-based interface. Only use during a receive operation. 
@@ -635,7 +677,10 @@ pub trait I2cRoleCommon: I2cRoleBase {
 }
 
 /// Common methods available to all I2C roles that can perform master operations.
-pub trait I2cRoleMaster: I2cRoleMasterPrivate {
+pub trait I2cRoleMaster<M>: I2cRoleMasterPrivate<M>
+where
+    M: PinMap,
+{
     /// Manually schedule a stop condition to be sent. Used as part of the non-blocking interface.
     ///
     /// The stop will be sent after the current byte operation. If the bus stalls waiting for the Rx or Tx buffer then the stop won't be sent until that condition is dealt with.
@@ -662,7 +707,10 @@ pub trait I2cRoleMaster: I2cRoleMasterPrivate {
 }
 
 /// Common methods available to all I2C roles that can perform slave operations.
-pub trait I2cRoleSlave: I2cRoleSlavePrivate {
+pub trait I2cRoleSlave<M>: I2cRoleSlavePrivate<M>
+where
+    M: PinMap,
+{
     /// Returns whether the device is currently in receive mode or transmit mode.
     #[inline(always)]
     fn transmission_mode(&mut self) -> TransmissionMode {
@@ -706,7 +754,10 @@ pub trait I2cRoleSlave: I2cRoleSlavePrivate {
 }
 
 /// Common methods available to all multi-master-aware I2C roles.
-pub trait I2cRoleMulti: I2cRoleMaster {
+pub trait I2cRoleMulti<M>: I2cRoleMaster<M>
+where
+    M: PinMap,
+{
     /// Manually send a start condition and address byte. Used as part of the non-blocking interface.
     /// Passing a `u8` address uses 7-bit addressing, a `u16` address uses 10-bit addressing.
     #[inline]
@@ -731,18 +782,31 @@ pub trait I2cRoleMulti: I2cRoleMaster {
 
 /// An eUSCI peripheral that has been configured as an I2C master.
 /// This variant offers simplified error handling and ease of use, but is not suitable for use on a multi-master bus.
-pub struct I2cSingleMaster<USCI> {
+pub struct I2cSingleMaster<USCI, M = DefaultMapping> {
     usci: USCI,
+    _pin_map: PhantomData<M>,
 }
-impl<USCI: I2cUsci> I2cRoleBase for I2cSingleMaster<USCI> {
+impl<USCI, M> I2cRoleBase<M> for I2cSingleMaster<USCI, M>
+where
+    USCI: I2cUsci<M>,
+    M: PinMap,
+{
     type USCI = USCI;
 
     fn usci(&self) -> &Self::USCI {
         &self.usci
     }
 }
-impl<USCI: I2cUsci> I2cRoleCommon for I2cSingleMaster<USCI> {}
-impl<USCI: I2cUsci> I2cRoleMasterPrivate for I2cSingleMaster<USCI> {
+impl<USCI, M> I2cRoleCommon<M> for I2cSingleMaster<USCI, M>
+where
+    USCI: I2cUsci<M>,
+    M: PinMap,
+{}
+impl<USCI, M> I2cRoleMasterPrivate<M> for I2cSingleMaster<USCI, M>
+where
+    USCI: I2cUsci<M>,
+    M: PinMap,
+{
     type ErrorType = I2cSingleMasterErr;
     fn handle_errs(&mut self, ifg: &<Self::USCI as EUsciI2C>::IfgOut, idx: usize) -> Result<(), Self::ErrorType> {
         if ifg.ucnackifg() {
@@ -764,8 +828,16 @@ impl<USCI: I2cUsci> I2cRoleMasterPrivate for I2cSingleMaster<USCI> {
         Ok(())
     }
 }
-impl<USCI: I2cUsci> I2cRoleMaster for I2cSingleMaster<USCI> {}
-impl<USCI: I2cUsci> I2cSingleMaster<USCI> {
+impl<USCI, M> I2cRoleMaster<M> for I2cSingleMaster<USCI, M>
+where
+    USCI: I2cUsci<M>,
+    M: PinMap,
+{}
+impl<USCI, M> I2cSingleMaster<USCI, M>
+where
+    USCI: I2cUsci<M>,
+    M: PinMap,
+{
     /// Manually send a start condition and address byte. Used as part of the non-blocking interface.
     /// Passing a `u8` address uses 7-bit addressing, a `u16` address uses 10-bit addressing.
     #[inline(always)]
@@ -796,18 +868,31 @@ impl<USCI: I2cUsci> I2cSingleMaster<USCI> {
 
 /// An eUSCI peripheral that has been configured as an I2C multi-master.
 /// Multi-masters are capable of sharing an I2C bus with other multi-masters, and may also optionally act as a slave device (depending on configuration).
-pub struct I2cMultiMaster<USCI> {
+pub struct I2cMultiMaster<USCI, M = DefaultMapping> {
     usci: USCI,
+    _pin_map: PhantomData<M>,
 }
-impl<USCI: I2cUsci> I2cRoleBase for I2cMultiMaster<USCI> {
+impl<USCI, M> I2cRoleBase<M> for I2cMultiMaster<USCI, M>
+where
+    USCI: I2cUsci<M>,
+    M: PinMap,
+{
     type USCI = USCI;
 
     fn usci(&self) -> &Self::USCI {
         &self.usci
     }
 }
-impl<USCI: I2cUsci> I2cRoleCommon for I2cMultiMaster<USCI> {}
-impl<USCI: I2cUsci> I2cRoleMasterPrivate for I2cMultiMaster<USCI> {
+impl<USCI, M> I2cRoleCommon<M> for I2cMultiMaster<USCI, M>
+where
+    USCI: I2cUsci<M>,
+    M: PinMap,
+{}
+impl<USCI, M> I2cRoleMasterPrivate<M> for I2cMultiMaster<USCI, M>
+where
+    USCI: I2cUsci<M>,
+    M: PinMap,
+{
     type ErrorType = I2cMultiMasterErr;
     fn can_proceed(&mut self, _address: u16) -> Result<(), I2cMultiMasterErr> {
         // Multimaster doesn't need to check anything with the address, but it keeps the interface the same so we can abstract it
@@ -836,9 +921,21 @@ impl<USCI: I2cUsci> I2cRoleMasterPrivate for I2cMultiMaster<USCI> {
         Ok(())
     }
 }
-impl<USCI: I2cUsci> I2cRoleMaster for I2cMultiMaster<USCI> {}
-impl<USCI: I2cUsci> I2cRoleMulti for I2cMultiMaster<USCI> {}
-impl<USCI: I2cUsci> I2cMultiMaster<USCI> {
+impl<USCI, M> I2cRoleMaster<M> for I2cMultiMaster<USCI, M>
+where
+    USCI: I2cUsci<M>,
+    M: PinMap,
+{}
+impl<USCI, M> I2cRoleMulti<M> for I2cMultiMaster<USCI, M>
+where
+    USCI: I2cUsci<M>,
+    M: PinMap,
+{}
+impl<USCI, M> I2cMultiMaster<USCI, M>
+where
+    USCI: I2cUsci<M>,
+    M: PinMap,
+{
     /// Check if the Rx buffer is full, if so read it. Used as part of the non-blocking / interrupt-based interface.
     ///
     /// Returns `Err(WouldBlock)` if the buffer is empty,
@@ -870,20 +967,41 @@ impl<USCI: I2cUsci> I2cMultiMaster<USCI> {
 }
 
 /// An eUSCI peripheral that has been configured as an I2C slave.
-pub struct I2cSlave<USCI> {
+pub struct I2cSlave<USCI, M = DefaultMapping> {
     usci: USCI,
+    _pin_map: PhantomData<M>,
 }
-impl<USCI: I2cUsci> I2cRoleBase for I2cSlave<USCI> {
+impl<USCI, M> I2cRoleBase<M> for I2cSlave<USCI, M>
+where
+    USCI: I2cUsci<M>,
+    M: PinMap,
+{
     type USCI = USCI;
 
     fn usci(&self) -> &Self::USCI {
         &self.usci
     }
 }
-impl<USCI: I2cUsci> I2cRoleCommon for I2cSlave<USCI> {}
-impl<USCI: I2cUsci> I2cRoleSlavePrivate for I2cSlave<USCI> {}
-impl<USCI: I2cUsci> I2cRoleSlave for I2cSlave<USCI> {}
-impl<USCI: I2cUsci> I2cSlave<USCI> {
+impl<USCI, M> I2cRoleCommon<M> for I2cSlave<USCI, M>
+where
+    USCI: I2cUsci<M>,
+    M: PinMap,
+{}
+impl<USCI, M> I2cRoleSlavePrivate<M> for I2cSlave<USCI, M>
+where
+    USCI: I2cUsci<M>,
+    M: PinMap,
+{}
+impl<USCI, M> I2cRoleSlave<M> for I2cSlave<USCI, M>
+where
+    USCI: I2cUsci<M>,
+    M: PinMap,
+{}
+impl<USCI, M> I2cSlave<USCI, M>
+where
+    USCI: I2cUsci<M>,
+    M: PinMap,
+{
     /// Read the Rx buffer without checking if it's ready.
     /// Useful in cases where you already know the Rx buffer is ready (e.g. an Rx interrupt occurred).
     /// Used as part of the non-blocking / interrupt-based interface.
@@ -921,18 +1039,31 @@ impl<USCI: I2cUsci> I2cSlave<USCI> {
 
 /// An eUSCI peripheral that has been configured as an I2C multi-master.
 /// Multi-masters are capable of sharing an I2C bus with other multi-masters, and may also optionally act as a slave device (depending on configuration).
-pub struct I2cMasterSlave<USCI> {
+pub struct I2cMasterSlave<USCI, M = DefaultMapping> {
     usci: USCI,
+    _pin_map: PhantomData<M>,
 }
-impl<USCI: I2cUsci> I2cRoleBase for I2cMasterSlave<USCI> {
+impl<USCI, M> I2cRoleBase<M> for I2cMasterSlave<USCI, M>
+where
+    USCI: I2cUsci<M>,
+    M: PinMap,
+{
     type USCI = USCI;
 
     fn usci(&self) -> &Self::USCI {
         &self.usci
     }
 }
-impl<USCI: I2cUsci> I2cRoleCommon for I2cMasterSlave<USCI> {}
-impl<USCI: I2cUsci> I2cRoleMasterPrivate for I2cMasterSlave<USCI> {
+impl<USCI, M> I2cRoleCommon<M> for I2cMasterSlave<USCI, M>
+where
+    USCI: I2cUsci<M>,
+    M: PinMap,
+{}
+impl<USCI, M> I2cRoleMasterPrivate<M> for I2cMasterSlave<USCI, M>
+where
+    USCI: I2cUsci<M>,
+    M: PinMap,
+{
     type ErrorType = I2cMasterSlaveErr;
     fn can_proceed(&mut self, address: u16) -> Result<(), I2cMasterSlaveErr> {
         // Are we a master? If not, why?
@@ -972,12 +1103,32 @@ impl<USCI: I2cUsci> I2cRoleMasterPrivate for I2cMasterSlave<USCI> {
         Ok(())
     }
 }
-impl<USCI: I2cUsci> I2cRoleMaster for I2cMasterSlave<USCI> {}
-impl<USCI: I2cUsci> I2cRoleSlavePrivate for I2cMasterSlave<USCI> {}
-impl<USCI: I2cUsci> I2cRoleSlave for I2cMasterSlave<USCI> {}
-impl<USCI: I2cUsci> I2cRoleMulti for I2cMasterSlave<USCI> {}
+impl<USCI, M> I2cRoleMaster<M> for I2cMasterSlave<USCI, M>
+where
+    USCI: I2cUsci<M>,
+    M: PinMap,
+{}
+impl<USCI, M> I2cRoleSlavePrivate<M> for I2cMasterSlave<USCI, M>
+where
+    USCI: I2cUsci<M>,
+    M: PinMap,
+{}
+impl<USCI, M> I2cRoleSlave<M> for I2cMasterSlave<USCI, M>
+where
+    USCI: I2cUsci<M>,
+    M: PinMap,
+{}
+impl<USCI, M> I2cRoleMulti<M> for I2cMasterSlave<USCI, M>
+where
+    USCI: I2cUsci<M>,
+    M: PinMap,
+{}
 
-impl<USCI: I2cUsci> I2cMasterSlave<USCI> {
+impl<USCI, M> I2cMasterSlave<USCI, M>
+where
+    USCI: I2cUsci<M>,
+    M: PinMap,
+{
     /// Check if the Rx buffer is full, if so read it. Used as part of the non-blocking / interrupt-based interface.
     ///
     /// Returns `Err(WouldBlock)` if the buffer is empty,
@@ -1260,8 +1411,12 @@ mod ehal1 {
     /// Implement embedded-hal's [`I2c`](embedded_hal::i2c::I2c) trait
     macro_rules! impl_ehal_i2c {
         ($type: ty, $err_type: ty) => {
-            impl<USCI: I2cUsci, TenOrSevenBit> I2c<TenOrSevenBit> for $type
-            where TenOrSevenBit: AddressType {
+            impl<USCI, M, TenOrSevenBit> I2c<TenOrSevenBit> for $type
+            where
+                USCI: I2cUsci<M>,
+                M: PinMap,
+                TenOrSevenBit: AddressType,
+            {
                 fn transaction(&mut self, address: TenOrSevenBit, ops: &mut [Operation<'_>]) -> Result<(), Self::Error> {
                     self.set_addressing_mode(TenOrSevenBit::addr_type());
 
@@ -1295,14 +1450,18 @@ mod ehal1 {
                     Ok(())
                 }
             }
-            impl<USCI: I2cUsci> ErrorType for $type {
+            impl<USCI, M> ErrorType for $type
+            where
+                USCI: I2cUsci<M>,
+                M: PinMap,
+            {
                 type Error = $err_type;
             }
         };
     }
 
     use NackType::*;
-    impl_ehal_i2c!(I2cSingleMaster<USCI>, I2cSingleMasterErr);
+    impl_ehal_i2c!(I2cSingleMaster<USCI, M>, I2cSingleMasterErr);
     impl Error for I2cSingleMasterErr {
         fn kind(&self) -> ErrorKind {
             match self {
@@ -1312,7 +1471,7 @@ mod ehal1 {
         }
     }
 
-    impl_ehal_i2c!(I2cMultiMaster<USCI>, I2cMultiMasterErr);
+    impl_ehal_i2c!(I2cMultiMaster<USCI, M>, I2cMultiMasterErr);
     impl Error for I2cMultiMasterErr {
         fn kind(&self) -> ErrorKind {
             match self {
@@ -1323,7 +1482,7 @@ mod ehal1 {
         }
     }
 
-    impl_ehal_i2c!(I2cMasterSlave<USCI>, I2cMasterSlaveErr);
+    impl_ehal_i2c!(I2cMasterSlave<USCI, M>, I2cMasterSlaveErr);
     impl Error for I2cMasterSlaveErr {
         fn kind(&self) -> ErrorKind {
             match self {
@@ -1344,8 +1503,12 @@ mod ehal02 {
 
     macro_rules! impl_ehal02_i2c {
         ($type: ty, $err_type: ty) => {
-            impl<USCI: I2cUsci, SevenOrTenBit> Read<SevenOrTenBit> for $type
-            where SevenOrTenBit: AddressMode + AddressType {
+            impl<USCI, M, SevenOrTenBit> Read<SevenOrTenBit> for $type
+            where
+                USCI: I2cUsci<M>,
+                M: PinMap,
+                SevenOrTenBit: AddressMode + AddressType,
+            {
                 type Error = $err_type;
                 #[inline]
                 fn read(&mut self, address: SevenOrTenBit, buffer: &mut [u8]) -> Result<(), Self::Error> {
@@ -1353,8 +1516,12 @@ mod ehal02 {
                     self.blocking_read(address.into(), buffer, true, true)
                 }
             }
-            impl<USCI: I2cUsci, SevenOrTenBit> Write<SevenOrTenBit> for $type
-            where SevenOrTenBit: AddressMode + AddressType {
+            impl<USCI, M, SevenOrTenBit> Write<SevenOrTenBit> for $type
+            where
+                USCI: I2cUsci<M>,
+                M: PinMap,
+                SevenOrTenBit: AddressMode + AddressType,
+            {
                 type Error = $err_type;
                 #[inline]
                 fn write(&mut self, address: SevenOrTenBit, bytes: &[u8]) -> Result<(), Self::Error> {
@@ -1362,8 +1529,12 @@ mod ehal02 {
                     self.blocking_write(address.into(), bytes, true, true)
                 }
             }
-            impl<USCI: I2cUsci, SevenOrTenBit> WriteRead<SevenOrTenBit> for $type
-            where SevenOrTenBit: AddressMode + AddressType {
+            impl<USCI, M, SevenOrTenBit> WriteRead<SevenOrTenBit> for $type
+            where
+                USCI: I2cUsci<M>,
+                M: PinMap,
+                SevenOrTenBit: AddressMode + AddressType,
+            {
                 type Error = $err_type;
                 #[inline]
                 fn write_read(
@@ -1379,7 +1550,7 @@ mod ehal02 {
         };
     }
 
-    impl_ehal02_i2c!(I2cSingleMaster<USCI>, I2cSingleMasterErr);
-    impl_ehal02_i2c!(I2cMultiMaster<USCI>,  I2cMultiMasterErr);
-    impl_ehal02_i2c!(I2cMasterSlave<USCI>,  I2cMasterSlaveErr);
+    impl_ehal02_i2c!(I2cSingleMaster<USCI, M>, I2cSingleMasterErr);
+    impl_ehal02_i2c!(I2cMultiMaster<USCI, M>,  I2cMultiMasterErr);
+    impl_ehal02_i2c!(I2cMasterSlave<USCI, M>,  I2cMasterSlaveErr);
 }

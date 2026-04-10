@@ -55,6 +55,7 @@ pub mod delay;
 pub mod fram;
 pub mod gpio;
 pub mod lpm;
+pub mod pin_mapping;
 pub mod pmm;
 pub mod prelude;
 pub mod pwm;

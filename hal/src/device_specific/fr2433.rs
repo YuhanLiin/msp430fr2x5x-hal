@@ -77,6 +77,7 @@ mod capture {
     use crate::{pac::*, gpio::*, capture::CapturePeriph};
 
     impl CapturePeriph for Timer0A3 {
+        type Gpio0 = ();
         type Gpio1 = Pin<P1, Pin1, Alternate2<Input<Floating>>>;
         type Gpio2 = Pin<P1, Pin2, Alternate2<Input<Floating>>>;
         type Gpio3 = ();
@@ -86,6 +87,7 @@ mod capture {
     }
 
     impl CapturePeriph for Timer1A3 {
+        type Gpio0 = ();
         type Gpio1 = Pin<P2, Pin5, Alternate2<Input<Floating>>>;
         type Gpio2 = Pin<P2, Pin4, Alternate2<Input<Floating>>>;
         type Gpio3 = ();

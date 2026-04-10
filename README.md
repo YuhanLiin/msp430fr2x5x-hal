@@ -1,7 +1,12 @@
 # `msp430fr2x5x-hal`
 
-> A high-level Hardware Abstraction Layer (HAL) for the MSP430FR2355, MSP430FR2353, 
-MSP430FR2153 and MSP430FR2155 microcontrollers.
+> A high-level Hardware Abstraction Layer (HAL) for the MSP430FR2xxx / 4xxx series of microcontrollers.
+
+[![Crates.io](https://img.shields.io/crates/v/msp430fr2x5x-hal.svg)](https://crates.io/crates/msp430fr2x5x-hal)
+[![Docs.rs](https://docs.rs/msp430fr2x5x-hal/badge.svg)](https://docs.rs/msp430fr2x5x-hal)
+[![CI](https://github.com/YuhanLiin/msp430fr2x5x-hal/actions/workflows/build.yml/badge.svg)](https://github.com/YuhanLiin/msp430fr2x5x-hal/actions)
+[![License](https://img.shields.io/crates/l/msp430fr2x5x-hal.svg)](https://crates.io/crates/msp430fr2x5x-hal)
+[![MSRV](https://img.shields.io/badge/rust-1.82%2B-blue.svg)](https://www.rust-lang.org)
 
 This crate is primarily designed to be used as a dependency in another project, but 
 the examples in the repo can be build and flashed directly to a device, provided the 
@@ -24,7 +29,8 @@ An example can be flashed to a connected device with
 `cargo run --example <example_name>`
 
 # Supported Devices
-The library currently supports the MSP430FR2x5x subfamily, but intends to expand to the MSP430FR2xxx/4xxx family in time. 
+The library currently supports the MSP430FR2x5x and MSP430FR247x subfamilies, and the MSP430FR2433.
+Support for other devices in the MSP430FR2xxx/4xxx family is possible, see [Supporting additional devices](##Supporting-additional-devices). 
 
 The device being targetted is must be specified by enabling exactly one device feature, such as 
 `msp430fr2355`. This is required to build any code from this library.
@@ -32,11 +38,13 @@ The device being targetted is must be specified by enabling exactly one device f
 ### Currently Supported Devices
 | Device | Feature name |
 | ------ | ------------ |
+| MSP430FR2476 | `msp430fr2476` |
+| MSP430FR2475 | `msp430fr2475` |
+| MSP430FR2433 | `msp430fr2433` |
 | MSP430FR2355 | `msp430fr2355` |
 | MSP430FR2353 | `msp430fr2353` |
 | MSP430FR2155 | `msp430fr2155` |
 | MSP430FR2153 | `msp430fr2153` |
-| MSP430FR2433 | `msp430fr2433` |
 
 The documentation on crates.rs (and example programs) target the MSP430FR2355. Documentation for a particular device can be 
 built by running `cargo doc --open --features <device>` from within the `hal/` folder, or `cargo doc --open --package msp430fr2x5x-hal` in a 
@@ -44,10 +52,13 @@ cargo project with `msp430fr2x5x-hal` correctly configured as a dependency, such
 
 ## Supporting additional devices
 
-The maintainers don't have access to every device in the MSP430FR2xxx / 4xxx family, so if you want to add support for a particular device (or subfamily) we are happy to accept pull requests. 
+The maintainers don't have access to every device in the MSP430FR2xxx / 4xxx family, so if you want to add support for a particular device (or subfamily) we are happy to accept pull requests.
 To add support for a device (or subfamily) you should fork this repo and:
-1. Create a new file in `hal/src/device_specific/`, import a Peripheral Access Crate (PAC) for your device, and follow the example in `hal/src/device_specific/msp430fr2x5x.rs` to see how to e.g. mark which GPIO pins are capable of what functionality.
-2. Append an entry to `hal/src/device_specific.rs` to re-export your PAC and any device-specific constants to the rest of the library.
+1. Add a new device feature in `hal/cargo.toml` and determine which features should be derived for your device.
+2. Create a new file in `hal/src/device_specific/`, import a Peripheral Access Crate (PAC) for your device, and follow `hal/src/device_specific/msp430fr2x5x.rs` as an example to see how to e.g. mark which GPIO pins are capable of what functionality.
+3. Append an entry to `hal/src/device_specific.rs` to re-export your PAC and any device-specific constants to the rest of the library.
+4. Add a project crate to `device_examples/` and add some examples to test everything works.
+5. Add your device name to the CI in `.github/workflows/build.yml` and check that the CI passes.
 
 # Functionality
 The library is mostly feature complete for the MSP430FR2x5x subfamily. There are a few edge cases not yet supported, such as:
