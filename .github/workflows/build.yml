@@ -12,7 +12,7 @@ jobs:
     strategy:
       matrix:
         rust_toolchain: [nightly, nightly-2024-09-01]
-        device: [msp430fr2355, msp430fr2476]
+        device: [msp430fr2355, msp430fr2476, msp430fr2433]
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
