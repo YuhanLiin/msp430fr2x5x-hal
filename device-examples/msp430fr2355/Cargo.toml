@@ -9,7 +9,7 @@ keywords = ["no-std", "msp430", "ti", "launchpad", "embedded-hal"]
 
 [dependencies]
 defmt = "1.0"
-defmt-serial = "0.12"
+defmt-serial = {version = "0.12", optional=true}
 panic-msp430 = "0.4.0"
 panic-never = "0.1.0"
 msp430 = {version = "0.4.1", features = ["critical-section-single-core"]}
@@ -37,3 +37,18 @@ debug = true
 
 [profile.dev.package."*"]
 opt-level = "z"
+
+
+# Mark which examples don't work on the MSRV compiler, so CI doesn't build them when using the MSRV.
+# By default all examples are enabled, building with MSRV requires passing `--no-default-features`.
+[features]
+default = ["non_msrv"]
+non_msrv = ["dep:defmt-serial"]
+
+# Examples that don't work on the MSRV compiler
+[[example]]
+name = "defmt"
+required-features = ["non_msrv"]
+[[example]]
+name = "lpm0"
+required-features = ["non_msrv"]

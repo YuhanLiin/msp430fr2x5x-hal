@@ -33,3 +33,14 @@ debug = true
 
 [profile.dev.package."*"]
 opt-level = "z"
+
+# Mark which examples don't work on the MSRV compiler, so CI doesn't build them when using the MSRV.
+# By default all examples are enabled, building with MSRV requires passing `--no-default-features`.
+[features]
+default = ["non_msrv"]
+non_msrv = []
+
+# Examples that don't work on the MSRV compiler
+[[example]]
+name = "lpm0"
+required-features = ["non_msrv"]
