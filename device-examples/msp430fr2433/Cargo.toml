@@ -18,7 +18,7 @@ critical-section = "1.2.0"
 msp430-atomic = "0.1.5"
 embedded-hal = "1.0"
 embedded-hal-nb = "*"
-embedded-io = "0.6"
+embedded-io = "0.7"
 nb = "1.1.0"
 
 [profile.release]

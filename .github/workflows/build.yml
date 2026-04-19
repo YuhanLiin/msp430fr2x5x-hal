@@ -12,7 +12,7 @@ jobs:
     strategy:
       matrix:
         rust_toolchain: [nightly, nightly-2024-09-01]
-        device: [msp430fr2355, msp430fr2476]
+        device: [msp430fr2355, msp430fr2476, msp430fr2433]
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
@@ -52,17 +52,4 @@ jobs:
       - name: Build MSRV examples
         if: matrix.rust_toolchain != 'nightly'
         working-directory: device-examples/${{matrix.device}}
-        shell: bash
-        run: |
-          for ex in examples/*.rs; do
-            # Skip examples that rely on non-MSRV features 
-            case "$(basename $ex)" in
-              lpm0.rs)
-                echo "Skipping $ex"
-                ;;
-              *)
-                echo "Building $ex"
-                cargo +${{matrix.rust_toolchain}} build --example "$(basename $ex .rs)"
-                ;;
-            esac
-          done
+        run: cargo build --examples --no-default-features

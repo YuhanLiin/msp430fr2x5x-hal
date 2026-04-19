@@ -24,6 +24,7 @@ use crate::clock::{Aclk, Clock, Smclk};
 use crate::hw_traits::eusci::{EUsciUart, UartUcxStatw, UcaCtlw0, Ucssel};
 use crate::pin_mapping::*;
 use core::convert::Infallible;
+use core::fmt::Display;
 use core::marker::PhantomData;
 use core::num::NonZeroU32;
 
@@ -567,6 +568,7 @@ where
 }
 
 /// Serial receive errors
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Clone, Copy, Debug)]
 pub enum RecvError {
     /// Framing error
@@ -576,6 +578,13 @@ pub enum RecvError {
     /// Buffer overrun error. Contains the most recently read byte, which is still valid.
     Overrun(u8),
 }
+// embedded-io requires this
+impl Display for RecvError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+impl core::error::Error for RecvError {}
 
 mod emb_io {
     use super::*;

@@ -424,6 +424,7 @@ impl<T: CapCmp<C>, C> Capture<T, C> {
 }
 
 /// Error returned when the previous capture was overwritten before being read
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct OverCapture(pub u16);
 
 /// Capture TBIV interrupt vector
