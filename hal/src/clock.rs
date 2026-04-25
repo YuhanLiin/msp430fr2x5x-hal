@@ -551,6 +551,7 @@ impl<SMCLK: SmclkState, XT1CLK: Xt1State> ClockConfig<MclkDefined, SMCLK, XT1CLK
             // hardware dividers. Each cutoff (1.5MHz, 3MHz, etc.) ensures the 
             // resulting FLL reference stays within the stable ~23kHz to ~47kHz range.
             let (ref_freq, ref_div) = match self.fll_ref {
+                #[cfg(not(any(feature = "msp430fr2433")))]
                 Selref::Xt1clk => {
                     let freq = self.xt1clk.freq();
                     if freq <= 40_000 { 
@@ -588,7 +589,34 @@ impl<SMCLK: SmclkState, XT1CLK: Xt1State> ClockConfig<MclkDefined, SMCLK, XT1CLK
                         }
                     }
                 }
+                #[cfg(not(any(feature = "msp430fr2433")))]
                 _ => (REFOCLK_FREQ_HZ as u32, Fllrefdiv::_1),
+                #[cfg(any(feature = "msp430fr2433"))]
+                Selref::Xt1clk => {
+                    let freq = self.xt1clk.freq();
+                    if freq <= 40_000 {
+                        // Standard 32.768kHz crystal
+                        (freq, Fllrefdiv::Fllrefdiv0)
+                    } else if freq <= 80_000 {
+                        // 80kHz / 2 = 40kHz
+                        (freq / 2, Fllrefdiv::Fllrefdiv1)
+                    } else if freq <= 160_000 {
+                        // 160kHz / 4 = 40kHz
+                        (freq / 4, Fllrefdiv::Fllrefdiv2)
+                    } else if freq <= 320_000 {
+                        // 320kHz / 8 = 40kHz
+                        (freq / 8, Fllrefdiv::Fllrefdiv3)
+                    } else if freq <= 480_000 {
+                        // 480kHz / 12 = 40kHz
+                        (freq / 12, Fllrefdiv::Fllrefdiv4)
+                    } else {
+                        // Max divider is /16. 
+                        // If user provides a 1MHz signal, ref = 62.5kHz (Risky/Out of spec!)
+                        (freq / 16, Fllrefdiv::Fllrefdiv5)
+                    }
+                }
+                #[cfg(any(feature = "msp430fr2433"))]
+                _ => (REFOCLK_FREQ_HZ as u32, Fllrefdiv::Fllrefdiv0),
             };
 
             fll_off();
