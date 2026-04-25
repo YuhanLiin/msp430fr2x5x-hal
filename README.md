@@ -63,8 +63,6 @@ To add support for a device (or subfamily) you should fork this repo and:
 # Functionality
 The library is mostly feature complete for the MSP430FR2x5x subfamily. There are a few edge cases not yet supported, such as:
 - Arbitrary DCO clock speed support (currently supports 1, 2, 4, 8, 12, 16, 20, 24 MHz)
-- External oscillator support
-- Some RTC clock sources (currently only supports SMCLK and VLOCLK)
 - ADC reference voltage selection
 
 If you encounter any use cases not supported please open an issue (or submit a pull request).
