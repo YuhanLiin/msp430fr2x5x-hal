@@ -504,8 +504,8 @@ impl<MCLK, SMCLK, XT1CLK> ClockConfig<MCLK, SMCLK, XT1CLK> {
 impl<MCLK, SMCLK, MODE> ClockConfig<MCLK, SMCLK, Xt1Defined<MODE>> {
     /// Select XT1CLK for ACLK
     #[inline]
-    pub fn aclk_xt1clk(mut self, freq: u32) -> Self {
-        self.aclk_sel = AclkSel::Xt1clk(freq);
+    pub fn aclk_xt1clk(mut self) -> Self {
+        self.aclk_sel = AclkSel::Xt1clk(self.xt1clk.freq());
         self
     }
 
