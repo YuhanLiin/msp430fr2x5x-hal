@@ -249,7 +249,7 @@ impl Xt1Config<CrystalMode> {
             frequency,
             drive: Xt1drive::Xt1drive3,
             agc: false,
-            start_counter: true, // Required for crystal startup stabilization
+            start_counter: true,
             bypass: false,
             #[cfg(feature = "enhanced_cs")]
             fault_switch: true,
@@ -318,8 +318,8 @@ impl Xt1Config<BypassMode> {
         Self {
             frequency,
             drive: Xt1drive::Xt1drive0, // Ignored in bypass mode
-            agc: false,              // Not applicable in bypass mode
-            start_counter: false,    // External clock assumed stable
+            agc: false,                 // Not applicable in bypass mode
+            start_counter: false,       // External clock assumed stable
             bypass: true,
             #[cfg(feature = "enhanced_cs")]
             fault_switch: true,
@@ -353,10 +353,12 @@ impl<MODE> Xt1State for Xt1Defined<MODE> {
 
 impl Xt1State for Xt1Disabled {
     #[inline(always)]
+    // Unreachanble freq() only called when self.fll_ref is Xt1clk and that is only possble when Xt1 is defined
     fn freq(&self) -> u32 {
-        0 // Or REFOCLK_FREQ_HZ if you want a fallback, but 0 is safer for debugging
+        unreachable!() 
     }
 }
+
 
 // Using SmclkState as a trait bound outside the HAL will never be useful, since we only configure
 // the clock once, so just keep it hidden
@@ -394,7 +396,7 @@ pub struct ClockConfig<MCLK, SMCLK, XT1CLK> {
 }
 
 macro_rules! make_clkconf {
-    ($conf:expr, $mclk:expr, $smclk:expr, $xt1clk:expr) => {
+    ($conf:expr, $mclk:expr, $smclk:expr, $xt1clk:expr, $fll_ref: expr) => {
         ClockConfig {
             periph: $conf.periph,
             mclk: $mclk,
@@ -402,7 +404,7 @@ macro_rules! make_clkconf {
             aclk_sel: $conf.aclk_sel,
             smclk: $smclk,
             xt1clk: $xt1clk,
-            fll_ref: Selref::Refoclk,
+            fll_ref: $fll_ref,
         }
     };
 }
@@ -443,7 +445,7 @@ impl<MCLK, SMCLK, XT1CLK> ClockConfig<MCLK, SMCLK, XT1CLK> {
     pub fn mclk_refoclk(self, mclk_div: MclkDiv) -> ClockConfig<MclkDefined, SMCLK, XT1CLK> {
         ClockConfig {
             mclk_div,
-            ..make_clkconf!(self, MclkDefined(MclkSel::Refoclk), self.smclk, self.xt1clk)
+            ..make_clkconf!(self, MclkDefined(MclkSel::Refoclk), self.smclk, self.xt1clk, self.fll_ref)
         }
     }
 
@@ -452,7 +454,7 @@ impl<MCLK, SMCLK, XT1CLK> ClockConfig<MCLK, SMCLK, XT1CLK> {
     pub fn mclk_vloclk(self, mclk_div: MclkDiv) -> ClockConfig<MclkDefined, SMCLK, XT1CLK> {
         ClockConfig {
             mclk_div,
-            ..make_clkconf!(self, MclkDefined(MclkSel::Vloclk), self.smclk, self.xt1clk)
+            ..make_clkconf!(self, MclkDefined(MclkSel::Vloclk), self.smclk, self.xt1clk, self.fll_ref)
         }
     }
 
@@ -467,20 +469,20 @@ impl<MCLK, SMCLK, XT1CLK> ClockConfig<MCLK, SMCLK, XT1CLK> {
     ) -> ClockConfig<MclkDefined, SMCLK, XT1CLK> {
         ClockConfig {
             mclk_div,
-            ..make_clkconf!(self, MclkDefined(MclkSel::Dcoclk(target_freq)), self.smclk, self.xt1clk)
+            ..make_clkconf!(self, MclkDefined(MclkSel::Dcoclk(target_freq)), self.smclk, self.xt1clk, self.fll_ref)
         }
     }
 
     /// Enable SMCLK and set SMCLK divider, which divides the MCLK frequency
     #[inline]
     pub fn smclk_on(self, div: SmclkDiv) -> ClockConfig<MCLK, SmclkDefined, XT1CLK> {
-        make_clkconf!(self, self.mclk, SmclkDefined(div), self.xt1clk)
+        make_clkconf!(self, self.mclk, SmclkDefined(div), self.xt1clk, self.fll_ref)
     }
 
     /// Disable SMCLK
     #[inline]
     pub fn smclk_off(self) -> ClockConfig<MCLK, SmclkDisabled, XT1CLK> {
-        make_clkconf!(self, self.mclk, SmclkDisabled, self.xt1clk)
+        make_clkconf!(self, self.mclk, SmclkDisabled, self.xt1clk, self.fll_ref)
     }
 
     /// Enable XT1 with specific hardware requirements
@@ -489,15 +491,13 @@ impl<MCLK, SMCLK, XT1CLK> ClockConfig<MCLK, SMCLK, XT1CLK> {
         self, 
         config: Xt1Config<MODE>
     ) -> ClockConfig<MCLK, SMCLK, Xt1Defined<MODE>> {
-        // Here you would write to the CSCTL registers 
-        // using the values inside `config`
-        make_clkconf!(self, self.mclk, self.smclk, Xt1Defined(config))
+        make_clkconf!(self, self.mclk, self.smclk, Xt1Defined(config), self.fll_ref)
     }
 
     /// Explicitly disable XT1 to save power
     #[inline]
     pub fn xt1clk_off(self) -> ClockConfig<MCLK, SMCLK, Xt1Disabled> {
-        make_clkconf!(self, self.mclk, self.smclk, Xt1Disabled)
+        make_clkconf!(self, self.mclk, self.smclk, Xt1Disabled, Selref::Refoclk)
     }
 }
 
@@ -515,10 +515,10 @@ impl<MCLK, SMCLK, MODE> ClockConfig<MCLK, SMCLK, Xt1Defined<MODE>> {
         self,
         mclk_div: MclkDiv,
     ) -> ClockConfig<MclkDefined, SMCLK, Xt1Defined<MODE>> {
-        let freq = self.xt1clk.0.frequency;
+        let freq = self.xt1clk.freq();
         ClockConfig {
             mclk_div,
-            ..make_clkconf!(self, MclkDefined(MclkSel::Xt1clk(freq)), self.smclk, self.xt1clk)
+            ..make_clkconf!(self, MclkDefined(MclkSel::Xt1clk(freq)), self.smclk, self.xt1clk, self.fll_ref)
         }
     }
 
