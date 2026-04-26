@@ -8,7 +8,7 @@
 
 use crate::gpio::ChangeSelectBits;
 use crate::hw_traits::timer_base::{CCRn, Outmod};
-use crate::pin_mapping::PinMap;
+use crate::pin_mapping::{DefaultMapping, PinMap};
 use crate::timer::{CapCmpTimer3, CapCmpTimer7};
 use core::marker::PhantomData;
 
@@ -56,7 +56,7 @@ fn setup_pwm<T: TimerPeriph<M>, M: PinMap>(timer: &T, config: TimerConfig<T, M>,
 }
 
 /// Collection of uninitialized PWM pins derived from timer peripheral with 3 capture-compare registers
-pub struct PwmParts3<T: CapCmpTimer3<M>, M: PinMap> {
+pub struct PwmParts3<T: CapCmpTimer3<M>, M: PinMap = DefaultMapping> {
     /// PWM pin 1 (derived from capture-compare register 1)
     pub pwm1: PwmUninit<T, CCR1>,
     /// PWM pin 2 (derived from capture-compare register 2)
@@ -82,7 +82,7 @@ impl<T: CapCmpTimer3<M>, M: PinMap> PwmParts3<T, M> {
 }
 
 /// Collection of uninitialized PWM pins derived from timer peripheral with 7 capture-compare registers
-pub struct PwmParts7<T: CapCmpTimer7<M>, M: PinMap> {
+pub struct PwmParts7<T: CapCmpTimer7<M>, M: PinMap = DefaultMapping> {
     /// PWM pin 1 (derived from capture-compare register 1)
     pub pwm1: PwmUninit<T, CCR1>,
     /// PWM pin 2 (derived from capture-compare register 2)

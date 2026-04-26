@@ -2,11 +2,17 @@
 //!
 //! Can be used as a periodic 16-bit timer.
 //! 
-//! Supports using SMCLK or VLOCLK as clock sources (ACLK and XT1CLK not yet supported).
+//! Supports SMCLK, ACLK, VLOCLK, and XT1CLK as clock sources.
+//! 
+//! Note: On FR2x5x and FR247x series, ACLK and SMCLK share the same RTCCKSEL 
+//! hardware bit pattern and are further distinguished via SYSCFG2 selection.
 
-use crate::clock::Smclk;
+use crate::clock::{Smclk, Xt1clk};
 use core::{convert::Infallible, marker::PhantomData};
 use crate::_pac::{self, rtc::rtcctl::Rtcss};
+
+#[cfg(feature = "rtc_aclk")]
+use crate::clock::Aclk;
 
 mod sealed {
     use super::*;
@@ -15,12 +21,19 @@ mod sealed {
 
     impl SealedRtcClockSrc for RtcSmclk {}
     impl SealedRtcClockSrc for RtcVloclk {}
+    #[cfg(feature = "rtc_aclk")]
+    impl SealedRtcClockSrc for RtcAclk {}
+    impl SealedRtcClockSrc for RtcXt1clk {}
 }
 
 /// Marker trait for RTC clock sources
 pub trait RtcClockSrc: sealed::SealedRtcClockSrc {
     #[doc(hidden)]
     const CLK_SRC: Rtcss;
+
+    /// Optional hook for clock-specific hardware configuration (e.g., SYSCFG muxes)
+    #[doc(hidden)]
+    fn apply_sys_config() {}
 }
 
 /// Typestate representing the SMCLK clock source for RTC
@@ -28,6 +41,13 @@ pub struct RtcSmclk;
 
 impl RtcClockSrc for RtcSmclk {
     const CLK_SRC: Rtcss = Rtcss::Smclk;
+    
+    #[cfg(feature = "rtc_aclk")]
+    fn apply_sys_config() {
+        // Ensure the mux is set to SMCLK (0)
+        let sys = unsafe { &*_pac::Sys::ptr() };
+        sys.syscfg2().modify(|_, w| w.rtccksel().clear_bit());
+    }
 }
 
 /// Typestate representing the VLOCLK clock source for RTC
@@ -35,6 +55,28 @@ pub struct RtcVloclk;
 
 impl RtcClockSrc for RtcVloclk {
     const CLK_SRC: Rtcss = Rtcss::Vloclk;
+}
+
+/// Typestate representing the ACLK clock source for RTC
+#[cfg(feature = "rtc_aclk")]
+pub struct RtcAclk;
+
+#[cfg(feature = "rtc_aclk")]
+impl RtcClockSrc for RtcAclk {
+    const CLK_SRC: Rtcss = Rtcss::Smclk;
+    
+    fn apply_sys_config() {
+        // Ensure the mux is set to SMCLK (0)
+        let sys = unsafe { &*_pac::Sys::ptr() };
+        sys.syscfg2().modify(|_, w| w.rtccksel().set_bit());
+    }
+}
+
+/// Typestate representing the XT1CLK clock source for RTC
+pub struct RtcXt1clk;
+
+impl RtcClockSrc for RtcXt1clk {
+    const CLK_SRC: Rtcss = Rtcss::Xt1clk;
 }
 
 /// 16-bit real-time counter
@@ -66,10 +108,31 @@ impl<SRC: RtcClockSrc> Rtc<SRC> {
         }
     }
 
+    /// Configure the RTC to use ACLK as clock source. Setting comes in effect the next time RTC
+    /// is started.
+    #[inline]
+    #[cfg(feature = "rtc_aclk")]
+    pub fn use_aclk(self, _aclk: &Aclk) -> Rtc<RtcAclk> {
+        Rtc {
+            periph: self.periph,
+            _src: PhantomData,
+        }
+    }
+
     /// Configure the RTC to use VLOCLK as clock source. Setting comes in effect the next time RTC
     /// is started.
     #[inline]
     pub fn use_vloclk(self) -> Rtc<RtcVloclk> {
+        Rtc {
+            periph: self.periph,
+            _src: PhantomData,
+        }
+    }
+
+    /// Configure the RTC to use XT1CLK as clock source. Setting comes in effect the next time RTC
+    /// is started.
+    #[inline]
+    pub fn use_xt1clk(self, _xt1clk: &Xt1clk) -> Rtc<RtcXt1clk> {
         Rtc {
             periph: self.periph,
             _src: PhantomData,
@@ -116,6 +179,7 @@ impl<SRC: RtcClockSrc> Rtc<SRC> {
             .write(|w| unsafe { w.bits(count) });
         // Need to clear interrupt flag from last timer run
         self.periph.rtciv().read();
+        SRC::apply_sys_config();
         self.periph.rtcctl().modify(|r, w| {
             unsafe { w.bits(r.bits()) }
                 .rtcss()
