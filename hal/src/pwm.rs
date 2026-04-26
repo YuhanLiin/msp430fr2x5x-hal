@@ -8,7 +8,7 @@
 
 use crate::gpio::ChangeSelectBits;
 use crate::hw_traits::timer_base::{CCRn, Outmod};
-use crate::pin_mapping::PinMap;
+use crate::pin_mapping::{DefaultMapping, PinMap};
 use crate::timer::{CapCmpTimer3, CapCmpTimer7};
 use core::marker::PhantomData;
 
@@ -49,7 +49,7 @@ pub trait PwmPeriph<C>: CapCmp<C> + CapCmp<CCR0> {
 }
 
 
-fn setup_pwm<T: TimerPeriph<M>, M: PinMap = DefaultMapping>(timer: &T, config: TimerConfig<T, M>, period: u16) {
+fn setup_pwm<T: TimerPeriph<M>, M: PinMap>(timer: &T, config: TimerConfig<T, M>, period: u16) {
     config.write_regs(timer);
     CCRn::<CCR0>::set_ccrn(timer, period);
     CCRn::<CCR0>::config_outmod(timer, Outmod::Toggle);
@@ -64,7 +64,7 @@ pub struct PwmParts3<T: CapCmpTimer3<M>, M: PinMap = DefaultMapping> {
     _pin_map: PhantomData<M>,
 }
 
-impl<T: CapCmpTimer3<M>, M: PinMap = DefaultMapping> PwmParts3<T, M> {
+impl<T: CapCmpTimer3<M>, M: PinMap> PwmParts3<T, M> {
     /// Create uninitialized PWM pins with the same period
     pub fn new(timer: T, config: TimerConfig<T, M>, period: u16) -> Self {
         setup_pwm(&timer, config, period);
@@ -98,7 +98,7 @@ pub struct PwmParts7<T: CapCmpTimer7<M>, M: PinMap = DefaultMapping> {
     _pin_map: PhantomData<M>,
 }
 
-impl<T: CapCmpTimer7<M>, M: PinMap = DefaultMapping> PwmParts7<T, M> {
+impl<T: CapCmpTimer7<M>, M: PinMap> PwmParts7<T, M> {
     /// Create uninitialized PWM pins with the same period
     pub fn new(timer: T, config: TimerConfig<T, M>, period: u16) -> Self {
         setup_pwm(&timer, config, period);
