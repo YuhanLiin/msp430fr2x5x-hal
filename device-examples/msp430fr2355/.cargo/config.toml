@@ -6,6 +6,7 @@ runner = "./run.sh"
 
 rustflags = [
     "-C", "link-arg=-nostartfiles",
+    "-C", "link-arg=-Tdefmt.x", # required for defmt. Must appear before `Tlink.x`
     "-C", "link-arg=-Tlink.x",
     "-C", "link-arg=-mcpu=msp430",
 

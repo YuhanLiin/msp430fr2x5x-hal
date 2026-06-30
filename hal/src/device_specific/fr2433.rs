@@ -181,11 +181,11 @@ mod pwm {
     // TA1
     impl PwmPeriph<CCR1> for Timer1A3 {
         type Gpio = Pin<P1, Pin5, Alternate2<Output>>;
-        const ALT: Alt = Alt::Alt1;
+        const ALT: Alt = Alt::Alt2;
     }
     impl PwmPeriph<CCR2> for Timer1A3 {
         type Gpio = Pin<P1, Pin4, Alternate2<Output>>;
-        const ALT: Alt = Alt::Alt1;
+        const ALT: Alt = Alt::Alt2;
     }
 
     // TA2

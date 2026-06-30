@@ -696,6 +696,13 @@ mod ehal1 {
         fn is_set_low(&mut self) -> Result<bool, Self::Error> {
             self.is_set_high().map(|r| !r)
         }
+
+        #[inline]
+        fn toggle(&mut self) -> Result<(), Self::Error> {
+            let p = unsafe { PORT::steal() };
+            p.pxout_toggle(PIN::SET_MASK);
+            Ok(())
+        }
     }
 }
 

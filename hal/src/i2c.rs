@@ -1229,6 +1229,7 @@ macro_rules! impl_i2c_error {
 /// If this originated from a blocking method the byte number counts up from the beginning of the transaction 
 /// (i.e. the initial start condition) where byte 0 is the address byte, byte 1 is the first data byte, etc.. 
 /// If it originated from a non-blocking method it counts up from the most recent Start or Repeated Start condition.
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Clone, Copy, Debug)]
 pub enum NackType {
     /// Received a NACK during an address byte. No device with the specified address is on the bus.
@@ -1239,6 +1240,7 @@ pub enum NackType {
 }
 
 /// I2C transmit/receive errors on a single master I2C bus.
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Clone, Copy, Debug)]
 #[non_exhaustive]
 pub enum I2cSingleMasterErr {
@@ -1249,6 +1251,7 @@ pub enum I2cSingleMasterErr {
 impl_i2c_error!(I2cSingleMasterErr);
 
 /// I2C transmit/receive errors on a multi-master I2C bus.
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Clone, Copy, Debug)]
 #[non_exhaustive]
 pub enum I2cMultiMasterErr {
@@ -1263,6 +1266,7 @@ pub enum I2cMultiMasterErr {
 impl_i2c_error!(I2cMultiMasterErr);
 
 /// I2C transmit/receive errors on a master-slave I2C device.
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Clone, Copy, Debug)]
 #[non_exhaustive]
 pub enum I2cMasterSlaveErr {

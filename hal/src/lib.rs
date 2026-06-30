@@ -1,11 +1,15 @@
-//! Implementation of [`embedded_hal`] traits for MSP430FR2x5x family of microcontrollers.
-//! Here are the [`datasheet`] and [`User's guide`] for reference.
+//! A collection of peripheral drivers for the [MSP430FR2xxx/4xxx](http://www.ti.com/lit/ug/slau445i/slau445i.pdf) 
+//! family of microcontrollers with implementations of [`embedded_hal`] traits.
 //!
-//! As of this writing, the only supported MCUs are the MSP430FR2x5x series.
-//!
+//! As of this writing, the only supported MCUs are the MSP430FR2x5x series and the MSP430FR2433.
+//! Support for more devices is welcome. See the readme in the repository for information about how to 
+//! add support for a new device.
+//! 
+//! The documentation on docs.rs is built for the MSP430FR2355. To build the documentation for your device instead,
+//! add this crate as a dependency to your project (see: [Feature Flags](#feature-flags)) then run `cargo doc --open --package msp430fr2x5x-hal`.
+//! The repository contains such projects for various devices under `device_examples/`.
+//! 
 //! [`embedded_hal`]: https://github.com/rust-embedded/embedded-hal
-//! [`datasheet`]: http://www.ti.com/lit/ds/symlink/msp430fr2355.pdf
-//! [`User's guide`]: http://www.ti.com/lit/ug/slau445i/slau445i.pdf
 //!
 //! # Usage
 //!
@@ -16,8 +20,8 @@
 //!
 //! # Examples
 //!
-//! The `device-examples/` directory contains projects for various supported devices, each containing a typical project structure and 
-//! a number of examples that show how to use the HAL abstractions. These examples typically target the relevant dev board, 
+//! The `device-examples/` directory in the repository contains projects for various supported devices, each containing a typical 
+//! project structure and a number of examples that show how to use the HAL abstractions. These examples typically target the relevant dev board, 
 //! such as the MSP-EXP430FR2355 for the MSP430FR2355.
 //! 
 //! To flash the examples, make sure you have `mspdebug` with `tilib` support installed and in
@@ -35,6 +39,8 @@
 //! match crates that require the pre-1.0 version with those that require the latest version. It isn't enabled by
 //! default, as many of the trait names are similar (or identical) to their counterparts in the current
 //! version, which can be confusing.
+//! 
+//! Support for defmt is available behind the `defmt` feature.
 
 #![no_std]
 #![allow(incomplete_features)] // Enable specialization without warnings
