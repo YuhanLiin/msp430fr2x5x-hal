@@ -18,11 +18,11 @@ pub mod gpio {
     impl<PULL> ToAlternate2 for Pin<P1, Pin0, Input<PULL>> {}
     impl<DIR>  ToAlternate2 for Pin<P1, Pin1, DIR> {}
     impl<DIR>  ToAlternate2 for Pin<P1, Pin2, DIR> {}
-    impl ToAlternate2 for Pin<P1, Pin3, Output> {}
+    impl ToAlternate2       for Pin<P1, Pin3, Output> {}
     impl<DIR>  ToAlternate2 for Pin<P1, Pin4, DIR> {}
     impl<DIR>  ToAlternate2 for Pin<P1, Pin5, DIR> {}
     impl<PULL> ToAlternate2 for Pin<P1, Pin6, Input<PULL>> {}
-    impl ToAlternate2 for Pin<P1, Pin7, Output> {}
+    impl ToAlternate2       for Pin<P1, Pin7, Output> {}
     // P1 alternate 3
     impl<PIN: PinNum, DIR> ToAlternate3 for Pin<P1, PIN, DIR> {}
 
@@ -49,7 +49,7 @@ pub mod gpio {
     impl<DIR>  ToAlternate1 for Pin<P3, Pin6, DIR> {}
     impl<DIR>  ToAlternate1 for Pin<P3, Pin7, DIR> {}
     // P3 alternate 2
-    impl ToAlternate2 for Pin<P3, Pin4, Output> {}
+    impl ToAlternate2       for Pin<P3, Pin4, Output> {}
     impl<PULL> ToAlternate2 for Pin<P3, Pin5, Input<PULL>> {}
 
 
@@ -1051,4 +1051,11 @@ mod timer {
         type Tbxclk = Pin<P2, Pin7, Alternate1<Input<Floating>>>;
     }
     impl CapCmpTimer7 for Tb0 {}
+}
+
+pub mod clock {
+    use crate::{gpio::*, clock::*};
+
+    impl<DIR> Xt1XinPin  for Pin<P2, Pin1, Alternate1<DIR>> {}
+    impl<DIR> Xt1XoutPin for Pin<P2, Pin0, Alternate1<DIR>> {}
 }

@@ -783,3 +783,10 @@ mod timer {
     }
     impl CapCmpTimer7 for Tb3 {}
 }
+
+pub mod clock {
+    use crate::{gpio::*, clock::*};
+
+    impl<DIR> Xt1XinPin  for Pin<P2, Pin7, Alternate1<DIR>> {}
+    impl<DIR> Xt1XoutPin for Pin<P2, Pin6, Alternate1<DIR>> {}
+}

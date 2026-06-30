@@ -453,3 +453,10 @@ mod timer {
     }
     impl CapCmpTimer3 for Timer1A3 {}
 }
+
+pub mod clock {
+    use crate::{gpio::*, clock::*};
+
+    impl<DIR> Xt1XinPin  for Pin<P2, Pin1, Alternate1<DIR>> {}
+    impl<DIR> Xt1XoutPin for Pin<P2, Pin0, Alternate1<DIR>> {}
+}
