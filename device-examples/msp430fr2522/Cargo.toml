@@ -1,0 +1,46 @@
+[package]
+name = "msp430fr25x2-hal-examples"
+version = "0.0.1"
+authors = ["Ross Porter <rossporter506@gmail.com>"]
+edition = "2021"
+description = "MSP430FR25x2 examples using the msp430fr2x5x-hal"
+publish = false
+keywords = ["no-std", "msp430", "ti", "launchpad", "embedded-hal"]
+
+[dependencies]
+panic-msp430 = "0.4.0"
+panic-never = "0.1.0"
+msp430 = { version = "0.4.1", features = ["critical-section-single-core"] }
+msp430-rt = "0.4.0"
+msp430fr25x2 = { version = "0.3.1", features = ["rt", "critical-section"]}
+msp430fr2x5x-hal = { path = "../../hal", features = ["msp430fr2522"] }
+critical-section = "1.2.0"
+msp430-atomic = "0.1.5"
+embedded-hal = "1.0"
+embedded-hal-nb = "*"
+embedded-io = "0.7"
+nb = "1.1.0"
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
+opt-level = "z"
+
+[profile.dev]
+opt-level = "s"
+codegen-units = 1
+debug = true
+
+[profile.dev.package."*"]
+opt-level = "z"
+
+# Mark which examples don't work on the MSRV compiler, so CI doesn't build them when using the MSRV.
+# By default all examples are enabled, building with MSRV requires passing `--no-default-features`.
+[features]
+default = ["non_msrv"]
+non_msrv = []
+
+# Examples that don't work on the MSRV compiler
+[[example]]
+name = "lpm0"
+required-features = ["non_msrv"]

@@ -16,4 +16,9 @@ pub mod device;
 #[path = "device_specific/fr247x.rs"]
 pub mod device;
 
+// MSP430FR25x2
+#[cfg(feature = "25x2")]
+#[path = "device_specific/fr25x2.rs"]
+pub mod device;
+
 pub use device::*;

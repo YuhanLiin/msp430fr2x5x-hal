@@ -29,7 +29,7 @@ An example can be flashed to a connected device with
 `cargo run --example <example_name>`
 
 # Supported Devices
-The library currently supports the MSP430FR2x5x and MSP430FR247x subfamilies, and the MSP430FR2433.
+The library currently supports the MSP430FR2x5x and MSP430FR247x and MSP430FR25x2 subfamilies, and the MSP430FR2433.
 Support for other devices in the MSP430FR2xxx/4xxx family is possible, see [Supporting additional devices](##Supporting-additional-devices). 
 
 The device being targetted is must be specified by enabling exactly one device feature, such as 
@@ -45,6 +45,8 @@ The device being targetted is must be specified by enabling exactly one device f
 | MSP430FR2353 | `msp430fr2353` |
 | MSP430FR2155 | `msp430fr2155` |
 | MSP430FR2153 | `msp430fr2153` |
+| MSP430FR2512 | `msp430fr2512` |
+| MSP430FR2522 | `msp430fr2522` |
 
 The documentation on crates.rs (and example programs) target the MSP430FR2355. Documentation for a particular device can be 
 built by running `cargo doc --open --features <device>` from within the `hal/` folder, or `cargo doc --open --package msp430fr2x5x-hal` in a 
