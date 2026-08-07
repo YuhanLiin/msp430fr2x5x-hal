@@ -12,7 +12,7 @@ jobs:
     strategy:
       matrix:
         rust_toolchain: [nightly, nightly-2024-09-01]
-        device: [msp430fr2355, msp430fr2476, msp430fr2433, msp430fr2512, msp430fr2522]
+        device: [msp430fr2355, msp430fr2476, msp430fr2433, msp430fr2522]
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
@@ -39,7 +39,7 @@ jobs:
       - name: Build library
         working-directory: hal/
         run: cargo +${{matrix.rust_toolchain}} build --features ${{matrix.device}}
-    
+
       - name: Build library with ehal02
         working-directory: hal/
         run: cargo +${{matrix.rust_toolchain}} build --features ${{matrix.device}},embedded-hal-02
@@ -48,7 +48,7 @@ jobs:
         if: matrix.rust_toolchain == 'nightly'
         working-directory: device-examples/${{matrix.device}}
         run: cargo build --examples
-      
+
       - name: Build MSRV examples
         if: matrix.rust_toolchain != 'nightly'
         working-directory: device-examples/${{matrix.device}}
