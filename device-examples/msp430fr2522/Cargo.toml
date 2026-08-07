@@ -27,6 +27,7 @@ codegen-units = 1
 opt-level = "z"
 
 [profile.dev]
+lto = "fat"
 opt-level = "s"
 codegen-units = 1
 debug = true
