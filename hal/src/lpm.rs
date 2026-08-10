@@ -191,8 +191,11 @@ fn enter_lpmx_5<MODE: WatchdogSelect>(mut wdt: Wdt<MODE>, svs: SvsState, regs: _
     regs.p1.p1sel0().reset();
     regs.p1.p1sel1().reset();
     /* P2 reset by 4.5 and 3.5 fns */
-    regs.p3.p3sel0().reset();
-    regs.p3.p3sel1().reset();
+    #[cfg(not(feature = "25x2"))]
+    {
+        regs.p3.p3sel0().reset();
+        regs.p3.p3sel1().reset();
+    }
 
     #[cfg(any(feature = "2x5x", feature = "247x"))]
     {
