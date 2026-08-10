@@ -1,6 +1,6 @@
-# `msp430fr2x5x-hal`
+# `msp430-hal`
 
-> A high-level Hardware Abstraction Layer (HAL) for the MSP430FR2xxx / 4xxx series of microcontrollers.
+> A high-level Hardware Abstraction Layer (HAL) for the MSP430 family of microcontrollers, principally targetting the FR2xxx / 4xxx family, but seeking to support the all MSP430 devices eventually.
 
 [![Crates.io](https://img.shields.io/crates/v/msp430fr2x5x-hal.svg)](https://crates.io/crates/msp430fr2x5x-hal)
 [![Docs.rs](https://docs.rs/msp430fr2x5x-hal/badge.svg)](https://docs.rs/msp430fr2x5x-hal)
@@ -29,15 +29,15 @@ An example can be flashed to a connected device with
 `cargo run --example <example_name>`
 
 # Supported Devices
-The library currently supports the MSP430FR2x5x and MSP430FR247x and MSP430FR25x2 subfamilies, and the MSP430FR2433.
-Support for other devices in the MSP430FR2xxx/4xxx family is possible, see [Supporting additional devices](##Supporting-additional-devices). 
+The library currently supports a subset of the MSP430FR2xxx / 4xxx family: the MSP430FR2x5x and MSP430FR247x and MSP430FR25x2 subfamilies, and the MSP430FR2433.
+Adding support for a device in the MSP430FR2xxx/4xxx family is easy, see [Supporting additional devices](#Supporting-additional-devices).
 
 The device being targetted is must be specified by enabling exactly one device feature, such as 
 `msp430fr2355`. This is required to build any code from this library.
 
 ### Currently Supported Devices
-| Device | Feature name |
-| ------ | ------------ |
+| Device       | Feature name   |
+| ------------ | -------------- |
 | MSP430FR2476 | `msp430fr2476` |
 | MSP430FR2475 | `msp430fr2475` |
 | MSP430FR2433 | `msp430fr2433` |
@@ -52,34 +52,50 @@ The documentation on crates.rs (and example programs) target the MSP430FR2355. D
 built by running `cargo doc --open --features <device>` from within the `hal/` folder, or `cargo doc --open --package msp430fr2x5x-hal` in a 
 cargo project with `msp430fr2x5x-hal` correctly configured as a dependency, such as the projects in the `device-examples/` folder.
 
-## Supporting additional devices
-
-The maintainers don't have access to every device in the MSP430FR2xxx / 4xxx family, so if you want to add support for a particular device (or subfamily) we are happy to accept pull requests.
-To add support for a device (or subfamily) you should fork this repo and:
-1. Add a new device feature in `hal/cargo.toml` and determine which features should be derived for your device.
-2. Create a new file in `hal/src/device_specific/`, import a Peripheral Access Crate (PAC) for your device, and follow `hal/src/device_specific/msp430fr2x5x.rs` as an example to see how to e.g. mark which GPIO pins are capable of what functionality.
-3. Append an entry to `hal/src/device_specific.rs` to re-export your PAC and any device-specific constants to the rest of the library.
-4. Add a project crate to `device_examples/` and add some examples to test everything works.
-5. Add your device name to the CI in `.github/workflows/build.yml` and check that the CI passes.
-
 # Functionality
-The library is mostly feature complete for the MSP430FR2x5x subfamily. There are a few edge cases not yet supported, such as:
+The library is mostly feature complete for the FR2xxx/4xxx family. There are a few edge cases not yet supported, such as:
 - Arbitrary DCO clock speed support (currently supports 1, 2, 4, 8, 12, 16, 20, 24 MHz)
 - External oscillator support
 - Some RTC clock sources (currently only supports SMCLK and VLOCLK)
 - ADC reference voltage selection
 
-If you encounter any use cases not supported please open an issue (or submit a pull request).
-
-## Other MSP430FR2xxx / 4xxx MCUs
-
-The library currently lacks support for some peripherals available on other MSP430FR2xxx / 4xxx devices, namely:
+The following FR2xxx/4xxx peripherals do not yet have drivers:
 - LCD driver
 - CapTIvate
 - TIA
 - SAC-L1
 
-PRs with implementations for these peripherals are welcome.
+PRs with implementations for these features or peripherals are welcome.
+
+If you encounter any use cases not supported please open an issue (or submit a pull request).
+
+## Supporting additional devices
+
+The maintainers don't have access to every device in the MSP430FR2xxx / 4xxx family, so if you want to add support for a particular device (or subfamily) we are happy to accept pull requests.
+
+This repo contains two main parts - drivers for peripherals (shared across many devices), and pin mappings for a specific device.
+Many peripheral drivers have already been written, so adding support for a new device is usually just a matter of defining what peripherals a device has, and how they're connected to it's GPIO pins.
+The following section describes how to do this:
+
+To add support for a device (or subfamily) you should fork this repo and:
+1. Add a new device feature in `hal/cargo.toml` and determine which features should be derived for your device.
+2. Create a new file in `hal/src/device_specific/`, import a Peripheral Access Crate (PAC) for your device, and follow `hal/src/device_specific/msp430fr2x5x.rs` as an example to see how to e.g. mark which GPIO pins are capable of what functionality.
+    * (Note in some cases the PAC may be missing some register fields, as TI's .svd files aren't perfect. In this case the PAC should be modified if these missing register fields are used by the HAL).
+3. Append an entry to `hal/src/device_specific.rs` to re-export your PAC and any device-specific constants to the rest of the library.
+4. Add a project crate to `device_examples/` and add some examples to test everything works (again refer to the msp430fr2355 as an example/template). 
+    * Ensure the `memory.x` file is correct, as this is usually unique to each device.
+5. Add the device name to the CI in `.github/workflows/build.yml` to make it automatically build all your device examples. Check that the CI passes.
+
+For issues or concerns, feel free to open an issue.
+
+### Devices outside the FR2xxx/4xxx family
+
+If your device exists outside the FR2xxx/4xxx family then the above still holds, but additionally it is up to you to ensure the drivers written here are compatible with your device's peripherals 
+(e.g. by comparing the FR2xxx/4xxx user guide against your user guide).
+The drivers provided here have been written by referencing the 2xxx / 4xxx user guide, so if they support for other devices out-of-the-box this is incidental,
+however they may work regardless, require only minor modifications, or may at least serve as a reasonable starting point.
+
+If you do find that a peripheral driver requires changes, we are happy to accept new drivers for devices outside the 2xxx / 4xxx family.
 
 # Feature Flags
 
