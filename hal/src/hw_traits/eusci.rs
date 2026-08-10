@@ -488,7 +488,7 @@ macro_rules! eusci_spi_impl {
             }
 
             fn is_busy(&self) -> bool {
-                (self.$ucxstatw().read().bits() & 1) != 0
+                self.$ucxstatw().read().ucbusy().bit()
             }
         }
 
@@ -510,7 +510,7 @@ macro_rules! eusci_spi_impl {
 
             #[inline(always)]
             fn ucbusy(&self) -> bool {
-                (self.bits() & 1) != 0
+                self.ucbusy().bit()
             }
         }
     };

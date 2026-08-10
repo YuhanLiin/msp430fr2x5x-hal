@@ -53,9 +53,7 @@ impl Pmm {
             true => None,
             false => {
                 // Unlock PMM registers
-                self.0
-                    .pmmctl0()
-                    .modify(|_, w| unsafe { w.pmmpw().bits(0xA5) });
+                self.0.pmmctl0().modify(|_, w| w.pmmpw().password() );
 
                 self.0.pmmctl2().write(|w| unsafe{ w
                     .bits(pmmctl2.bits()) 
