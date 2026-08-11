@@ -30,12 +30,14 @@ pub trait TimerPeriph<M: PinMap = DefaultMapping>: TimerBase + CapCmp<CCR0> {
 
     /// Additional configuration
     #[inline(always)]
-    fn configure_pin_mapping() { }
+    fn configure_pin_mapping() {}
 }
 
 // Traits effectively sealed by CCRn
 /// Trait indicating that the peripheral has 3 capture compare registers
-pub trait CapCmpTimer3<M: PinMap = DefaultMapping>: TimerPeriph<M> + CapCmp<CCR1> + CapCmp<CCR2> {}
+pub trait CapCmpTimer3<M: PinMap = DefaultMapping>:
+    TimerPeriph<M> + CapCmp<CCR1> + CapCmp<CCR2>
+{}
 /// Trait indicating that the peripheral has 7 capture compare registers
 pub trait CapCmpTimer7<M: PinMap = DefaultMapping>:
     TimerPeriph<M>
@@ -45,8 +47,7 @@ pub trait CapCmpTimer7<M: PinMap = DefaultMapping>:
     + CapCmp<CCR4>
     + CapCmp<CCR5>
     + CapCmp<CCR6>
-{
-}
+{}
 
 /// Configuration object for the TimerB peripheral
 ///
@@ -60,7 +61,7 @@ where
     sel: Tbssel,
     div: TimerDiv,
     ex_div: TimerExDiv,
-    _pin_map: PhantomData<M>
+    _pin_map: PhantomData<M>,
 }
 
 impl<T, M> TimerConfig<T, M>
@@ -138,7 +139,7 @@ where
     /// Sub-timer 1 (derived from CCR1 register)
     pub subtimer1: SubTimer<T, CCR1>,
     /// Sub-timer 2 (derived from CCR2 register)
-    pub subtimer2: SubTimer<T, CCR2>
+    pub subtimer2: SubTimer<T, CCR2>,
 }
 
 impl<T, M> TimerParts3<T, M>
@@ -213,9 +214,7 @@ where
     T: TimerPeriph<M>,
     M: PinMap,
 {
-    fn new() -> Self {
-        Self(PhantomData, PhantomData)
-    }
+    fn new() -> Self { Self(PhantomData, PhantomData) }
 }
 
 /// Sub-timer associated with a main timer
@@ -225,9 +224,7 @@ where
 pub struct SubTimer<T: CapCmp<C>, C>(PhantomData<T>, PhantomData<C>);
 
 impl<T: CapCmp<C>, C> SubTimer<T, C> {
-    fn new() -> Self {
-        Self(PhantomData, PhantomData)
-    }
+    fn new() -> Self { Self(PhantomData, PhantomData) }
 }
 
 /// Indicates which sub/main timer caused the interrupt to fire
@@ -391,9 +388,7 @@ mod ehal02 {
         type Time = u16;
 
         #[inline]
-        fn start<U: Into<Self::Time>>(&mut self, count: U) {
-            self.start(count.into())
-        }
+        fn start<U: Into<Self::Time>>(&mut self, count: U) { self.start(count.into()) }
 
         #[inline]
         fn wait(&mut self) -> nb::Result<(), void::Void> {

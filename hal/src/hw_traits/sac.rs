@@ -30,12 +30,11 @@ pub enum MSel {
 }
 
 macro_rules! impl_sac_periph {
-    ($SAC: ident, 
+    ($SAC: ident,
         $pos_port: ident, $pos_pin: ident, // Positive input
         $neg_port: ident, $neg_pin: ident, // Negative input
         $out_port: ident, $out_pin: ident, // Output 
         $sacXoa: ident, $sacXpga: ident, $sacXdac: ident, $sacXdat: ident) => {
-
         impl SacPeriph for $SAC {
             type PosInputPin = Pin<$pos_port, $pos_pin, Alternate3<Input<Floating>>>;
             type NegInputPin = Pin<$neg_port, $neg_pin, Alternate3<Input<Floating>>>;
@@ -57,17 +56,16 @@ macro_rules! impl_sac_periph {
             }
             #[inline(always)]
             fn configure_sacpga(gain: u8, msel: MSel) {
-                unsafe{
+                unsafe {
                     let sac = $SAC::steal();
                     sac.$sacXpga().write(|w| w
                         .gain().bits(gain)
-                        .msel().bits(msel as u8)
-                    );
+                        .msel().bits(msel as u8));
                 }
             }
             #[inline(always)]
             fn configure_dac(lsel: u8, vref: bool) {
-                unsafe{
+                unsafe {
                     let sac = $SAC::steal();
                     sac.$sacXdac().write(|w| w
                         .dacsref().bit(vref)
@@ -80,11 +78,9 @@ macro_rules! impl_sac_periph {
             }
             #[inline(always)]
             fn set_dac_count(val: u16) {
-                unsafe{
+                unsafe {
                     let sac = $SAC::steal();
-                    sac.$sacXdat().write(|w| w
-                        .dacdata().bits(val)
-                    );
+                    sac.$sacXdat().write(|w| w.dacdata().bits(val));
                 }
             }
         }

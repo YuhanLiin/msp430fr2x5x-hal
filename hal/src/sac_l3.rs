@@ -50,8 +50,11 @@
 use core::marker::PhantomData;
 
 use crate::{
-    hw_traits::sac::{MSel, NSel, SacPeriph}, pmm::InternalVRef, pwm::{CCR1, CCR2}, timer::SubTimer,
+    hw_traits::sac::{MSel, NSel, SacPeriph},
     pac::Tb2,
+    pmm::InternalVRef,
+    pwm::{CCR1, CCR2},
+    timer::SubTimer,
 };
 
 /// A builder for configuring a Smart Analog Combo (SAC) unit
@@ -60,7 +63,7 @@ impl SacConfig {
     /// Begin configuration of a Smart Analog Combo (SAC) unit.
     #[inline(always)]
     pub fn begin<SAC: SacPeriph>(_reg: SAC) -> (DacConfig<SAC>, AmpConfig<NoModeSet, SAC>) {
-        (DacConfig(PhantomData), AmpConfig{mode: PhantomData, reg: PhantomData})
+        (DacConfig(PhantomData), AmpConfig { mode: PhantomData, reg: PhantomData })
     }
 }
 
@@ -71,7 +74,7 @@ impl<SAC: SacPeriph> DacConfig<SAC> {
     #[inline(always)]
     pub fn configure<'a>(self, vref: VRef<'a>, load_trigger: LoadTrigger<'_>) -> Dac<'a, SAC> {
         SAC::configure_dac(load_trigger.into(), vref.into());
-        Dac{sac: PhantomData, vref_lifetime: PhantomData}
+        Dac { sac: PhantomData, vref_lifetime: PhantomData }
     }
 }
 
@@ -125,9 +128,7 @@ impl<SAC: SacPeriph> Dac<'_, SAC> {
     /// Set the DAC count. This should be a value between 0 and 4095, where 0 is 0V, and 4095 is (just below) the DAC reference voltage.
     /// The value is masked with `0xFFF` before being written to the register.
     #[inline(always)]
-    pub fn set_count(&mut self, count: u16) {
-        SAC::set_dac_count(count);
-    }
+    pub fn set_count(&mut self, count: u16) { SAC::set_dac_count(count); }
 }
 
 /// A builder for configuring a Smart Analog Combo (SAC) unit's amplifier
@@ -135,36 +136,56 @@ pub struct AmpConfig<MODE, SAC> {
     mode: PhantomData<MODE>,
     reg: PhantomData<SAC>,
 }
-impl<SAC:SacPeriph> AmpConfig<NoModeSet, SAC> {
+impl<SAC: SacPeriph> AmpConfig<NoModeSet, SAC> {
     /// Begin configuring this SAC as an open-loop operational amplifier (no internal feedback).
     #[inline(always)]
-    pub fn opamp(self, pos_in: PositiveInput<SAC>, neg_in: NegativeInput<SAC>, power_mode: PowerMode) -> AmpConfig<ModeSet, SAC> {
+    pub fn opamp(
+        self,
+        pos_in: PositiveInput<SAC>,
+        neg_in: NegativeInput<SAC>,
+        power_mode: PowerMode,
+    ) -> AmpConfig<ModeSet, SAC> {
         SAC::configure_sacoa(pos_in.psel(), neg_in.nsel(), power_mode.into());
-        AmpConfig{ mode: PhantomData, reg: PhantomData }
+        AmpConfig { mode: PhantomData, reg: PhantomData }
     }
 
     /// Begin configuring this SAC as an inverting amplifier.
     #[inline(always)]
-    pub fn inverting_amplifier(self, pos_in: PositiveInput<SAC>, neg_in: NegativeInput<SAC>, gain: InvertingGain, power_mode: PowerMode) -> AmpConfig<ModeSet, SAC> {
+    pub fn inverting_amplifier(
+        self,
+        pos_in: PositiveInput<SAC>,
+        neg_in: NegativeInput<SAC>,
+        gain: InvertingGain,
+        power_mode: PowerMode,
+    ) -> AmpConfig<ModeSet, SAC> {
         SAC::configure_sacpga(gain as u8, neg_in.msel());
         SAC::configure_sacoa(pos_in.psel(), NSel::Feedback, power_mode.into());
-        AmpConfig{ mode: PhantomData, reg: PhantomData }
+        AmpConfig { mode: PhantomData, reg: PhantomData }
     }
 
     /// Begin configuring this SAC as a non-inverting amplifier.
     #[inline(always)]
-    pub fn noninverting_amplifier(self, pos_in: PositiveInput<SAC>, gain: NoninvertingGain, power_mode: PowerMode) -> AmpConfig<ModeSet, SAC> {
+    pub fn noninverting_amplifier(
+        self,
+        pos_in: PositiveInput<SAC>,
+        gain: NoninvertingGain,
+        power_mode: PowerMode,
+    ) -> AmpConfig<ModeSet, SAC> {
         SAC::configure_sacpga(gain as u8, MSel::NonInverting);
         SAC::configure_sacoa(pos_in.psel(), NSel::Feedback, power_mode.into());
-        AmpConfig{ mode: PhantomData, reg: PhantomData }
+        AmpConfig { mode: PhantomData, reg: PhantomData }
     }
 
     /// Begin configuring this SAC as a unity-gain buffer / voltage follower.
     #[inline(always)]
-    pub fn buffer(self, source: PositiveInput<SAC>, power_mode: PowerMode) -> AmpConfig<ModeSet, SAC> {
+    pub fn buffer(
+        self,
+        source: PositiveInput<SAC>,
+        power_mode: PowerMode,
+    ) -> AmpConfig<ModeSet, SAC> {
         SAC::configure_sacpga(0, MSel::Follower);
         SAC::configure_sacoa(source.psel(), NSel::Feedback, power_mode.into());
-        AmpConfig{ mode: PhantomData, reg: PhantomData }
+        AmpConfig { mode: PhantomData, reg: PhantomData }
     }
 }
 impl<SAC: SacPeriph> AmpConfig<ModeSet, SAC> {
@@ -176,9 +197,7 @@ impl<SAC: SacPeriph> AmpConfig<ModeSet, SAC> {
     /// Do not route the amplifier output to a GPIO pin.
     /// Useful if you only need the signal internally and don't want to give up a GPIO pin.
     #[inline(always)]
-    pub fn no_output_pin(self) -> Amplifier<SAC> {
-        Amplifier(PhantomData)
-    }
+    pub fn no_output_pin(self) -> Amplifier<SAC> { Amplifier(PhantomData) }
 }
 
 /// List of possible sources for the amplifier's non-inverting input
@@ -218,16 +237,16 @@ impl<SAC: SacPeriph> NegativeInput<SAC> {
     #[inline(always)]
     fn nsel(&self) -> NSel {
         match self {
-            NegativeInput::ExtPin(_)      => NSel::ExtPinMinus,
-            NegativeInput::PairedOpamp    => NSel::PairedOpamp,
+            NegativeInput::ExtPin(_)   => NSel::ExtPinMinus,
+            NegativeInput::PairedOpamp => NSel::PairedOpamp,
         }
     }
     /// In modes with feedback this corresponds to whether the feedback divider is connected to OA- or the paired opamp output
     #[inline(always)]
     fn msel(&self) -> MSel {
         match self {
-            NegativeInput::ExtPin(_)      => MSel::Inverting,
-            NegativeInput::PairedOpamp    => MSel::Cascade,
+            NegativeInput::ExtPin(_)   => MSel::Inverting,
+            NegativeInput::PairedOpamp => MSel::Cascade,
         }
     }
 }

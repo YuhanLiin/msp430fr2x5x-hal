@@ -18,8 +18,8 @@ pub mod _pac {
 pub mod gpio {
     // Re-export PAC GPIO peripherals
     pub use crate::_pac::{P1, P2, P3};
+    use crate::hw_traits::gpio::gpio_impl;
     use crate::{adc, gpio::*};
-    use crate::hw_traits::gpio::gpio_impl; 
 
     // Define alternate pin transitions
     // P1 alternate 1
@@ -56,7 +56,7 @@ pub mod gpio {
 
 /* ADC */
 mod adc {
-    use crate::{gpio::*, adc::*};
+    use crate::{adc::*, gpio::*};
 
     impl_adc_channel_pin!(P1, Pin0, AdcMode => 0);
     impl_adc_channel_pin!(P1, Pin1, AdcMode => 1);
@@ -74,7 +74,7 @@ pub const BAK_MEM_SIZE: usize = 32;
 
 /* Capture */
 mod capture {
-    use crate::{pac::*, gpio::*, capture::CapturePeriph};
+    use crate::{capture::CapturePeriph, gpio::*, pac::*};
 
     impl CapturePeriph for Timer0A3 {
         type Gpio0 = ();
@@ -103,7 +103,10 @@ pub const MODCLK_FREQ_HZ: u32 = 5_000_000;
 
 /* eUSCI */
 mod eusci {
-    use crate::{pac::*, hw_traits::{Steal, eusci::*}};
+    use crate::{
+        hw_traits::{eusci::*, Steal},
+        pac::*,
+    };
 
     eusci_steal_impl!(UsciA0SpiMode);
     eusci_steal_impl!(UsciA0UartMode);
@@ -117,27 +120,32 @@ mod eusci {
 
 /* I2C */
 mod i2c {
-    use crate::{pac::*, gpio::*, hw_traits::eusci::*, i2c::{impl_i2c_pin, I2cUsci}};
+    use crate::{
+        gpio::*,
+        hw_traits::eusci::*,
+        i2c::{impl_i2c_pin, I2cUsci},
+        pac::*,
+    };
 
     eusci_i2c_impl!(
-        UsciB0I2cMode, 
-        ucb0ctlw0, 
-        ucb0ctlw1, 
+        UsciB0I2cMode,
+        ucb0ctlw0,
+        ucb0ctlw1,
         ucb0brw,
-        ucb0stat_i2c, 
-        ucb0tbcnt, 
-        ucb0rxbuf, 
-        ucb0txbuf, 
+        ucb0stat_i2c,
+        ucb0tbcnt,
+        ucb0rxbuf,
+        ucb0txbuf,
         ucb0i2coa0,
-        ucb0i2coa1, 
-        ucb0i2coa2, 
-        ucb0i2coa3, 
-        ucb0addrx, 
+        ucb0i2coa1,
+        ucb0i2coa2,
+        ucb0i2coa3,
+        ucb0addrx,
         ucb0addmask,
-        ucb0i2csa, 
+        ucb0i2csa,
         ucb0ie,
-        ucb0ifg_i2c, 
-        ucb0iv, 
+        ucb0ifg_i2c,
+        ucb0iv,
         crate::pac::usci_b0_i2c_mode::ucb0ifg_i2c::R,
     );
 
@@ -166,7 +174,7 @@ pub const INFO_MEM_SIZE: usize = 512;
 
 /* PWM */
 mod pwm {
-    use crate::{pac::*, gpio::*, pwm::*};
+    use crate::{gpio::*, pac::*, pwm::*};
 
     // TA0
     impl PwmPeriph<CCR1> for Timer0A3 {
@@ -197,8 +205,8 @@ mod pwm {
 
 /* Serial */
 mod serial {
-    use crate::{pac::*, gpio::*, hw_traits::eusci::*, serial::*};
-    
+    use crate::{gpio::*, hw_traits::eusci::*, pac::*, serial::*};
+
     eusci_uart_impl!(
         UsciA0UartMode,
         uca0ctlw0,
@@ -266,42 +274,42 @@ mod serial {
 
 /* SPI */
 mod spi {
-    use crate::{pac::*, gpio::*, hw_traits::eusci::*, spi::*};
+    use crate::{gpio::*, hw_traits::eusci::*, pac::*, spi::*};
 
     eusci_spi_impl!(
         UsciA0SpiMode,
-        uca0ctlw0_spi, 
-        uca0brw_spi, 
-        uca0statw_spi, 
-        uca0rxbuf_spi, 
-        uca0txbuf_spi, 
-        uca0ie_spi, 
-        uca0ifg_spi, 
-        uca0iv_spi, 
+        uca0ctlw0_spi,
+        uca0brw_spi,
+        uca0statw_spi,
+        uca0rxbuf_spi,
+        uca0txbuf_spi,
+        uca0ie_spi,
+        uca0ifg_spi,
+        uca0iv_spi,
         crate::pac::usci_a0_spi_mode::uca0statw_spi::R
     );
     eusci_spi_impl!(
         UsciA1SpiMode,
-        uca1ctlw0_spi, 
-        uca1brw_spi, 
-        uca1statw_spi, 
-        uca1rxbuf_spi, 
-        uca1txbuf_spi, 
-        uca1ie_spi, 
-        uca1ifg_spi, 
-        uca1iv_spi, 
+        uca1ctlw0_spi,
+        uca1brw_spi,
+        uca1statw_spi,
+        uca1rxbuf_spi,
+        uca1txbuf_spi,
+        uca1ie_spi,
+        uca1ifg_spi,
+        uca1iv_spi,
         crate::pac::usci_a1_spi_mode::uca1statw_spi::R
     );
     eusci_spi_impl!(
         UsciB0SpiMode,
-        ucb0ctlw0_spi, 
-        ucb0brw_spi, 
-        ucb0statw_spi, 
-        ucb0rxbuf_spi, 
-        ucb0txbuf_spi, 
-        ucb0ie_spi, 
-        ucb0ifg_spi, 
-        ucb0iv_spi, 
+        ucb0ctlw0_spi,
+        ucb0brw_spi,
+        ucb0statw_spi,
+        ucb0rxbuf_spi,
+        ucb0txbuf_spi,
+        ucb0ie_spi,
+        ucb0ifg_spi,
+        ucb0iv_spi,
         crate::pac::usci_b0_spi_mode::ucb0statw_spi::R
     );
 
@@ -375,7 +383,12 @@ mod spi {
 
 /* Timer */
 mod timer {
-    use crate::{pac::{self, *}, gpio::*, timer::*, hw_traits::{Steal, timer_a::*}};
+    use crate::{
+        gpio::*,
+        hw_traits::{timer_a::*, Steal},
+        pac::{self, *},
+        timer::*,
+    };
 
     timer_a_impl!(
         Timer0A3,
@@ -442,7 +455,7 @@ mod timer {
         [CCR0, ta3cctl0, ta3ccr0],
         [CCR1, ta3cctl1, ta3ccr1]
     );
-    
+
     impl TimerPeriph for Timer0A3 {
         type Tbxclk = Pin<P1, Pin0, Alternate2<Input<Floating>>>;
     }

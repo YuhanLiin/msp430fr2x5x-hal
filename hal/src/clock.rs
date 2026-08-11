@@ -10,10 +10,16 @@
 
 use core::arch::asm;
 
+pub use crate::_pac::cs::csctl5::{Divm as MclkDiv, Divs as SmclkDiv};
+use crate::_pac::{
+    self,
+    cs::{
+        csctl1::Dcorsel,
+        csctl4::{Sela, Selms},
+    },
+};
 use crate::delay::SysDelay;
 use crate::fram::{Fram, WaitStates};
-use crate::_pac::{self, cs::{csctl1::Dcorsel, csctl4::{Sela, Selms}}};
-pub use crate::_pac::cs::csctl5::{Divm as MclkDiv, Divs as SmclkDiv};
 
 /// REFOCLK frequency
 pub const REFOCLK_FREQ_HZ: u16 = 32768;
@@ -157,16 +163,12 @@ pub trait SmclkState {
 
 impl SmclkState for SmclkDefined {
     #[inline(always)]
-    fn div(&self) -> Option<SmclkDiv> {
-        Some(self.0)
-    }
+    fn div(&self) -> Option<SmclkDiv> { Some(self.0) }
 }
 
 impl SmclkState for SmclkDisabled {
     #[inline(always)]
-    fn div(&self) -> Option<SmclkDiv> {
-        None
-    }
+    fn div(&self) -> Option<SmclkDiv> { None }
 }
 
 /// Builder object that configures system clocks
@@ -225,19 +227,13 @@ impl<MCLK, SMCLK> ClockConfig<MCLK, SMCLK> {
     /// Select REFOCLK for MCLK and set the MCLK divider. Frequency is `32_768 / mclk_div` Hz.
     #[inline]
     pub fn mclk_refoclk(self, mclk_div: MclkDiv) -> ClockConfig<MclkDefined, SMCLK> {
-        ClockConfig {
-            mclk_div,
-            ..make_clkconf!(self, MclkDefined(MclkSel::Refoclk), self.smclk)
-        }
+        ClockConfig { mclk_div, ..make_clkconf!(self, MclkDefined(MclkSel::Refoclk), self.smclk) }
     }
 
     /// Select VLOCLK for MCLK and set the MCLK divider. Frequency is `10_000 / mclk_div` Hz.
     #[inline]
     pub fn mclk_vloclk(self, mclk_div: MclkDiv) -> ClockConfig<MclkDefined, SMCLK> {
-        ClockConfig {
-            mclk_div,
-            ..make_clkconf!(self, MclkDefined(MclkSel::Vloclk), self.smclk)
-        }
+        ClockConfig { mclk_div, ..make_clkconf!(self, MclkDefined(MclkSel::Vloclk), self.smclk) }
     }
 
     /// Select DCOCLK for MCLK with FLL for stabilization. Frequency is `target_freq / mclk_div` Hz.
@@ -289,14 +285,10 @@ impl<SMCLK: SmclkState> ClockConfig<MclkDefined, SMCLK> {
 
             self.periph.csctl3().write(|w| w.selref().refoclk());
             self.periph.csctl0().write(|w| unsafe { w.bits(0) });
-            self.periph
-                .csctl1()
-                .write(|w| w.dcorsel().variant(target_freq.dcorsel()));
-            self.periph.csctl2().write(|w| {
-                unsafe { w.flln().bits(target_freq.multiplier() - 1) }
-                    .flld()
-                    ._1()
-            });
+            self.periph.csctl1().write(|w| w.dcorsel().variant(target_freq.dcorsel()));
+            self.periph.csctl2().write(|w| unsafe { w
+                .flln().bits(target_freq.multiplier() - 1) }
+                .flld()._1());
 
             msp430::asm::nop();
             msp430::asm::nop();
@@ -311,12 +303,9 @@ impl<SMCLK: SmclkState> ClockConfig<MclkDefined, SMCLK> {
     #[inline]
     fn configure_cs(&self) {
         // Configure clock selector and divisors
-        self.periph.csctl4().write(|w| {
-            w.sela()
-                .variant(self.aclk_sel.sela())
-                .selms()
-                .variant(self.mclk.0.selms())
-        });
+        self.periph.csctl4().write(|w| w
+                .sela().variant(self.aclk_sel.sela())
+                .selms().variant(self.mclk.0.selms()));
 
         self.periph.csctl5().write(|w| {
             let w = w.vloautooff().set_bit().divm().variant(self.mclk_div);
@@ -391,16 +380,12 @@ impl Clock for Smclk {
     /// tasks such as computing baud rates, which should be optimized away, avoiding the extra cost
     /// of 32-bit computations.
     #[inline]
-    fn freq(&self) -> u32 {
-        self.0
-    }
+    fn freq(&self) -> u32 { self.0 }
 }
 
 impl Clock for Aclk {
     type Freq = u16;
 
     #[inline]
-    fn freq(&self) -> u16 {
-        self.0
-    }
+    fn freq(&self) -> u16 { self.0 }
 }

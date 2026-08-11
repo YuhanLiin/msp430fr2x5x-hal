@@ -1,12 +1,12 @@
 //! Real time counter
 //!
 //! Can be used as a periodic 16-bit timer.
-//! 
+//!
 //! Supports using SMCLK or VLOCLK as clock sources (ACLK and XT1CLK not yet supported).
 
+use crate::_pac::{self, rtc::rtcctl::Rtcss};
 use crate::clock::Smclk;
 use core::{convert::Infallible, marker::PhantomData};
-use crate::_pac::{self, rtc::rtcctl::Rtcss};
 
 mod sealed {
     use super::*;
@@ -46,10 +46,7 @@ pub struct Rtc<SRC: RtcClockSrc> {
 impl Rtc<RtcVloclk> {
     /// Convert into RTC object with VLOCLK as clock source
     pub fn new(rtc: _pac::Rtc) -> Self {
-        Rtc {
-            periph: rtc,
-            _src: PhantomData,
-        }
+        Rtc { periph: rtc, _src: PhantomData }
     }
 }
 
@@ -60,28 +57,22 @@ impl<SRC: RtcClockSrc> Rtc<SRC> {
     /// is started.
     #[inline]
     pub fn use_smclk(self, _smclk: &Smclk) -> Rtc<RtcSmclk> {
-        Rtc {
-            periph: self.periph,
-            _src: PhantomData,
-        }
+        Rtc { periph: self.periph, _src: PhantomData }
     }
 
     /// Configure the RTC to use VLOCLK as clock source. Setting comes in effect the next time RTC
     /// is started.
     #[inline]
     pub fn use_vloclk(self) -> Rtc<RtcVloclk> {
-        Rtc {
-            periph: self.periph,
-            _src: PhantomData,
-        }
+        Rtc { periph: self.periph, _src: PhantomData }
     }
 
     /// Set RTC clock frequency divider
     #[inline]
     pub fn set_clk_div(&mut self, div: RtcDiv) {
-        self.periph
-            .rtcctl()
-            .modify(|r, w| unsafe { w.bits(r.bits()) }.rtcps().variant(div));
+        self.periph.rtcctl().modify(|r, w| unsafe { w
+            .bits(r.bits()) }
+            .rtcps().variant(div));
     }
 
     /// Enable RTC timer interrupts
@@ -98,30 +89,22 @@ impl<SRC: RtcClockSrc> Rtc<SRC> {
 
     /// Clear interrupt flag
     #[inline]
-    pub fn clear_interrupt(&mut self) {
-        self.periph.rtciv().read();
-    }
+    pub fn clear_interrupt(&mut self) { self.periph.rtciv().read(); }
 
     /// Read current timer count, which goes up from 0 to 2^16-1
     #[inline]
-    pub fn get_count(&self) -> u16 {
-        self.periph.rtccnt().read().bits()
-    }
+    pub fn get_count(&self) -> u16 { self.periph.rtccnt().read().bits() }
 
     #[inline]
     /// Clear the timer contents and start the timer counting up to `count`.
     pub fn start(&mut self, count: u16) {
-        self.periph
-            .rtcmod()
-            .write(|w| unsafe { w.bits(count) });
+        self.periph.rtcmod().write(|w| unsafe { w.bits(count) });
         // Need to clear interrupt flag from last timer run
         self.periph.rtciv().read();
         self.periph.rtcctl().modify(|r, w| {
             unsafe { w.bits(r.bits()) }
-                .rtcss()
-                .variant(SRC::CLK_SRC)
-                .rtcsr()
-                .set_bit()
+            .rtcss().variant(SRC::CLK_SRC)
+            .rtcsr().set_bit()
         });
     }
 
@@ -139,22 +122,17 @@ impl<SRC: RtcClockSrc> Rtc<SRC> {
     #[inline]
     /// Pauses the timer.
     pub fn pause(&mut self) {
+        // Bit pattern is all 0s, so we can use clear instead of modify
         unsafe {
-            self.periph
-                .rtcctl()
-                // Bit pattern is all 0s, so we can use clear instead of modify
-                .clear_bits(|w| w.rtcss().variant(Rtcss::Disabled))
+            self.periph.rtcctl().clear_bits(|w| w
+                .rtcss().variant(Rtcss::Disabled))
         };
     }
 
     #[inline]
     /// Resumes counting from the previous value.
     pub fn resume(&mut self) {
-        unsafe {
-            self.periph
-                .rtcctl()
-                .set_bits(|w| w.rtcss().variant(SRC::CLK_SRC))
-        }
+        unsafe { self.periph.rtcctl().set_bits(|w| w.rtcss().variant(SRC::CLK_SRC)) }
     }
 }
 
@@ -168,9 +146,7 @@ mod ehal02 {
         type Time = u16;
 
         #[inline]
-        fn start<T: Into<Self::Time>>(&mut self, count: T) {
-            self.start(count.into())
-        }
+        fn start<T: Into<Self::Time>>(&mut self, count: T) { self.start(count.into()) }
 
         #[inline]
         fn wait(&mut self) -> nb::Result<(), Void> {

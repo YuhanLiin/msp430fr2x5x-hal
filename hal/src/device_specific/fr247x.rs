@@ -6,9 +6,9 @@ pub use msp430fr247x as _pac;
 pub mod gpio {
     // Make PAC GPIO avilable as a re-export
     pub use crate::pac::{P1, P2, P3, P4, P5, P6};
-    
+
     use crate::gpio::*;
-    use crate::hw_traits::gpio::gpio_impl; 
+    use crate::hw_traits::gpio::gpio_impl;
 
     // Define alternate pin transitions
 
@@ -68,10 +68,9 @@ pub mod gpio {
     impl<DIR> ToAlternate2 for Pin<P4, Pin5, DIR> {}
     impl<DIR> ToAlternate2 for Pin<P4, Pin6, DIR> {}
     impl<DIR> ToAlternate2 for Pin<P4, Pin7, DIR> {}
-    // P4 alternate 3    
+    // P4 alternate 3
     impl<DIR> ToAlternate3 for Pin<P4, Pin3, DIR> {}
     impl<DIR> ToAlternate3 for Pin<P4, Pin4, DIR> {}
-
 
     // P5 alternate 1
     impl<PIN: PinNum, DIR> ToAlternate1 for Pin<P5, PIN, DIR> {}
@@ -106,7 +105,7 @@ pub mod gpio {
 
 /* ADC */
 mod adc {
-    use crate::{gpio::*, adc::*};
+    use crate::{adc::*, gpio::*};
 
     impl_adc_channel_pin!(P1, Pin0, Alternate3 => 0);
     impl_adc_channel_pin!(P1, Pin1, Alternate3 => 1);
@@ -203,22 +202,21 @@ mod capture {
 /// MODCLK frequency
 pub const MODCLK_FREQ_HZ: u32 = 5_000_000;
 
-
 /* eCOMP */
 pub mod ecomp {
     use core::convert::Infallible;
 
-    use crate::{gpio::*, ecomp::*};
     use crate::hw_traits::ecomp::*;
-    use crate::pac::{EComp0};
-   
+    use crate::pac::EComp0;
+    use crate::{ecomp::*, gpio::*};
+
     impl ECompInputs for EComp0 {
         type COMPx_0   = Pin<P1, Pin1, Alternate3<Input<Floating>>>;
         type COMPx_1   = Pin<P2, Pin2, Alternate3<Input<Floating>>>;
         type COMPx_2   = Pin<P5, Pin7, Alternate3<Input<Floating>>>;
         type COMPx_3   = Pin<P6, Pin0, Alternate3<Input<Floating>>>;
         type COMPx_Out = Pin<P3, Pin4, Alternate2<Output>>;
-              
+
         type DeviceSpecific0    = (); // Internal 1.2V reference. No type required.
         type DeviceSpecific1    = Infallible; // Not used
         type DeviceSpecific2Pos = Infallible; // Not used
@@ -226,7 +224,7 @@ pub mod ecomp {
         type DeviceSpecific3Pos = Infallible; // Not used
         type DeviceSpecific3Neg = Infallible; // Not used
     }
-    
+
     /// List of possible inputs to the positive input of an eCOMP comparator.
     /// The amplifier output and DAC options take a reference to ensure they have been configured.
     #[allow(non_camel_case_types)]
@@ -250,12 +248,12 @@ pub mod ecomp {
         #[inline(always)]
         pub(crate) fn cppsel(&self) -> u8 {
             match self {
-                PositiveInput::COMPx_0(_)   => 0b000,
-                PositiveInput::COMPx_1(_)   => 0b001,
-                PositiveInput::COMPx_2(_)   => 0b011,
-                PositiveInput::COMPx_3(_)   => 0b100,
-                PositiveInput::_1V2         => 0b010,
-                PositiveInput::Dac(_)       => 0b110,
+                PositiveInput::COMPx_0(_) => 0b000,
+                PositiveInput::COMPx_1(_) => 0b001,
+                PositiveInput::COMPx_2(_) => 0b011,
+                PositiveInput::COMPx_3(_) => 0b100,
+                PositiveInput::_1V2       => 0b010,
+                PositiveInput::Dac(_)     => 0b110,
             }
         }
     }
@@ -281,27 +279,25 @@ pub mod ecomp {
         #[inline(always)]
         pub(crate) fn cpnsel(&self) -> u8 {
             match self {
-                NegativeInput::COMPx_0(_)   => 0b000,
-                NegativeInput::COMPx_1(_)   => 0b001,
-                NegativeInput::COMPx_2(_)   => 0b011,
-                NegativeInput::COMPx_3(_)   => 0b100,
-                NegativeInput::_1V2         => 0b010,
-                NegativeInput::Dac(_)       => 0b110,
+                NegativeInput::COMPx_0(_) => 0b000,
+                NegativeInput::COMPx_1(_) => 0b001,
+                NegativeInput::COMPx_2(_) => 0b011,
+                NegativeInput::COMPx_3(_) => 0b100,
+                NegativeInput::_1V2       => 0b010,
+                NegativeInput::Dac(_)     => 0b110,
             }
         }
     }
 
-    impl_ecomp!(
-        EComp0,
-        cp0ctl0, cp0ctl1,
-        cp0dacctl, cp0dacdata,
-        cpint, cpiv
-    );
+    impl_ecomp!(EComp0, cp0ctl0, cp0ctl1, cp0dacctl, cp0dacdata, cpint, cpiv);
 }
 
 /* eUSCI */
 mod eusci {
-    use crate::{pac::*, hw_traits::{Steal, eusci::*}};
+    use crate::{
+        hw_traits::{eusci::*, Steal},
+        pac::*,
+    };
 
     eusci_steal_impl!(EUsciA0);
     eusci_steal_impl!(EUsciA1);
@@ -311,7 +307,13 @@ mod eusci {
 
 /* I2C */
 mod i2c {
-    use crate::{gpio::*, hw_traits::eusci::*, i2c::{I2cUsci, impl_i2c_pin}, pac::*, pin_mapping::*};
+    use crate::{
+        gpio::*,
+        hw_traits::eusci::*,
+        i2c::{impl_i2c_pin, I2cUsci},
+        pac::*,
+        pin_mapping::*,
+    };
 
     eusci_i2c_impl!(
         EUsciB0,
@@ -363,7 +365,6 @@ mod i2c {
     pub struct UsciB0SCLPinRemapped;
     impl_i2c_pin!(UsciB0SCLPinRemapped, P4, Pin5);
 
-
     /// I2C SDA pin for eUSCI B0 (default mapping)
     pub struct UsciB0SDAPinDefault;
     impl_i2c_pin!(UsciB0SDAPinDefault, P1, Pin2);
@@ -371,7 +372,6 @@ mod i2c {
     /// I2C SDA pin for eUSCI B0 (remapped mapping)
     pub struct UsciB0SDAPinRemapped;
     impl_i2c_pin!(UsciB0SDAPinRemapped, P4, Pin6);
-
 
     /// UCLKI pin for eUSCI B0. Used as an external clock source. (default mapping)
     pub struct UsciB0UCLKIPinDefault;
@@ -381,7 +381,6 @@ mod i2c {
     pub struct UsciB0UCLKIPinRemapped;
     impl_i2c_pin!(UsciB0UCLKIPinRemapped, P5, Pin5);
 
-
     /// I2C SCL pin for eUSCI B1 (default mapping)
     pub struct UsciB1SCLPinDefault;
     impl_i2c_pin!(UsciB1SCLPinDefault, P3, Pin6);
@@ -389,7 +388,6 @@ mod i2c {
     /// I2C SCL pin for eUSCI B1 (remapped mapping)
     pub struct UsciB1SCLPinRemapped;
     impl_i2c_pin!(UsciB1SCLPinRemapped, P4, Pin3);
-
 
     /// I2C SDA pin for eUSCI B1 (default mapping)
     pub struct UsciB1SDAPinDefault;
@@ -399,7 +397,6 @@ mod i2c {
     pub struct UsciB1SDAPinRemapped;
     impl_i2c_pin!(UsciB1SDAPinRemapped, P4, Pin4);
 
-
     /// UCLKI pin for eUSCI B1. Used as an external clock source. (default mapping)
     pub struct UsciB1UCLKIPinDefault;
     impl_i2c_pin!(UsciB1UCLKIPinDefault, P3, Pin5);
@@ -407,7 +404,7 @@ mod i2c {
     /// UCLKI pin for eUSCI B1. Used as an external clock source. (remapped mapping)
     pub struct UsciB1UCLKIPinRemapped;
     impl_i2c_pin!(UsciB1UCLKIPinRemapped, P5, Pin3);
-    
+
     impl I2cUsci<DefaultMapping> for EUsciB0 {
         type ClockPin = UsciB0SCLPinDefault;
         type DataPin = UsciB0SDAPinDefault;
@@ -457,7 +454,7 @@ pub const INFO_MEM_SIZE: usize = 512;
 
 /* PWM */
 mod pwm {
-    use crate::{pac::*, gpio::*, pwm::*};
+    use crate::{gpio::*, pac::*, pwm::*};
 
     // TA0
     impl PwmPeriph<CCR1> for Ta0 {
@@ -592,7 +589,7 @@ mod serial {
             sys.syscfg3().write(|w| w.uscia0rmp().set_bit());
         }
     }
-    
+
     impl SerialUsci for EUsciA1 {
         type ClockPin = UsciA1ClockPin;
         type TxPin = UsciA1TxPin;
@@ -607,7 +604,6 @@ mod serial {
     // Active when the USCIA0RMP remap bit in SYSCFG2/SYSCFG3 is cleared.
     impl_serial_pin!(UsciA0ClockPinDefault, P1, Pin6);
 
-
     /// UCLK pin for E_USCI_A0 (remapped mapping)
     pub struct UsciA0ClockPinRemapped;
     // Alternate pin mapping selected when the USCIA0RMP remap bit is set.
@@ -619,7 +615,6 @@ mod serial {
     // Default transmit pin mapping.
     // Used when the USCIA0RMP remap bit in SYSCFG2/SYSCFG3 is cleared.
     impl_serial_pin!(UsciA0TxPinDefault, P1, Pin4);
-
 
     /// Tx pin for E_USCI_A0 (remapped mapping)
     pub struct UsciA0TxPinRemapped;
@@ -791,7 +786,6 @@ mod spi {
     pub struct UsciA0MISOPinRemapped;
     impl_spi_pin!(UsciA0MISOPinRemapped, P5, Pin1);
 
-
     /// SPI MOSI pin for eUSCI A0 (P1.4) (default mapping)
     pub struct UsciA0MOSIPinDefault;
     impl_spi_pin!(UsciA0MOSIPinDefault, P1, Pin4);
@@ -799,7 +793,6 @@ mod spi {
     /// SPI MOSI pin for eUSCI A0 (P5.2) (remapped mapping)
     pub struct UsciA0MOSIPinRemapped;
     impl_spi_pin!(UsciA0MOSIPinRemapped, P5, Pin2);
-
 
     /// SPI SCLK pin for eUSCI A0 (P1.6) (default mapping)
     pub struct UsciA0SCLKPinDefault;
@@ -809,7 +802,6 @@ mod spi {
     pub struct UsciA0SCLKPinRemapped;
     impl_spi_pin!(UsciA0SCLKPinRemapped, P5, Pin0);
 
-
     /// SPI STE pin for eUSCI A0 (P1.7) (default mapping)
     pub struct UsciA0STEPinDefault;
     impl_spi_pin!(UsciA0STEPinDefault, P1, Pin7);
@@ -817,7 +809,6 @@ mod spi {
     /// SPI STE pin for eUSCI A0 (P4.7) (remapped mapping)
     pub struct UsciA0STEPinRemapped;
     impl_spi_pin!(UsciA0STEPinRemapped, P4, Pin7);
-
 
     /// SPI MISO pin for eUSCI A1 (P2.5) (default mapping)
     pub struct UsciA1MISOPin;
@@ -842,7 +833,6 @@ mod spi {
     pub struct UsciB0MISOPinRemapped;
     impl_spi_pin!(UsciB0MISOPinRemapped, P4, Pin5);
 
-
     /// SPI MOSI pin for eUSCI B0 (P1.3) (default mapping)
     pub struct UsciB0MOSIPinDefault;
     impl_spi_pin!(UsciB0MOSIPinDefault, P1, Pin2);
@@ -850,7 +840,6 @@ mod spi {
     /// SPI MOSI pin for eUSCI A0 (P4.6) (remapped mapping)
     pub struct UsciB0MOSIPinRemapped;
     impl_spi_pin!(UsciB0MOSIPinRemapped, P4, Pin6);
-
 
     /// SPI SCLK pin for eUSCI B0 (P1.1) (default mapping)
     pub struct UsciB0SCLKPinDefault;
@@ -860,7 +849,6 @@ mod spi {
     pub struct UsciB0SCLKPinRemapped;
     impl_spi_pin!(UsciB0SCLKPinRemapped, P5, Pin5);
 
-
     /// SPI STE pin for eUSCI B0 (P1.0) (default mapping)
     pub struct UsciB0STEPinDefault;
     impl_spi_pin!(UsciB0STEPinDefault, P1, Pin0);
@@ -868,7 +856,6 @@ mod spi {
     /// SPI STE pin for eUSCI A0 (P5.6) (remapped mapping)
     pub struct UsciB0STEPinRemapped;
     impl_spi_pin!(UsciB0STEPinRemapped, P5, Pin6);
-
 
     /// SPI MISO pin for eUSCI B1 (P3.2) (default mapping)
     pub struct UsciB1MISOPinDefault;
@@ -878,15 +865,13 @@ mod spi {
     pub struct UsciB1MISOPinRemapped;
     impl_spi_pin!(UsciB1MISOPinRemapped, P4, Pin3);
 
-
     /// SPI MOSI pin for eUSCI B1 (P3.6) (default mapping)
     pub struct UsciB1MOSIPinDefault;
     impl_spi_pin!(UsciB1MOSIPinDefault, P3, Pin2);
-    
+
     /// SPI MOSI pin for eUSCI B1 (P4.4) (remapped mapping)
     pub struct UsciB1MOSIPinRemapped;
     impl_spi_pin!(UsciB1MOSIPinRemapped, P4, Pin4);
-
 
     /// SPI SCLK pin for eUSCI B1 (P3.5) (default mapping)
     pub struct UsciB1SCLKPinDefault;
@@ -895,7 +880,6 @@ mod spi {
     /// SPI SCLK pin for eUSCI B1 (P5.3) (remapped mapping)
     pub struct UsciB1SCLKPinRemapped;
     impl_spi_pin!(UsciB1SCLKPinRemapped, P5, Pin3);
-
 
     /// SPI STE pin for eUSCI B1 (P2.7) (default mapping)
     pub struct UsciB1STEPinDefault;
@@ -908,7 +892,13 @@ mod spi {
 
 /* Timer */
 mod timer {
-    use crate::{gpio::*, hw_traits::{Steal, timer_a::*, timer_b::*}, pac::*, pin_mapping::*, timer::*};
+    use crate::{
+        gpio::*,
+        hw_traits::{timer_a::*, timer_b::*, Steal},
+        pac::*,
+        pin_mapping::*,
+        timer::*,
+    };
 
     timer_a_impl!(
         Ta0,
@@ -998,17 +988,17 @@ mod timer {
         [CCR5, tb0cctl5, tb0ccr5],
         [CCR6, tb0cctl6, tb0ccr6]
     );
-    
+
     impl TimerPeriph for Ta0 {
         type Tbxclk = Pin<P1, Pin0, Alternate2<Input<Floating>>>;
     }
     impl CapCmpTimer3 for Ta0 {}
-    
+
     impl TimerPeriph for Ta1 {
         type Tbxclk = Pin<P1, Pin6, Alternate2<Input<Floating>>>;
     }
     impl CapCmpTimer3 for Ta1 {}
-    
+
     impl TimerPeriph<DefaultMapping> for Ta2 {
         type Tbxclk = Pin<P3, Pin4, Alternate1<Input<Floating>>>;
 
@@ -1027,7 +1017,7 @@ mod timer {
     }
     impl CapCmpTimer3<DefaultMapping> for Ta2 {}
     impl CapCmpTimer3<RemappedMapping> for Ta2 {}
-    
+
     impl TimerPeriph<DefaultMapping> for Ta3 {
         type Tbxclk = Pin<P4, Pin2, Alternate1<Input<Floating>>>;
 
@@ -1035,7 +1025,7 @@ mod timer {
             let sys = unsafe { crate::_pac::Sys::steal() };
             sys.syscfg3().write(|w| w.ta3rmp().clear_bit());
         }
-    }    
+    }
     impl TimerPeriph<RemappedMapping> for Ta3 {
         type Tbxclk = Pin<P5, Pin4, Alternate2<Input<Floating>>>;
 
@@ -1046,7 +1036,7 @@ mod timer {
     }
     impl CapCmpTimer3<DefaultMapping> for Ta3 {}
     impl CapCmpTimer3<RemappedMapping> for Ta3 {}
-    
+
     impl TimerPeriph for Tb0 {
         type Tbxclk = Pin<P2, Pin7, Alternate1<Input<Floating>>>;
     }

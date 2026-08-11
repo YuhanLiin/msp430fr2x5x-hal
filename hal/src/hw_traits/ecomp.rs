@@ -1,5 +1,5 @@
-use crate::{
-    ecomp::{ComparatorDac, BufferSel, DacVRef, FilterStrength, Hysteresis, OutputPolarity, PowerMode}, 
+use crate::ecomp::{
+    BufferSel, ComparatorDac, DacVRef, FilterStrength, Hysteresis, OutputPolarity, PowerMode,
 };
 
 /// Trait that links input and output types to keep business logic device independent.
@@ -42,7 +42,12 @@ pub trait ECompPeriph {
     fn set_dac_buffer_mode(mode: DacBufferMode);
     fn select_buffer(sel: BufferSel);
     fn cpxctl0(pos_in: u8, neg_in: u8);
-    fn configure_comparator(pol: OutputPolarity, pwr: PowerMode, hstr: Hysteresis, fltr: FilterStrength);
+    fn configure_comparator(
+        pol: OutputPolarity,
+        pwr: PowerMode,
+        hstr: Hysteresis,
+        fltr: FilterStrength,
+    );
     fn value() -> bool;
     fn en_cpie();
     fn dis_cpie();
@@ -77,7 +82,6 @@ macro_rules! impl_ecomp {
         $cpctl0: ident, $cpctl1: ident,
         $cpdacctl: ident, $cpdacdata: ident,
         $cpint: ident, $cpiv: ident ) => {
-
         impl ECompPeriph for $COMP {
             #[inline(always)]
             fn cpxdacctl(enable: bool, vref: DacVRef, buf_mode: DacBufferMode, buf: BufferSel) {
@@ -132,7 +136,12 @@ macro_rules! impl_ecomp {
                 }
             }
             #[inline(always)]
-            fn configure_comparator(pol: OutputPolarity, pwr: PowerMode, hstr: Hysteresis, fltr: FilterStrength) {
+            fn configure_comparator(
+                pol: OutputPolarity,
+                pwr: PowerMode,
+                hstr: Hysteresis,
+                fltr: FilterStrength,
+            ) {
                 unsafe {
                     let comp = $COMP::steal();
                     comp.$cpctl1().modify(|_, w| w

@@ -40,7 +40,8 @@
 //! | eUSCI_B1 | `P4.7` | `P4.6` | `P4.5` | `P4.4`|
 use crate::{
     clock::{Aclk, Smclk},
-    hw_traits::eusci::{EusciSPI, Ucmode, Ucssel, UcxSpiCtw0}, pin_mapping::*,
+    hw_traits::eusci::{EusciSPI, Ucmode, Ucssel, UcxSpiCtw0},
+    pin_mapping::*,
 };
 use core::{convert::Infallible, marker::PhantomData};
 use nb::Error::WouldBlock;
@@ -60,7 +61,7 @@ pub trait SpiUsci<M: PinMap = DefaultMapping>: EusciSPI {
 
     /// Additional configuration
     #[inline(always)]
-    fn configure_pin_mapping() { }
+    fn configure_pin_mapping() {}
 }
 
 // Allows a GPIO pin to be converted into an SPI object
@@ -68,9 +69,7 @@ macro_rules! impl_spi_pin {
     ($struct_name: ident, $port: ty, $pin: ty) => {
         impl<DIR> From<Pin<$port, $pin, Alternate1<DIR>>> for $struct_name {
             #[inline(always)]
-            fn from(_val: Pin<$port, $pin, Alternate1<DIR>>) -> Self {
-                $struct_name
-            }
+            fn from(_val: Pin<$port, $pin, Alternate1<DIR>>) -> Self { $struct_name }
         }
     };
 }
@@ -85,8 +84,7 @@ pub struct Slave;
 
 /// Configuration object for an eUSCI peripheral being set up for SPI mode.
 pub struct SpiConfig<USCI, ROLE, M: PinMap = DefaultMapping>
-where
-    USCI: SpiUsci<M>,
+where USCI: SpiUsci<M>
 {
     usci: USCI,
     ctlw0: UcxSpiCtw0,
@@ -127,22 +125,45 @@ where
     pub fn to_slave(mut self) -> SpiConfig<USCI, Slave, M> {
         self.ctlw0.ucmst = false;
         // UCSSEL is 'don't care' in slave mode
-        SpiConfig { usci: self.usci, prescaler: self.prescaler, ctlw0: self.ctlw0, _phantom: PhantomData }
+        SpiConfig {
+            usci: self.usci,
+            prescaler: self.prescaler,
+            ctlw0: self.ctlw0,
+            _phantom: PhantomData,
+        }
     }
     /// This device will act as a master on the SPI bus, deriving SCLK from SMCLK.
-    pub fn to_master_using_smclk(mut self, _smclk: &Smclk, clk_div: u16) -> SpiConfig<USCI, Master, M> {
+    pub fn to_master_using_smclk(
+        mut self,
+        _smclk: &Smclk,
+        clk_div: u16,
+    ) -> SpiConfig<USCI, Master, M> {
         self.ctlw0.ucmst = true;
         self.ctlw0.ucssel = Ucssel::Smclk;
         self.prescaler = clk_div;
-        SpiConfig { usci: self.usci, prescaler: self.prescaler, ctlw0: self.ctlw0, _phantom: PhantomData }
+        SpiConfig {
+            usci: self.usci,
+            prescaler: self.prescaler,
+            ctlw0: self.ctlw0,
+            _phantom: PhantomData,
+        }
     }
     #[cfg(feature = "eusci_aclk")]
     /// This device will act as a master on the SPI bus, deriving SCLK from ACLK.
-    pub fn to_master_using_aclk(mut self, _aclk: &Aclk, clk_div: u16) -> SpiConfig<USCI, Master, M> {
+    pub fn to_master_using_aclk(
+        mut self,
+        _aclk: &Aclk,
+        clk_div: u16,
+    ) -> SpiConfig<USCI, Master, M> {
         self.ctlw0.ucmst = true;
         self.ctlw0.ucssel = Ucssel::DeviceSpecific;
         self.prescaler = clk_div;
-        SpiConfig { usci: self.usci, prescaler: self.prescaler, ctlw0: self.ctlw0, _phantom: PhantomData }
+        SpiConfig {
+            usci: self.usci,
+            prescaler: self.prescaler,
+            ctlw0: self.ctlw0,
+            _phantom: PhantomData,
+        }
     }
     #[cfg(feature = "eusci_modclk")]
     /// This device will act as a master on the SPI bus, deriving SCLK from MODCLK.
@@ -150,7 +171,12 @@ where
         self.ctlw0.ucmst = true;
         self.ctlw0.ucssel = Ucssel::DeviceSpecific;
         self.prescaler = clk_div;
-        SpiConfig { usci: self.usci, prescaler: self.prescaler, ctlw0: self.ctlw0, _phantom: PhantomData }
+        SpiConfig {
+            usci: self.usci,
+            prescaler: self.prescaler,
+            ctlw0: self.ctlw0,
+            _phantom: PhantomData,
+        }
     }
 }
 
@@ -170,8 +196,17 @@ where
     // }
     /// For an SPI bus with a single master.
     /// SCLK and MOSI are always outputs. The STE pin is not required.
-    pub fn single_master_bus<MOSI, MISO, SCLK>(mut self, _miso: MISO, _mosi: MOSI, _sclk: SCLK) -> Spi<USCI, M>
-    where MOSI: Into<USCI::MOSI>, MISO: Into<USCI::MISO>, SCLK: Into<USCI::SCLK> {
+    pub fn single_master_bus<MOSI, MISO, SCLK>(
+        mut self,
+        _miso: MISO,
+        _mosi: MOSI,
+        _sclk: SCLK,
+    ) -> Spi<USCI, M>
+    where
+        MOSI: Into<USCI::MOSI>,
+        MISO: Into<USCI::MISO>,
+        SCLK: Into<USCI::SCLK>,
+    {
         self.ctlw0.ucmode = Ucmode::ThreePinSPI;
         self.configure_hw();
         Spi { usci: self.usci, _pin_map: PhantomData }
@@ -184,8 +219,20 @@ where
 {
     /// For an SPI bus with more than one slave.
     /// The STE pin is used to turn MISO high impedance, so other slaves can talk on the bus.
-    pub fn shared_bus<MOSI, MISO, SCLK, STE>(mut self, _miso: MISO, _mosi: MOSI, _sclk: SCLK, _ste: STE, ste_pol: StePolarity) -> SpiSlave<USCI, M> 
-    where MOSI: Into<USCI::MOSI>, MISO: Into<USCI::MISO>, SCLK: Into<USCI::SCLK>, STE: Into<USCI::STE> {
+    pub fn shared_bus<MOSI, MISO, SCLK, STE>(
+        mut self,
+        _miso: MISO,
+        _mosi: MOSI,
+        _sclk: SCLK,
+        _ste: STE,
+        ste_pol: StePolarity,
+    ) -> SpiSlave<USCI, M>
+    where
+        MOSI: Into<USCI::MOSI>,
+        MISO: Into<USCI::MISO>,
+        SCLK: Into<USCI::SCLK>,
+        STE: Into<USCI::STE>,
+    {
         self.ctlw0.ucmode = match ste_pol {
             StePolarity::EnabledWhenHigh => Ucmode::FourPinSPI1,
             StePolarity::EnabledWhenLow  => Ucmode::FourPinSPI0,
@@ -194,9 +241,18 @@ where
         SpiSlave { usci: self.usci, _pin_map: PhantomData }
     }
     /// For an SPI bus where this device is the only slave.
-    /// MOSI is always an output. 
-    pub fn exclusive_bus<MOSI, MISO, SCLK>(mut self, _miso: MISO, _mosi: MOSI, _sclk: SCLK) -> SpiSlave<USCI, M> 
-    where MOSI: Into<USCI::MOSI>, MISO: Into<USCI::MISO>, SCLK: Into<USCI::SCLK> {
+    /// MOSI is always an output.
+    pub fn exclusive_bus<MOSI, MISO, SCLK>(
+        mut self,
+        _miso: MISO,
+        _mosi: MOSI,
+        _sclk: SCLK,
+    ) -> SpiSlave<USCI, M>
+    where
+        MOSI: Into<USCI::MOSI>,
+        MISO: Into<USCI::MISO>,
+        SCLK: Into<USCI::SCLK>,
+    {
         self.ctlw0.ucmode = Ucmode::ThreePinSPI;
         self.configure_hw();
         SpiSlave { usci: self.usci, _pin_map: PhantomData }
@@ -236,36 +292,26 @@ macro_rules! spi_common {
     () => {
         /// Enable Rx interrupts, which fire when a byte is ready to be read
         #[inline(always)]
-        pub fn set_rx_interrupt(&mut self) {
-            self.usci.set_receive_interrupt();
-        }
+        pub fn set_rx_interrupt(&mut self) { self.usci.set_receive_interrupt(); }
 
         /// Disable Rx interrupts, which fire when a byte is ready to be read
         #[inline(always)]
-        pub fn clear_rx_interrupt(&mut self) {
-            self.usci.clear_receive_interrupt();
-        }
+        pub fn clear_rx_interrupt(&mut self) { self.usci.clear_receive_interrupt(); }
 
         /// Enable Tx interrupts, which fire when the transmit buffer is empty
         #[inline(always)]
-        pub fn set_tx_interrupt(&mut self) {
-            self.usci.set_transmit_interrupt();
-        }
+        pub fn set_tx_interrupt(&mut self) { self.usci.set_transmit_interrupt(); }
 
         /// Disable Tx interrupts, which fire when the transmit buffer is empty
         #[inline(always)]
-        pub fn clear_tx_interrupt(&mut self) {
-            self.usci.clear_transmit_interrupt();
-        }
+        pub fn clear_tx_interrupt(&mut self) { self.usci.clear_transmit_interrupt(); }
 
         /// Write a byte into the Tx buffer, without checking if the Tx buffer is empty. Returns immediately.
         /// Useful if you already know the buffer is empty (e.g. a Tx interrupt was triggered)
         /// # Safety
         /// May clobber previous unsent data if the TXIFG bit is not set.
         #[inline(always)]
-        pub unsafe fn write_unchecked(&mut self, val: u8) {
-            self.usci.txbuf_wr(val)
-        }
+        pub unsafe fn write_unchecked(&mut self, val: u8) { self.usci.txbuf_wr(val) }
 
         /// Read the byte in the Rx buffer, without checking if the Rx buffer is ready.
         /// Useful when you already know the buffer is ready (e.g. an Rx interrupt was triggered).
@@ -326,8 +372,7 @@ pub enum SpiVector {
 
 /// Represents a group of pins configured for SPI communication
 pub struct Spi<USCI, M: PinMap = DefaultMapping>
-where
-    USCI: SpiUsci<M>,
+where USCI: SpiUsci<M>
 {
     usci: USCI,
     _pin_map: PhantomData<M>,
@@ -352,8 +397,7 @@ where
 
 /// An eUSCI peripheral that has been configured into an SPI slave.
 pub struct SpiSlave<USCI, M: PinMap = DefaultMapping>
-where
-    USCI: SpiUsci<M>,
+where USCI: SpiUsci<M>
 {
     usci: USCI,
     _pin_map: PhantomData<M>,
@@ -367,15 +411,11 @@ where
 
     /// Try to read from the Rx buffer. Returns `nb::WouldBlock` if the buffer is empty.
     #[inline(always)]
-    pub fn read(&mut self) -> nb::Result<u8, SpiErr> {
-        self.recv_byte()
-    }
+    pub fn read(&mut self) -> nb::Result<u8, SpiErr> { self.recv_byte() }
 
     /// Try to write a byte into the Tx buffer. Returns `nb::WouldBlock` if the buffer is still full. Returns immediately.
     #[inline(always)]
-    pub fn write(&mut self, byte: u8) -> nb::Result<(), Infallible> {
-        self.send_byte(byte)
-    }
+    pub fn write(&mut self, byte: u8) -> nb::Result<(), Infallible> { self.send_byte(byte) }
 }
 
 /// SPI transmit/receive errors
@@ -386,9 +426,7 @@ pub enum SpiErr {
     Overrun(u8),
 }
 impl From<Infallible> for SpiErr {
-    fn from(value: Infallible) -> Self {
-        match value {}
-    }
+    fn from(value: Infallible) -> Self { match value {} }
 }
 
 mod ehal1 {
@@ -485,14 +523,12 @@ mod ehal_nb1 {
     use super::*;
     use embedded_hal_nb::{nb, spi::FullDuplex};
 
-    impl<USCI, M> FullDuplex<u8> for Spi<USCI, M>    
+    impl<USCI, M> FullDuplex<u8> for Spi<USCI, M>
     where
         USCI: SpiUsci<M>,
         M: PinMap,
     {
-        fn read(&mut self) -> nb::Result<u8, Self::Error> {
-            self.recv_byte()
-        }
+        fn read(&mut self) -> nb::Result<u8, Self::Error> { self.recv_byte() }
 
         fn write(&mut self, word: u8) -> nb::Result<(), Self::Error> {
             self.send_byte(word).map_err(map_infallible)
@@ -511,9 +547,7 @@ mod ehal02 {
         M: PinMap,
     {
         type Error = SpiErr;
-        fn read(&mut self) -> nb::Result<u8, Self::Error> {
-            self.recv_byte()
-        }
+        fn read(&mut self) -> nb::Result<u8, Self::Error> { self.recv_byte() }
 
         fn send(&mut self, word: u8) -> nb::Result<(), Self::Error> {
             self.send_byte(word).map_err(map_infallible)

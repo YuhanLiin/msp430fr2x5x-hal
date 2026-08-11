@@ -48,7 +48,6 @@ pub trait PwmPeriph<C>: CapCmp<C> + CapCmp<CCR0> {
     }
 }
 
-
 fn setup_pwm<T: TimerPeriph<M>, M: PinMap>(timer: &T, config: TimerConfig<T, M>, period: u16) {
     config.write_regs(timer);
     CCRn::<CCR0>::set_ccrn(timer, period);
@@ -73,11 +72,7 @@ impl<T: CapCmpTimer3<M>, M: PinMap> PwmParts3<T, M> {
         CCRn::<CCR2>::config_outmod(&timer, Outmod::ResetSet);
         // Start the timer to run PWM
         timer.upmode();
-        Self {
-            pwm1: PwmUninit::new(),
-            pwm2: PwmUninit::new(),
-            _pin_map: PhantomData,
-        }
+        Self { pwm1: PwmUninit::new(), pwm2: PwmUninit::new(), _pin_map: PhantomData }
     }
 }
 
@@ -130,19 +125,13 @@ impl<T: PwmPeriph<C>, C> PwmUninit<T, C> {
     /// Initializes the PWM pin by passing in the appropriately configured GPIO pin.
     #[inline]
     pub fn init(self, pin: T::Gpio) -> Pwm<T, C> {
-        Pwm {
-            _timer: PhantomData,
-            _ccrn: PhantomData,
-            pin,
-        }
+        Pwm { _timer: PhantomData, _ccrn: PhantomData, pin }
     }
 }
 
 impl<T, C> PwmUninit<T, C> {
     #[inline]
-    fn new() -> Self {
-        Self(PhantomData, PhantomData)
-    }
+    fn new() -> Self { Self(PhantomData, PhantomData) }
 }
 
 /// An initialized Pwm pin
@@ -213,13 +202,9 @@ mod ehal02 {
         }
 
         #[inline]
-        fn disable(&mut self) {
-            T::to_gpio(&mut self.pin);
-        }
+        fn disable(&mut self) { T::to_gpio(&mut self.pin); }
 
         #[inline]
-        fn enable(&mut self) {
-            T::to_alt(&mut self.pin);
-        }
+        fn enable(&mut self) { T::to_alt(&mut self.pin); }
     }
 }

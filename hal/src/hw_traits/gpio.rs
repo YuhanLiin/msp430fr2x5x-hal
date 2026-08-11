@@ -63,24 +63,16 @@ pub trait IntrPeriph: GpioPeriph {
 macro_rules! reg_methods {
     ($reg:ident, $rd:ident, $wr:ident, $set:ident, $clear:ident) => {
         #[inline(always)]
-        fn $rd(&self) -> u8 {
-            self.$reg().read().bits()
-        }
+        fn $rd(&self) -> u8 { self.$reg().read().bits() }
 
         #[inline(always)]
-        fn $wr(&self, bits: u8) {
-            self.$reg().write(|w| unsafe { w.bits(bits) });
-        }
+        fn $wr(&self, bits: u8) { self.$reg().write(|w| unsafe { w.bits(bits) }); }
 
         #[inline(always)]
-        fn $set(&self, bits: u8) {
-            unsafe { self.$reg().set_bits(|w| w.bits(bits)) }
-        }
+        fn $set(&self, bits: u8) { unsafe { self.$reg().set_bits(|w| w.bits(bits)) } }
 
         #[inline(always)]
-        fn $clear(&self, bits: u8) {
-            unsafe { self.$reg().clear_bits(|w| w.bits(bits)) }
-        }
+        fn $clear(&self, bits: u8) { unsafe { self.$reg().clear_bits(|w| w.bits(bits)) } }
     };
 }
 pub(crate) use reg_methods;

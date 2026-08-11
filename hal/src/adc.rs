@@ -22,9 +22,12 @@
 //! reference to [`InternalVRef`] or [`InternalTempSensor`] respectively. Channels 14 and 15 require no prior
 //! configuration, so the two functions below provide a reference that can be used to read from these channels.
 
-use crate::{clock::{Aclk, Smclk}, pmm::{InternalTempSensor, InternalVRef}};
-use core::convert::Infallible;
 use crate::_pac;
+use crate::{
+    clock::{Aclk, Smclk},
+    pmm::{InternalTempSensor, InternalVRef},
+};
+use core::convert::Infallible;
 
 #[cfg(feature = "embedded-hal-02")]
 pub use embedded_hal_02::adc::Channel;
@@ -104,9 +107,7 @@ pub enum SampleTime {
 
 impl SampleTime {
     #[inline(always)]
-    fn adcsht(self) -> u8 {
-        self as u8
-    }
+    fn adcsht(self) -> u8 { self as u8 }
 }
 
 /// How much the ADC input clock will be divided by after being divided by the predivider
@@ -135,9 +136,7 @@ pub enum ClockDivider {
 
 impl ClockDivider {
     #[inline(always)]
-    fn adcdiv(self) -> u8 {
-        self as u8
-    }
+    fn adcdiv(self) -> u8 { self as u8 }
 }
 
 #[derive(Default, Copy, Clone, PartialEq, Eq)]
@@ -153,9 +152,7 @@ enum ClockSource {
 
 impl ClockSource {
     #[inline(always)]
-    fn adcssel(self) -> u8 {
-        self as u8
-    }
+    fn adcssel(self) -> u8 { self as u8 }
 }
 
 /// How much the ADC input clock will be divided by prior to being divided by the ADC clock divider
@@ -174,9 +171,7 @@ pub enum Predivider {
 
 impl Predivider {
     #[inline(always)]
-    fn adcpdiv(self) -> u8 {
-        self as u8
-    }
+    fn adcpdiv(self) -> u8 { self as u8 }
 }
 
 /// The output resolution of the ADC conversion. Also determines how many ADCCLK cycles the conversion step takes.
@@ -196,9 +191,7 @@ pub enum Resolution {
 
 impl Resolution {
     #[inline(always)]
-    fn adcres(self) -> u8 {
-        self as u8
-    }
+    fn adcres(self) -> u8 { self as u8 }
 }
 
 /// Selects the drive capability of the ADC reference buffer, which can increase the maximum sampling speed at the cost of increased power draw.
@@ -229,9 +222,7 @@ macro_rules! impl_adc_channel_pin {
         impl<DIR> Channel<Adc> for Pin<$port, $pin, $mode<DIR>> {
             type ID = u8;
 
-            fn channel() -> Self::ID {
-                $channel
-            }
+            fn channel() -> Self::ID { $channel }
         }
         // If the device doesn't have SAC, then ADC functionality is done via ADCPCTLx instead of Alternate1/2/3.
         // Implement this for all modes
@@ -249,9 +240,7 @@ macro_rules! impl_adc_channel_extra {
         impl Channel<Adc> for $type {
             type ID = u8;
 
-            fn channel() -> Self::ID {
-                $channel
-            }
+            fn channel() -> Self::ID { $channel }
         }
     };
 }
@@ -395,10 +384,7 @@ impl AdcConfig<ClockSet> {
             .adcsr().bit(adcsr) 
         }});
 
-        Adc {
-            adc_reg,
-            is_waiting: false,
-        }
+        Adc { adc_reg, is_waiting: false }
     }
 }
 
@@ -415,9 +401,7 @@ impl Adc {
     }
 
     /// Gets the latest ADC conversion result.
-    pub fn adc_get_result(&self) -> u16 {
-        self.adc_reg.adcmem0().read().bits()
-    }
+    pub fn adc_get_result(&self) -> u16 { self.adc_reg.adcmem0().read().bits() }
 
     /// Enables this ADC, ready to start conversions.
     pub fn enable(&mut self) {
@@ -427,18 +411,14 @@ impl Adc {
     }
 
     /// Disables this ADC to save power.
-    pub fn disable(&mut self) {
-        disable_adc_reg(&mut self.adc_reg);
-    }
+    pub fn disable(&mut self) { disable_adc_reg(&mut self.adc_reg); }
 
     /// Selects which pin to sample.
     fn set_pin<PIN>(&mut self, _pin: &PIN)
-    where
-        PIN: Channel<Self, ID = u8>,
-    {
-        self.adc_reg
-            .adcmctl0()
-            .modify(|_, w| unsafe { w.adcinch().bits(PIN::channel()) });
+    where PIN: Channel<Self, ID = u8> {
+        self.adc_reg.adcmctl0().modify(|_, w|
+            unsafe { w.adcinch().bits(PIN::channel()) }
+        );
     }
 
     /// Starts an ADC conversion.
@@ -454,9 +434,7 @@ impl Adc {
     ///
     /// If the result is ready it is returned as an ADC count, otherwise returns `WouldBlock`
     pub fn read_count<PIN>(&mut self, pin: &mut PIN) -> nb::Result<u16, Infallible>
-    where
-        PIN: Channel<Self, ID = u8>,
-    {
+    where PIN: Channel<Self, ID = u8> {
         if self.is_waiting {
             if self.adc_is_busy() {
                 return Err(nb::Error::WouldBlock);
@@ -493,7 +471,11 @@ impl Adc {
     /// If the result is ready it is returned as a voltage in millivolts based on `ref_voltage_mv`, otherwise returns `WouldBlock`.
     ///
     /// If you instead want a raw count you should use the `.read_count()` method.
-    pub fn read_voltage_mv<PIN: Channel<Self, ID = u8>>(&mut self, pin: &mut PIN, ref_voltage_mv: u16) -> nb::Result<u16, Infallible> {
+    pub fn read_voltage_mv<PIN: Channel<Self, ID = u8>>(
+        &mut self,
+        pin: &mut PIN,
+        ref_voltage_mv: u16,
+    ) -> nb::Result<u16, Infallible> {
         self.read_count(pin).map(|count| self.count_to_mv(count, ref_voltage_mv))
     }
 }
@@ -512,8 +494,7 @@ mod ehal02 {
     use embedded_hal_02::adc::{Channel, OneShot};
 
     impl<PIN> OneShot<Adc, u16, PIN> for Adc
-    where
-        PIN: Channel<Self, ID = u8>,
+    where PIN: Channel<Self, ID = u8>
     {
         type Error = Infallible; // Only returns WouldBlock
 
@@ -521,8 +502,6 @@ mod ehal02 {
         ///
         /// If the result is ready it is returned as an ADC count, otherwise returns `WouldBlock`
         #[inline(always)]
-        fn read(&mut self, pin: &mut PIN) -> nb::Result<u16, Self::Error> {
-            self.read_count(pin)
-        }
+        fn read(&mut self, pin: &mut PIN) -> nb::Result<u16, Self::Error> { self.read_count(pin) }
     }
 }

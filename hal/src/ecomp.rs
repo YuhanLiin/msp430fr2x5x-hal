@@ -34,9 +34,12 @@
 //! | eCOMP0 | SAC0 | SAC1 | `P1.0`  | `P1.1`  | `P2.0`   |
 //! | eCOMP1 | SAC2 | SAC3 | `P2.5`  | `P2.4`  | `P2.1`   |
 
+pub use crate::device_specific::ecomp::{NegativeInput, PositiveInput};
+use crate::{
+    hw_traits::ecomp::{DacBufferMode, ECompInputs},
+    pmm::InternalVRef,
+};
 use core::marker::PhantomData;
-use crate::{hw_traits::ecomp::{DacBufferMode, ECompInputs}, pmm::InternalVRef};
-pub use crate::device_specific::ecomp::{PositiveInput, NegativeInput};
 
 /// Struct representing a configuration for an enhanced comparator (eCOMP) module.
 pub struct ECompConfig<COMP: ECompInputs>(PhantomData<COMP>);
@@ -51,16 +54,17 @@ impl<COMP: ECompInputs> ECompConfig<COMP> {
 /// A configuration for the comparator in an eCOMP module
 pub struct ComparatorConfig<COMP: ECompInputs, MODE>(PhantomData<COMP>, PhantomData<MODE>);
 impl<COMP: ECompInputs> ComparatorConfig<COMP, NoModeSet> {
-    /// Configure the comparator with the provided settings and turn it on 
+    /// Configure the comparator with the provided settings and turn it on
     #[inline(always)]
-    pub fn configure(self, 
-        pos_in: PositiveInput<COMP>, 
-        neg_in: NegativeInput<COMP>, 
-        pol: OutputPolarity, 
-        pwr: PowerMode, 
-        hstr: Hysteresis, 
-        fltr: FilterStrength) -> ComparatorConfig<COMP, ModeSet> {
-
+    pub fn configure(
+        self,
+        pos_in: PositiveInput<COMP>,
+        neg_in: NegativeInput<COMP>,
+        pol: OutputPolarity,
+        pwr: PowerMode,
+        hstr: Hysteresis,
+        fltr: FilterStrength,
+    ) -> ComparatorConfig<COMP, ModeSet> {
         COMP::cpxctl0(pos_in.cppsel(), neg_in.cpnsel());
         COMP::configure_comparator(pol, pwr, hstr, fltr);
         ComparatorConfig(PhantomData, PhantomData)
@@ -74,9 +78,7 @@ impl<COMP: ECompInputs> ComparatorConfig<COMP, ModeSet> {
     }
     /// Do not route the comparator output to its GPIO pin
     #[inline(always)]
-    pub fn no_output_pin(self) -> Comparator<COMP> {
-        Comparator(PhantomData)
-    }
+    pub fn no_output_pin(self) -> Comparator<COMP> { Comparator(PhantomData) }
 }
 
 /// Struct representing a configured eCOMP comparator.
@@ -84,39 +86,31 @@ pub struct Comparator<COMP: ECompInputs>(PhantomData<COMP>);
 impl<COMP: ECompInputs> Comparator<COMP> {
     /// The current value of the comparator output
     #[inline(always)]
-    pub fn value(&mut self) -> bool {
-        COMP::value()
-    }
+    pub fn value(&mut self) -> bool { COMP::value() }
+
     /// Whether the current value of the comparator output is high
     #[inline(always)]
-    pub fn is_high(&mut self) -> bool {
-        COMP::value()
-    }
+    pub fn is_high(&mut self) -> bool { COMP::value() }
+
     /// Whether the current value of the comparator output is low
     #[inline(always)]
-    pub fn is_low(&mut self) -> bool {
-        !COMP::value()
-    }
+    pub fn is_low(&mut self) -> bool { !COMP::value() }
+
     /// Enable rising-edge interrupts (CPIFG).
     #[inline(always)]
-    pub fn enable_rising_interrupts(&mut self) {
-        COMP::en_cpie();
-    }
+    pub fn enable_rising_interrupts(&mut self) { COMP::en_cpie(); }
+
     /// Disable rising-edge interrupts (CPIFG).
     #[inline(always)]
-    pub fn disable_rising_interrupts(&mut self) {
-        COMP::dis_cpie();
-    }
+    pub fn disable_rising_interrupts(&mut self) { COMP::dis_cpie(); }
+
     /// Enable falling-edge interrupts (CPIIFG).
     #[inline(always)]
-    pub fn enable_falling_interrupts(&mut self) {
-        COMP::en_cpiie();
-    }
+    pub fn enable_falling_interrupts(&mut self) { COMP::en_cpiie(); }
+
     /// Disable falling-edge interrupts (CPIIFG).
     #[inline(always)]
-    pub fn disable_falling_interrupts(&mut self) {
-        COMP::dis_cpiie();
-    }
+    pub fn disable_falling_interrupts(&mut self) { COMP::dis_cpiie(); }
 }
 
 /// Represents a configuration for the DAC in an eCOMP peripheral
@@ -149,34 +143,28 @@ pub struct ComparatorDac<'a, COMP: ECompInputs, MODE> {
 impl<COMP: ECompInputs, MODE> ComparatorDac<'_, COMP, MODE> {
     /// Set the value in buffer 1 (CPDACBUF1)
     #[inline(always)]
-    pub fn write_buffer_1(&mut self, count: u8) {
-        COMP::set_buf1_val(count);
-    }
+    pub fn write_buffer_1(&mut self, count: u8) { COMP::set_buf1_val(count); }
     /// Set the value in buffer 2 (CPDACBUF2)
     #[inline(always)]
-    pub fn write_buffer_2(&mut self, count: u8) {
-        COMP::set_buf2_val(count);
-    }
+    pub fn write_buffer_2(&mut self, count: u8) { COMP::set_buf2_val(count); }
 }
 impl<'a, COMP: ECompInputs> ComparatorDac<'a, COMP, SwDualBuffer> {
     /// Consume this DAC and return a DAC in the hardware dual buffer mode
     #[inline(always)]
     pub fn into_hw_buffer_mode(self) -> ComparatorDac<'a, COMP, HwDualBuffer> {
         COMP::set_dac_buffer_mode(DacBufferMode::Hardware);
-        ComparatorDac{ reg: PhantomData, mode: PhantomData, vref_lifetime: PhantomData }
+        ComparatorDac { reg: PhantomData, mode: PhantomData, vref_lifetime: PhantomData }
     }
     /// Select which buffer is passed to the DAC
     #[inline(always)]
-    pub fn select_buffer(&mut self, buf: BufferSel) {
-        COMP::select_buffer(buf);
-    }
+    pub fn select_buffer(&mut self, buf: BufferSel) { COMP::select_buffer(buf); }
 }
 impl<'a, COMP: ECompInputs> ComparatorDac<'a, COMP, HwDualBuffer> {
     /// Consume this DAC and return a DAC in the software dual buffer mode
     #[inline(always)]
     pub fn into_sw_buffer_mode(self) -> ComparatorDac<'a, COMP, SwDualBuffer> {
         COMP::set_dac_buffer_mode(DacBufferMode::Software);
-        ComparatorDac{ reg: PhantomData, mode: PhantomData, vref_lifetime: PhantomData }
+        ComparatorDac { reg: PhantomData, mode: PhantomData, vref_lifetime: PhantomData }
     }
 }
 
@@ -262,15 +250,15 @@ impl From<PowerMode> for bool {
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum FilterStrength {
     /// Typical delay of 450 ns (in high speed mode).
-    Low         = 0b00,
+    Low      = 0b00,
     /// Typical delay of 900 ns (in high speed mode).
-    Medium      = 0b01,
+    Medium   = 0b01,
     /// Typical delay of 1800 ns (in high speed mode).
-    High        = 0b10,
+    High     = 0b10,
     /// Typical delay of 3600 ns (in high speed mode).
-    VeryHigh    = 0b11,
+    VeryHigh = 0b11,
     /// Do not use the low pass filter.
-    Off         = 0b100,
+    Off      = 0b100,
 }
 
 /// Output polarity of the comparator

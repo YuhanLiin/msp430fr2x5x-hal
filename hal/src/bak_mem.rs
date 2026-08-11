@@ -18,10 +18,12 @@ pub struct BackupMemory;
 
 macro_rules! as_x {
     ($fn_name: ident, $arr: ty) => {
-        #[doc = "Interpret the backup memory as a `&mut"] #[doc = stringify!($arr)] #[doc = "`. See also: [BAK_MEM_SIZE]"]
+        #[doc = "Interpret the backup memory as a `&mut"]
+        #[doc = stringify!($arr)]
+        #[doc = "`. See also: [BAK_MEM_SIZE]"]
         #[inline(always)]
         pub fn $fn_name(_reg: Bkmem) -> &'static mut $arr {
-            const { assert!( core::mem::size_of::<$arr>() == BAK_MEM_SIZE ) }
+            const { assert!(core::mem::size_of::<$arr>() == BAK_MEM_SIZE) }
             unsafe { &mut *(Bkmem::PTR as *mut $arr) }
         }
     };

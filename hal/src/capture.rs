@@ -45,10 +45,7 @@ struct PinConfig {
 
 impl Default for PinConfig {
     fn default() -> Self {
-        Self {
-            select: Ccis::Gnd,
-            trigger: CapTrigger::RisingEdge,
-        }
+        Self { select: Ccis::Gnd, trigger: CapTrigger::RisingEdge }
     }
 }
 
@@ -153,27 +150,9 @@ where
     T: CapturePeriph<M> + CapCmpTimer3<M>,
     M: PinMap,
 {
-    config_fn!(
-        config_cap0_input_A,
-        config_cap0_input_B,
-        config_cap0_trigger,
-        cap0,
-        Gpio0
-    );
-    config_fn!(
-        config_cap1_input_A,
-        config_cap1_input_B,
-        config_cap1_trigger,
-        cap1,
-        Gpio1
-    );
-    config_fn!(
-        config_cap2_input_A,
-        config_cap2_input_B,
-        config_cap2_trigger,
-        cap2,
-        Gpio2
-    );
+    config_fn!(config_cap0_input_A, config_cap0_input_B, config_cap0_trigger, cap0, Gpio0);
+    config_fn!(config_cap1_input_A, config_cap1_input_B, config_cap1_trigger, cap1, Gpio1);
+    config_fn!(config_cap2_input_A, config_cap2_input_B, config_cap2_trigger, cap2, Gpio2);
 
     /// Writes all previously configured timer and capture settings into peripheral registers
     pub fn commit(self) -> CaptureParts3<T, M> {
@@ -242,55 +221,13 @@ where
     T: CapturePeriph<M> + CapCmpTimer7<M>,
     M: PinMap,
 {
-    config_fn!(
-        config_cap0_input_A,
-        config_cap0_input_B,
-        config_cap0_trigger,
-        cap0,
-        Gpio0
-    );
-    config_fn!(
-        config_cap1_input_A,
-        config_cap1_input_B,
-        config_cap1_trigger,
-        cap1,
-        Gpio1
-    );
-    config_fn!(
-        config_cap2_input_A,
-        config_cap2_input_B,
-        config_cap2_trigger,
-        cap2,
-        Gpio2
-    );
-    config_fn!(
-        config_cap3_input_A,
-        config_cap3_input_B,
-        config_cap3_trigger,
-        cap3,
-        Gpio3
-    );
-    config_fn!(
-        config_cap4_input_A,
-        config_cap4_input_B,
-        config_cap4_trigger,
-        cap4,
-        Gpio4
-    );
-    config_fn!(
-        config_cap5_input_A,
-        config_cap5_input_B,
-        config_cap5_trigger,
-        cap5,
-        Gpio5
-    );
-    config_fn!(
-        config_cap6_input_A,
-        config_cap6_input_B,
-        config_cap6_trigger,
-        cap6,
-        Gpio6
-    );
+    config_fn!(config_cap0_input_A, config_cap0_input_B, config_cap0_trigger, cap0, Gpio0);
+    config_fn!(config_cap1_input_A, config_cap1_input_B, config_cap1_trigger, cap1, Gpio1);
+    config_fn!(config_cap2_input_A, config_cap2_input_B, config_cap2_trigger, cap2, Gpio2);
+    config_fn!(config_cap3_input_A, config_cap3_input_B, config_cap3_trigger, cap3, Gpio3);
+    config_fn!(config_cap4_input_A, config_cap4_input_B, config_cap4_trigger, cap4, Gpio4);
+    config_fn!(config_cap5_input_A, config_cap5_input_B, config_cap5_trigger, cap5, Gpio5);
+    config_fn!(config_cap6_input_A, config_cap6_input_B, config_cap6_trigger, cap6, Gpio6);
 
     /// Writes all previously configured timer and capture settings into peripheral registers
     pub fn commit(self) -> CaptureParts7<T, M> {
@@ -362,9 +299,7 @@ where
 pub struct Capture<T: CapCmp<C>, C>(PhantomData<T>, PhantomData<C>);
 
 impl<T: CapCmp<C>, C> Capture<T, C> {
-    fn new() -> Self {
-        Self(PhantomData, PhantomData)
-    }
+    fn new() -> Self { Self(PhantomData, PhantomData) }
 }
 
 // Candidate for embedded_hal inclusion
