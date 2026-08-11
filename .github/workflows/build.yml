@@ -10,6 +10,7 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         rust_toolchain: [nightly, nightly-2024-09-01]
         device: [msp430fr2355, msp430fr2476, msp430fr2433, msp430fr2522]
