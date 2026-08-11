@@ -12,7 +12,7 @@
 //! every pin in every configuration can be converted to every alternate functionality.
 //!
 //! For devices that expose ADC functionality through the ADCPCTLx bits, a special ADC mode is provided instead.
-//! 
+//!
 //! [`datasheet`]: http://www.ti.com/lit/ds/symlink/msp430fr2355.pdf
 
 pub use crate::batch_gpio::*;
@@ -145,19 +145,11 @@ pub struct Pin<PORT: PortNum, PIN: PinNum, DIR> {
 
 macro_rules! make_pin {
     () => {
-        Pin {
-            _port: PhantomData,
-            _pin: PhantomData,
-            _dir: PhantomData,
-        }
+        Pin { _port: PhantomData, _pin: PhantomData, _dir: PhantomData }
     };
 
     ($dir:ty) => {
-        Pin::<_, _, $dir> {
-            _port: PhantomData,
-            _pin: PhantomData,
-            _dir: PhantomData,
-        }
+        Pin::<_, _, $dir> { _port: PhantomData, _pin: PhantomData, _dir: PhantomData }
     };
 }
 
@@ -484,8 +476,7 @@ pub trait ToAdcPctl: crate::adc::AdcPctlCapable {
 }
 
 impl<PORT: PortNum, PIN: PinNum, DIR: GpioFunction> Pin<PORT, PIN, DIR>
-where
-    Self: ToAlternate1,
+where Self: ToAlternate1
 {
     /// Convert pin to GPIO alternate function 1
     #[inline]
@@ -496,8 +487,7 @@ where
 }
 
 impl<PORT: PortNum, PIN: PinNum, DIR: GpioFunction> Pin<PORT, PIN, DIR>
-where
-    Self: ToAlternate2,
+where Self: ToAlternate2
 {
     /// Convert pin to GPIO alternate function 2
     #[inline]
@@ -508,8 +498,7 @@ where
 }
 
 impl<PORT: PortNum, PIN: PinNum, DIR: GpioFunction> Pin<PORT, PIN, DIR>
-where
-    Self: ToAlternate3,
+where Self: ToAlternate3
 {
     /// Convert pin to GPIO alternate function 3
     #[inline]
@@ -530,8 +519,7 @@ impl<PORT: PortNum, PIN: PinNum, DIR> Pin<PORT, PIN, Alternate1<DIR>> {
 }
 
 impl<PORT: PortNum, PIN: PinNum, DIR> Pin<PORT, PIN, Alternate1<DIR>>
-where
-    Self: ToAlternate2,
+where Self: ToAlternate2
 {
     /// Convert pin to alternate function 2
     #[inline]
@@ -542,8 +530,7 @@ where
 }
 
 impl<PORT: PortNum, PIN: PinNum, DIR> Pin<PORT, PIN, Alternate1<DIR>>
-where
-    Self: ToAlternate3,
+where Self: ToAlternate3
 {
     /// Convert pin to alternate function 3
     #[inline]
@@ -564,8 +551,7 @@ impl<PORT: PortNum, PIN: PinNum, DIR> Pin<PORT, PIN, Alternate2<DIR>> {
 }
 
 impl<PORT: PortNum, PIN: PinNum, DIR> Pin<PORT, PIN, Alternate2<DIR>>
-where
-    Self: ToAlternate1,
+where Self: ToAlternate1
 {
     /// Convert pin to alternate function 1
     #[inline]
@@ -576,8 +562,7 @@ where
 }
 
 impl<PORT: PortNum, PIN: PinNum, DIR> Pin<PORT, PIN, Alternate2<DIR>>
-where
-    Self: ToAlternate3,
+where Self: ToAlternate3
 {
     /// Convert pin to alternate function 3
     #[inline]
@@ -598,8 +583,7 @@ impl<PORT: PortNum, PIN: PinNum, DIR> Pin<PORT, PIN, Alternate3<DIR>> {
 }
 
 impl<PORT: PortNum, PIN: PinNum, DIR> Pin<PORT, PIN, Alternate3<DIR>>
-where
-    Self: ToAlternate1,
+where Self: ToAlternate1
 {
     /// Convert pin to alternate function 1
     #[inline]
@@ -610,8 +594,7 @@ where
 }
 
 impl<PORT: PortNum, PIN: PinNum, DIR> Pin<PORT, PIN, Alternate3<DIR>>
-where
-    Self: ToAlternate2,
+where Self: ToAlternate2
 {
     /// Convert pin to alternate function 2
     #[inline]
@@ -623,8 +606,7 @@ where
 
 #[cfg(feature = "adcpctl")]
 impl<PORT: PortNum, PIN: PinNum, MODE> Pin<PORT, PIN, MODE>
-where
-    Self: ToAdcPctl,
+where Self: ToAdcPctl
 {
     /// Convert pin to ADC mode (ADCPCTL set)
     #[inline]
@@ -636,8 +618,7 @@ where
 
 #[cfg(feature = "adcpctl")]
 impl<PORT: PortNum, PIN: PinNum, MODE> Pin<PORT, PIN, AdcMode<MODE>>
-where
-    Self: ToAdcPctl,
+where Self: ToAdcPctl
 {
     /// Return pin to the mode it was in prior to ADCPCTL mode
     #[inline]
@@ -664,9 +645,7 @@ mod ehal1 {
         }
 
         #[inline]
-        fn is_low(&mut self) -> Result<bool, Self::Error> {
-            self.is_high().map(|r| !r)
-        }
+        fn is_low(&mut self) -> Result<bool, Self::Error> { self.is_high().map(|r| !r) }
     }
 
     impl<PORT: PortNum, PIN: PinNum> OutputPin for Pin<PORT, PIN, Output> {
@@ -693,9 +672,7 @@ mod ehal1 {
         }
 
         #[inline]
-        fn is_set_low(&mut self) -> Result<bool, Self::Error> {
-            self.is_set_high().map(|r| !r)
-        }
+        fn is_set_low(&mut self) -> Result<bool, Self::Error> { self.is_set_high().map(|r| !r) }
 
         #[inline]
         fn toggle(&mut self) -> Result<(), Self::Error> {
@@ -709,7 +686,9 @@ mod ehal1 {
 #[cfg(feature = "embedded-hal-02")]
 mod ehal02 {
     use super::*;
-    use embedded_hal_02::digital::v2::{InputPin, OutputPin, StatefulOutputPin, ToggleableOutputPin};
+    use embedded_hal_02::digital::v2::{
+        InputPin, OutputPin, StatefulOutputPin, ToggleableOutputPin,
+    };
 
     impl<PORT: PortNum, PIN: PinNum, PULL> InputPin for Pin<PORT, PIN, Input<PULL>> {
         type Error = void::Void;
@@ -721,9 +700,7 @@ mod ehal02 {
         }
 
         #[inline]
-        fn is_low(&self) -> Result<bool, Self::Error> {
-            self.is_high().map(|r| !r)
-        }
+        fn is_low(&self) -> Result<bool, Self::Error> { self.is_high().map(|r| !r) }
     }
 
     impl<PORT: PortNum, PIN: PinNum> OutputPin for Pin<PORT, PIN, Output> {
@@ -752,9 +729,7 @@ mod ehal02 {
         }
 
         #[inline]
-        fn is_set_low(&self) -> Result<bool, Self::Error> {
-            self.is_set_high().map(|r| !r)
-        }
+        fn is_set_low(&self) -> Result<bool, Self::Error> { self.is_set_high().map(|r| !r) }
     }
 
     impl<PORT: PortNum, PIN: PinNum> ToggleableOutputPin for Pin<PORT, PIN, Output> {

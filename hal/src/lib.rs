@@ -1,14 +1,14 @@
-//! A collection of peripheral drivers for the [MSP430FR2xxx/4xxx](http://www.ti.com/lit/ug/slau445i/slau445i.pdf) 
+//! A collection of peripheral drivers for the [MSP430FR2xxx/4xxx](http://www.ti.com/lit/ug/slau445i/slau445i.pdf)
 //! family of microcontrollers with implementations of [`embedded_hal`] traits.
 //!
 //! As of this writing, the only supported MCUs are the MSP430FR2x5x series and the MSP430FR2433.
-//! Support for more devices is welcome. See the readme in the repository for information about how to 
+//! Support for more devices is welcome. See the readme in the repository for information about how to
 //! add support for a new device.
-//! 
+//!
 //! The documentation on docs.rs is built for the MSP430FR2355. To build the documentation for your device instead,
 //! add this crate as a dependency to your project (see: [Feature Flags](#feature-flags)) then run `cargo doc --open --package msp430fr2x5x-hal`.
 //! The repository contains such projects for various devices under `device_examples/`.
-//! 
+//!
 //! [`embedded_hal`]: https://github.com/rust-embedded/embedded-hal
 //!
 //! # Usage
@@ -20,36 +20,34 @@
 //!
 //! # Examples
 //!
-//! The `device-examples/` directory in the repository contains projects for various supported devices, each containing a typical 
-//! project structure and a number of examples that show how to use the HAL abstractions. These examples typically target the relevant dev board, 
+//! The `device-examples/` directory in the repository contains projects for various supported devices, each containing a typical
+//! project structure and a number of examples that show how to use the HAL abstractions. These examples typically target the relevant dev board,
 //! such as the MSP-EXP430FR2355 for the MSP430FR2355.
-//! 
+//!
 //! To flash the examples, make sure you have `mspdebug` with `tilib` support installed and in
 //! $PATH. Invoke `cargo run --example whatever` from within the relevant project folder with the board plugged and the scripts should do
 //! the trick, assuming your host is Linux and you are connected via Launchpad.
 //!
 //! # Feature Flags
 //!
-//! Exactly one device feature must be enabled to specify which microcontroller is present. 
+//! Exactly one device feature must be enabled to specify which microcontroller is present.
 //! More info can be found in the repository README.
-//! 
+//!
 //! An implementation of the pre-1.0 version of embedded-hal (e.g. 0.2.7 at time of writing) is
 //! available behind the `embedded-hal-02` feature flag. These traits are implemented on the same
 //! structs as the current embedded-hal implementation, so with this feature enabled you may mix and
 //! match crates that require the pre-1.0 version with those that require the latest version. It isn't enabled by
 //! default, as many of the trait names are similar (or identical) to their counterparts in the current
 //! version, which can be confusing.
-//! 
+//!
 //! Support for defmt is available behind the `defmt` feature.
 
 #![no_std]
 #![allow(incomplete_features)] // Enable specialization without warnings
 #![feature(specialization)]
 #![feature(asm_experimental_arch)]
-
 #![allow(stable_features)] // Feature flags used on older compiler versions
 #![feature(const_option)]
-
 #![deny(missing_docs)]
 
 pub mod bak_mem;
@@ -84,11 +82,11 @@ pub mod i2c;
 pub mod info_mem;
 
 #[cfg(feature = "sac")]
-#[path="sac_l3.rs"]
+#[path = "sac_l3.rs"]
 pub mod sac;
 
 #[cfg(feature = "sac_l1")]
-#[path="sac_l1.rs"]
+#[path = "sac_l1.rs"]
 pub mod sac;
 
 mod device_specific;

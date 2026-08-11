@@ -27,58 +27,40 @@ pub struct PinProxy<PORT: PortNum, PIN: PinNum, DIR> {
 
 macro_rules! make_proxy {
     () => {
-        PinProxy {
-            _port: PhantomData,
-            _pin: PhantomData,
-            _dir: PhantomData,
-        }
+        PinProxy { _port: PhantomData, _pin: PhantomData, _dir: PhantomData }
     };
 }
 
 impl<PORT: PortNum, PIN: PinNum, PULL> PinProxy<PORT, PIN, Input<PULL>> {
     /// Configures pin as pulldown input
     #[inline(always)]
-    pub fn pulldown(self) -> PinProxy<PORT, PIN, Input<Pulldown>> {
-        make_proxy!()
-    }
+    pub fn pulldown(self) -> PinProxy<PORT, PIN, Input<Pulldown>> { make_proxy!() }
 
     /// Configures pin as pullup input
     #[inline(always)]
-    pub fn pullup(self) -> PinProxy<PORT, PIN, Input<Pullup>> {
-        make_proxy!()
-    }
+    pub fn pullup(self) -> PinProxy<PORT, PIN, Input<Pullup>> { make_proxy!() }
 
     /// Configures pin as floating input
     #[inline(always)]
-    pub fn floating(self) -> PinProxy<PORT, PIN, Input<Floating>> {
-        make_proxy!()
-    }
+    pub fn floating(self) -> PinProxy<PORT, PIN, Input<Floating>> { make_proxy!() }
 
     /// Configures pin as output
     #[inline(always)]
-    pub fn to_output(self) -> PinProxy<PORT, PIN, Output> {
-        make_proxy!()
-    }
+    pub fn to_output(self) -> PinProxy<PORT, PIN, Output> { make_proxy!() }
 }
 
 impl<PORT: PortNum, PIN: PinNum> PinProxy<PORT, PIN, Output> {
     /// Configures pin as floating input
     #[inline(always)]
-    pub fn to_input_floating(self) -> PinProxy<PORT, PIN, Input<Floating>> {
-        make_proxy!()
-    }
+    pub fn to_input_floating(self) -> PinProxy<PORT, PIN, Input<Floating>> { make_proxy!() }
 
     /// Configures pin as floating pullup
     #[inline(always)]
-    pub fn to_input_pullup(self) -> PinProxy<PORT, PIN, Input<Pullup>> {
-        make_proxy!()
-    }
+    pub fn to_input_pullup(self) -> PinProxy<PORT, PIN, Input<Pullup>> { make_proxy!() }
 
     /// Configures pin as floating pulldown
     #[inline(always)]
-    pub fn to_input_pulldown(self) -> PinProxy<PORT, PIN, Input<Pulldown>> {
-        make_proxy!()
-    }
+    pub fn to_input_pulldown(self) -> PinProxy<PORT, PIN, Input<Pulldown>> { make_proxy!() }
 }
 
 // The transitions between GPIO / alternate modes all have the same shape, we'll make a macro for them.
@@ -88,19 +70,16 @@ macro_rules! pinproxy_transition {
         impl<PORT: PortNum, PIN: PinNum, DIR: GpioFunction> PinProxy<PORT, PIN, $from> {
             #[doc = $desc]
             #[inline(always)]
-            pub fn $fn_name(self) -> PinProxy<PORT, PIN, $into> {
-                make_proxy!()
-            }
+            pub fn $fn_name(self) -> PinProxy<PORT, PIN, $into> { make_proxy!() }
         }
     };
     ($from:ty : $trait:path => $into:ty, $fn_name:ident(), $desc:literal) => {
-        impl<PORT: PortNum, PIN: PinNum, DIR: GpioFunction> PinProxy<PORT, PIN, $from> 
-        where Pin<PORT, PIN, DIR>: $trait {
+        impl<PORT: PortNum, PIN: PinNum, DIR: GpioFunction> PinProxy<PORT, PIN, $from>
+        where Pin<PORT, PIN, DIR>: $trait
+        {
             #[doc = $desc]
             #[inline(always)]
-            pub fn $fn_name(self) -> PinProxy<PORT, PIN, $into> {
-                make_proxy!()
-            }
+            pub fn $fn_name(self) -> PinProxy<PORT, PIN, $into> { make_proxy!() }
         }
     };
 }
@@ -146,15 +125,11 @@ trait WritePxdir {
 }
 impl<T> WritePxdir for T {
     #[inline(always)]
-    default fn pxdir_on(&self) -> bool {
-        false
-    }
+    default fn pxdir_on(&self) -> bool { false }
 }
 impl<T: PxdirOn> WritePxdir for T {
     #[inline(always)]
-    fn pxdir_on(&self) -> bool {
-        true
-    }
+    fn pxdir_on(&self) -> bool { true }
 }
 
 // Whether PxOUT is set during config
@@ -164,15 +139,11 @@ trait WritePxoutSet {
 }
 impl<T> WritePxoutSet for T {
     #[inline(always)]
-    default fn pxout_set_on(&self) -> bool {
-        false
-    }
+    default fn pxout_set_on(&self) -> bool { false }
 }
 impl<T: PxoutSet> WritePxoutSet for T {
     #[inline(always)]
-    fn pxout_set_on(&self) -> bool {
-        true
-    }
+    fn pxout_set_on(&self) -> bool { true }
 }
 
 // Whether PxOUT is cleared during config
@@ -182,15 +153,11 @@ trait WritePxoutClr {
 }
 impl<T> WritePxoutClr for T {
     #[inline(always)]
-    default fn pxout_clr_on(&self) -> bool {
-        true
-    }
+    default fn pxout_clr_on(&self) -> bool { true }
 }
 impl<T: PxoutClr> WritePxoutClr for T {
     #[inline(always)]
-    fn pxout_clr_on(&self) -> bool {
-        false
-    }
+    fn pxout_clr_on(&self) -> bool { false }
 }
 
 trait WritePxren {
@@ -198,15 +165,11 @@ trait WritePxren {
 }
 impl<T> WritePxren for T {
     #[inline(always)]
-    default fn pxren_on(&self) -> bool {
-        false
-    }
+    default fn pxren_on(&self) -> bool { false }
 }
 impl<T: PxrenOn> WritePxren for T {
     #[inline(always)]
-    fn pxren_on(&self) -> bool {
-        true
-    }
+    fn pxren_on(&self) -> bool { true }
 }
 
 trait WritePxsel0 {
@@ -214,15 +177,11 @@ trait WritePxsel0 {
 }
 impl<T> WritePxsel0 for T {
     #[inline(always)]
-    default fn pxsel0_on(&self) -> bool {
-        false
-    }
+    default fn pxsel0_on(&self) -> bool { false }
 }
 impl<T: Pxsel0On> WritePxsel0 for T {
     #[inline(always)]
-    fn pxsel0_on(&self) -> bool {
-        true
-    }
+    fn pxsel0_on(&self) -> bool { true }
 }
 
 trait WritePxsel1 {
@@ -230,15 +189,11 @@ trait WritePxsel1 {
 }
 impl<T> WritePxsel1 for T {
     #[inline(always)]
-    default fn pxsel1_on(&self) -> bool {
-        false
-    }
+    default fn pxsel1_on(&self) -> bool { false }
 }
 impl<T: Pxsel1On> WritePxsel1 for T {
     #[inline(always)]
-    fn pxsel1_on(&self) -> bool {
-        true
-    }
+    fn pxsel1_on(&self) -> bool { true }
 }
 
 // Register marker trait implementations
@@ -284,34 +239,22 @@ trait MaskRegisters {
 
 impl<PORT: PortNum, PIN: PinNum, DIR> MaskRegisters for PinProxy<PORT, PIN, DIR> {
     #[inline(always)]
-    fn pxout_set_mask(&self) -> u8 {
-        (self.pxout_set_on() as u8) << PIN::NUM
-    }
+    fn pxout_set_mask(&self) -> u8 { (self.pxout_set_on() as u8) << PIN::NUM }
 
     #[inline(always)]
-    fn pxout_clr_mask(&self) -> u8 {
-        (self.pxout_clr_on() as u8) << PIN::NUM
-    }
+    fn pxout_clr_mask(&self) -> u8 { (self.pxout_clr_on() as u8) << PIN::NUM }
 
     #[inline(always)]
-    fn pxdir_mask(&self) -> u8 {
-        (self.pxdir_on() as u8) << PIN::NUM
-    }
+    fn pxdir_mask(&self) -> u8 { (self.pxdir_on() as u8) << PIN::NUM }
 
     #[inline(always)]
-    fn pxren_mask(&self) -> u8 {
-        (self.pxren_on() as u8) << PIN::NUM
-    }
+    fn pxren_mask(&self) -> u8 { (self.pxren_on() as u8) << PIN::NUM }
 
     #[inline(always)]
-    fn pxsel0_mask(&self) -> u8 {
-        (self.pxsel0_on() as u8) << PIN::NUM
-    }
+    fn pxsel0_mask(&self) -> u8 { (self.pxsel0_on() as u8) << PIN::NUM }
 
     #[inline(always)]
-    fn pxsel1_mask(&self) -> u8 {
-        (self.pxsel1_on() as u8) << PIN::NUM
-    }
+    fn pxsel1_mask(&self) -> u8 { (self.pxsel1_on() as u8) << PIN::NUM }
 }
 
 trait InterruptOperations {
@@ -325,9 +268,7 @@ impl<P: GpioPeriph> InterruptOperations for P {
 
 impl<P: IntrPeriph> InterruptOperations for P {
     #[inline(always)]
-    fn maybe_set_pxie(&self, b: u8) {
-        self.pxie_set(b);
-    }
+    fn maybe_set_pxie(&self, b: u8) { self.pxie_set(b); }
 }
 
 impl<P: PortNum>
@@ -344,9 +285,7 @@ impl<P: PortNum>
     >
 {
     /// Split into a batch of individual GPIO pin proxies
-    pub fn new(_port: P) -> Self {
-        Self::create()
-    }
+    pub fn new(_port: P) -> Self { Self::create() }
 }
 
 /// Collection of proxies for pins 0 to 7 of a specific port, used to commit configurations for
@@ -621,8 +560,7 @@ impl<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
 
     /// Set all pins to inputs with pulldowns. Leaving unused pins as floating massively increases power usage (relatively speaking).
     #[inline(always)]
-    pub fn pulldown_all(self) 
-    -> Batch<PORT, Pd, Pd, Pd, Pd, Pd, Pd, Pd, Pd> {
+    pub fn pulldown_all(self) -> Batch<PORT, Pd, Pd, Pd, Pd, Pd, Pd, Pd, Pd> {
         Batch {
             pin0: make_proxy!(),
             pin1: make_proxy!(),
@@ -637,8 +575,7 @@ impl<PORT: PortNum, DIR0, DIR1, DIR2, DIR3, DIR4, DIR5, DIR6, DIR7>
 
     /// Set all pins to inputs with pullups. Leaving unused pins as floating massively increases power usage (relatively speaking).
     #[inline(always)]
-    pub fn pullup_all(self) 
-    -> Batch<PORT, Pu, Pu, Pu, Pu, Pu, Pu, Pu, Pu> {
+    pub fn pullup_all(self) -> Batch<PORT, Pu, Pu, Pu, Pu, Pu, Pu, Pu, Pu> {
         Batch {
             pin0: make_proxy!(),
             pin1: make_proxy!(),

@@ -13,9 +13,7 @@ pub struct Pmm(_pac::Pmm);
 pub struct InternalVRef(ReferenceVoltage);
 impl InternalVRef {
     /// Get the requested internal reference voltage
-    pub fn voltage(&self) -> ReferenceVoltage {
-        self.0
-    }
+    pub fn voltage(&self) -> ReferenceVoltage { self.0 }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -27,7 +25,7 @@ pub enum ReferenceVoltage {
     #[cfg(feature = "enhanced_ref")]
     /// 2.0V
     _2V0 = 0b01,
-    
+
     #[cfg(feature = "enhanced_ref")]
     /// 2.5V
     _2V5 = 0b10,
@@ -53,7 +51,7 @@ impl Pmm {
             true => None,
             false => {
                 // Unlock PMM registers
-                self.0.pmmctl0().modify(|_, w| w.pmmpw().password() );
+                self.0.pmmctl0().modify(|_, w| w.pmmpw().password());
 
                 self.0.pmmctl2().write(|w| unsafe{ w
                     .bits(pmmctl2.bits()) 
@@ -67,16 +65,21 @@ impl Pmm {
 
     /// Disables the internal reference voltage
     pub fn disable_internal_reference(&mut self, _vref: InternalVRef) {
-        unsafe { self.0.pmmctl2().clear_bits(|w| w.intrefen().clear_bit()); }
+        unsafe {
+            self.0.pmmctl2().clear_bits(|w| w.intrefen().clear_bit());
+        }
     }
 
     /// Enables the internal temperature sensor.
     /// Returns a token signifying that the temp sensor has been enabled, unless it was *already* enabled.
-    pub fn enable_internal_temp_sensor<'a>(&mut self, _vref: &'a InternalVRef) -> Option<InternalTempSensor<'a>> {
+    pub fn enable_internal_temp_sensor<'a>(
+        &mut self,
+        _vref: &'a InternalVRef,
+    ) -> Option<InternalTempSensor<'a>> {
         match self.0.pmmctl2().read().tsensoren().bit() {
             true  => None,
             false => {
-                unsafe { self.0.pmmctl2().set_bits(|w| w.tsensoren().set_bit()); }
+                unsafe { self.0.pmmctl2().set_bits(|w| w.tsensoren().set_bit()) };
                 Some(InternalTempSensor(PhantomData))
             }
         }
@@ -84,6 +87,6 @@ impl Pmm {
 
     /// Disables the internal temperature sensor
     pub fn disable_internal_temp_sensor(&mut self, _tsense: InternalTempSensor) {
-        unsafe { self.0.pmmctl2().clear_bits(|w| w.tsensoren().clear_bit()); }
+        unsafe { self.0.pmmctl2().clear_bits(|w| w.tsensoren().clear_bit()) };
     }
 }

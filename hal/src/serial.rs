@@ -145,16 +145,14 @@ pub trait SerialUsci<M: PinMap = DefaultMapping>: EUsciUart {
 
     /// Additional configuration
     #[inline(always)]
-    fn configure_pin_mapping() { }
+    fn configure_pin_mapping() {}
 }
 
 macro_rules! impl_serial_pin {
     ($struct_name: ident, $port: ty, $pin: ty) => {
         impl<DIR> From<Pin<$port, $pin, Alternate1<DIR>>> for $struct_name {
             #[inline(always)]
-            fn from(_val: Pin<$port, $pin, Alternate1<DIR>>) -> Self {
-                $struct_name
-            }
+            fn from(_val: Pin<$port, $pin, Alternate1<DIR>>) -> Self { $struct_name }
         }
     };
 }
@@ -175,9 +173,8 @@ pub struct ClockSet {
 ///
 /// Once the clock source has been selected, the builder can be converted into pins that can
 /// transmit or received bytes via a serial connection.
-pub struct SerialConfig<USCI, S, M: PinMap = DefaultMapping> 
-where
-    USCI: SerialUsci<M>,
+pub struct SerialConfig<USCI, S, M: PinMap = DefaultMapping>
+where USCI: SerialUsci<M>
 {
     usci: USCI,
     order: BitOrder,
@@ -228,9 +225,7 @@ where
             parity,
             loopback,
             usci,
-            state: NoClockSet {
-                baudrate: NonZeroU32::new(baudrate).unwrap_or(ONE),
-            },
+            state: NoClockSet { baudrate: NonZeroU32::new(baudrate).unwrap_or(ONE) },
             _map: PhantomData,
         }
     }
@@ -272,7 +267,10 @@ where
         serial_config!(
             self,
             ClockSet {
-                baud_config: calculate_baud_config(crate::device_specific::MODCLK_FREQ_HZ, self.state.baudrate),
+                baud_config: calculate_baud_config(
+                    crate::device_specific::MODCLK_FREQ_HZ,
+                    self.state.baudrate
+                ),
                 clksel: Ucssel::DeviceSpecific,
             }
         )
@@ -315,19 +313,9 @@ fn calculate_baud_config(clk_freq: u32, bps: NonZeroU32) -> BaudConfig {
 
         // same as n % 16, but more precise
         let brf = ((clk_freq % div) / bps) as u8;
-        BaudConfig {
-            ucos16: true,
-            br,
-            brf,
-            brs,
-        }
+        BaudConfig { ucos16: true, br, brf, brs }
     } else {
-        BaudConfig {
-            ucos16: false,
-            br: n as u16,
-            brf: 0,
-            brs,
-        }
+        BaudConfig { ucos16: false, br: n as u16, brf: 0, brs }
     }
 }
 
@@ -343,7 +331,7 @@ fn lookup_brs(clk_freq: u32, bps: NonZeroU32) -> u8 {
     // To prove upper bound we note `(bps-1)/bps` is largest when bps == 5_000_000:
     // (4_999_999 * 10_000) / 5_000_000 = 49_999_990_000 (watch out for overflow!) / 5_000_000 = 9999.99... truncated to 9_999 because integer division
     // So fraction is within [0, 9999]
-    let fraction_as_ten_thousandths = if modulo < u32::MAX/10_000 {
+    let fraction_as_ten_thousandths = if modulo < u32::MAX / 10_000 {
         // Most accurate
         ((modulo * 10_000) / bps) as u16
     } else {
@@ -399,10 +387,7 @@ where
 {
     #[inline]
     fn config_hw(self) {
-        let ClockSet {
-            baud_config,
-            clksel,
-        } = self.state;
+        let ClockSet { baud_config, clksel } = self.state;
         let usci = self.usci;
 
         USCI::configure_pin_mapping();
@@ -431,10 +416,7 @@ where
         _rx: R,
     ) -> (Tx<USCI, M>, Rx<USCI, M>) {
         self.config_hw();
-        (
-            Tx(PhantomData, PhantomData),
-            Rx(PhantomData, PhantomData),
-        )
+        (Tx(PhantomData, PhantomData), Rx(PhantomData, PhantomData))
     }
 
     /// Perform hardware configuration and create Tx pin from appropriate GPIO
@@ -653,9 +635,7 @@ mod emb_io {
         ///
         /// As the error type is `Infallible`, this can be safely unwrapped.
         #[inline]
-        fn flush(&mut self) -> Result<(), Self::Error> {
-            block!(self.flush())
-        }
+        fn flush(&mut self) -> Result<(), Self::Error> { block!(self.flush()) }
 
         #[inline]
         /// This function sends only **THE FIRST** byte in the buffer, blocking until the writer is ready to accept, then returns `Ok(1)`.
@@ -731,9 +711,7 @@ mod ehal_nb1 {
         /// Check if Rx interrupt flag is set. If so, try reading the received byte and clear the flag.
         /// Otherwise return `WouldBlock`. May return errors caused by data corruption or
         /// buffer overruns.
-        fn read(&mut self) -> nb::Result<u8, Self::Error> {
-            self.recv()
-        }
+        fn read(&mut self) -> nb::Result<u8, Self::Error> { self.recv() }
     }
 
     impl<USCI, M> ErrorType for Tx<USCI, M>
@@ -753,15 +731,11 @@ mod ehal_nb1 {
         /// even if there's still more buffered. Thus, the implementation uses UCTXIFG instead. When
         /// `flush()` completes, the Tx buffer will be empty but the FIFO may still be sending.
         #[inline]
-        fn flush(&mut self) -> nb::Result<(), Self::Error> {
-            self.flush()
-        }
+        fn flush(&mut self) -> nb::Result<(), Self::Error> { self.flush() }
 
         #[inline]
         /// Check if Tx interrupt flag is set. If so, write a byte into the Tx buffer. Otherwise return `WouldBlock`
-        fn write(&mut self, data: u8) -> nb::Result<(), Self::Error> {
-            self.send(data)
-        }
+        fn write(&mut self, data: u8) -> nb::Result<(), Self::Error> { self.send(data) }
     }
 }
 
@@ -781,9 +755,7 @@ mod ehal02 {
         /// Check if Rx interrupt flag is set. If so, try reading the received byte and clear the flag.
         /// Otherwise return `WouldBlock`. May return errors caused by data corruption or
         /// buffer overruns.
-        fn read(&mut self) -> nb::Result<u8, Self::Error> {
-            self.recv()
-        }
+        fn read(&mut self) -> nb::Result<u8, Self::Error> { self.recv() }
     }
 
     impl<USCI, M> Write<u8> for Tx<USCI, M>

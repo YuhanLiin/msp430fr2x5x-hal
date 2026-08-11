@@ -156,18 +156,14 @@ macro_rules! ccrn_impl {
     ($TBx:ident, $CCRn:ident, $tbxcctln:ident, $tbxccrn:ident) => {
         impl CCRn<$CCRn> for $TBx {
             #[inline(always)]
-            fn set_ccrn(&self, count: u16) {
-                self.$tbxccrn().write(|w| unsafe { w.bits(count) });
-            }
+            fn set_ccrn(&self, count: u16) { self.$tbxccrn().write(|w| unsafe { w.bits(count) }); }
 
             #[inline(always)]
-            fn get_ccrn(&self) -> u16 {
-                self.$tbxccrn().read().bits()
-            }
+            fn get_ccrn(&self) -> u16 { self.$tbxccrn().read().bits() }
 
             #[inline(always)]
             fn config_outmod(&self, outmod: Outmod) {
-                self.$tbxcctln().write(|w| unsafe{ w.outmod().bits(outmod as u8) });
+                self.$tbxcctln().write(|w| unsafe { w.outmod().bits(outmod as u8) });
             }
 
             #[inline(always)]
@@ -181,9 +177,7 @@ macro_rules! ccrn_impl {
             }
 
             #[inline(always)]
-            fn ccifg_rd(&self) -> bool {
-                self.$tbxcctln().read().ccifg().bit()
-            }
+            fn ccifg_rd(&self) -> bool { self.$tbxcctln().read().ccifg().bit() }
 
             #[inline(always)]
             fn ccifg_clr(&self) {
@@ -191,14 +185,10 @@ macro_rules! ccrn_impl {
             }
 
             #[inline(always)]
-            fn ccie_set(&self) {
-                unsafe { self.$tbxcctln().set_bits(|w| w.ccie().set_bit()) };
-            }
+            fn ccie_set(&self) { unsafe { self.$tbxcctln().set_bits(|w| w.ccie().set_bit()) }; }
 
             #[inline(always)]
-            fn ccie_clr(&self) {
-                unsafe { self.$tbxcctln().clear_bits(|w| w.ccie().clear_bit()) };
-            }
+            fn ccie_clr(&self) { unsafe { self.$tbxcctln().clear_bits(|w| w.ccie().clear_bit()) }; }
 
             #[inline(always)]
             fn cov_ccifg_rd(&self) -> (bool, bool) {
@@ -209,8 +199,9 @@ macro_rules! ccrn_impl {
             #[inline(always)]
             fn cov_ccifg_clr(&self) {
                 unsafe {
-                    self.$tbxcctln()
-                        .clear_bits(|w| w.ccifg().clear_bit().cov().clear_bit())
+                    self.$tbxcctln().clear_bits(|w| w
+                        .ccifg().clear_bit()
+                        .cov().clear_bit())
                 };
             }
         }
@@ -240,7 +231,7 @@ macro_rules! timer_base_impl {
             #[inline(always)]
             fn upmode(&self) {
                 self.$tbxctl().modify(|r, w| {
-                    unsafe { w.bits(r.bits()) 
+                    unsafe { w.bits(r.bits())
                         .$txclr().set_bit()
                         .$txifg().clear_bit()
                         .mc().bits(Mode::Up as u8)
@@ -251,7 +242,7 @@ macro_rules! timer_base_impl {
             #[inline(always)]
             fn continuous(&self) {
                 self.$tbxctl().modify(|r, w| {
-                    unsafe { w.bits(r.bits()) 
+                    unsafe { w.bits(r.bits())
                         .$txclr().set_bit()
                         .$txifg().clear_bit()
                         .mc().bits(Mode::Continuous as u8)

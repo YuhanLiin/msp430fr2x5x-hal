@@ -47,8 +47,8 @@
 //! During LPM4.5 GPIO pins will maintain the value they had when LPM3.5 was entered but the register contents are lost, so after a wake-up
 //! the GPIO pins will take on their reset values when LOCKLPM5 is cleared.
 
-use core::arch::asm;
 use crate::_pac;
+use core::arch::asm;
 
 use crate::{
     rtc::{Rtc, RtcVloclk},
@@ -123,7 +123,11 @@ pub fn request_lpm4() {
 ///
 /// Power draw in LPM3.5: Approx 620 nA.
 #[inline(always)]
-pub fn enter_lpm3_5<MODE: WatchdogSelect>(wdt: Wdt<MODE>, _rtc: Rtc<RtcVloclk>, svs: SvsState) -> ! {
+pub fn enter_lpm3_5<MODE: WatchdogSelect>(
+    wdt: Wdt<MODE>,
+    _rtc: Rtc<RtcVloclk>,
+    svs: SvsState,
+) -> ! {
     lpm3_5(wdt, svs);
 }
 
@@ -141,8 +145,8 @@ fn lpm3_5<MODE: WatchdogSelect>(wdt: Wdt<MODE>, svs: SvsState) -> ! {
 
     // If LF XT crystal is not in use, reset everything, otherwise reset everything but XIN, XOUT
     const MASK: u8 = (1 << 6) | (1 << 7);
-    let lfxt_in_use =
-        (regs.p2.p2sel1().read().bits() & MASK == MASK) && (regs.p2.p2sel0().read().bits() & MASK == 0);
+    let lfxt_in_use = (regs.p2.p2sel1().read().bits() & MASK == MASK)
+        && (regs.p2.p2sel0().read().bits() & MASK == 0);
     if lfxt_in_use {
         // Reset everything except for XIN and XOUT
         unsafe {
@@ -183,7 +187,11 @@ pub fn enter_lpm4_5<MODE: WatchdogSelect>(wdt: Wdt<MODE>, rtc_reg: _pac::Rtc, sv
 }
 
 /// Configuration common to LPM3.5 and 4.5
-fn enter_lpmx_5<MODE: WatchdogSelect>(mut wdt: Wdt<MODE>, svs: SvsState, regs: _pac::Peripherals) -> ! {
+fn enter_lpmx_5<MODE: WatchdogSelect>(
+    mut wdt: Wdt<MODE>,
+    svs: SvsState,
+    regs: _pac::Peripherals,
+) -> ! {
     // Pause WDT
     wdt.pause();
 
@@ -222,7 +230,7 @@ fn enter_lpmx_5<MODE: WatchdogSelect>(mut wdt: Wdt<MODE>, svs: SvsState, regs: _
     // Write incorrect password to PMM to lock
     // Only write to the upper byte of PMMCTL0
     let pmmctl0_h = (regs.pmm.pmmctl0().as_ptr() as *mut u8).wrapping_add(1);
-    unsafe{ pmmctl0_h.write_volatile(0); }
+    unsafe { pmmctl0_h.write_volatile(0) };
 
     if interrupts_were_enabled {
         const LPMX_5: u8 = SCG1 | SCG0 | OSC_OFF | CPU_OFF | GIE;

@@ -4,14 +4,12 @@ use crate::_pac;
 
 /// FRAM controller
 pub struct Fram {
-    periph: _pac::Frctl,
+    fram: _pac::Frctl,
 }
 
 impl Fram {
     /// Turn FRCTL into `Fram`
-    pub fn new(fram: _pac::Frctl) -> Self {
-        Fram { periph: fram }
-    }
+    pub fn new(fram: _pac::Frctl) -> Self { Fram { fram } }
 }
 
 const PASSWORD: u8 = 0xA5;
@@ -38,13 +36,13 @@ pub enum WaitStates {
 
 impl Fram {
     /// Set number of FRAM wait states. Could cause issues reading instructions from FRAM if
-    /// incorrect. 
-    /// # Safety 
+    /// incorrect.
+    /// # Safety
     /// Should wait 1 cycle if MCLK > 8MHz and 2 cycles if MCLK > 16MHz.
     #[inline]
     pub unsafe fn set_wait_states(&mut self, wait: WaitStates) {
-        self.periph
-            .frctl0()
-            .write(|w| w.frctlpw().bits(PASSWORD).nwaits().bits(wait as u8));
+        self.fram.frctl0().write(|w| w
+            .frctlpw().bits(PASSWORD)
+            .nwaits().bits(wait as u8));
     }
 }

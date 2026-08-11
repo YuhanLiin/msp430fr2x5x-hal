@@ -1,0 +1,7 @@
+struct_lit_single_line = true
+where_single_line = true
+imports_layout = "Mixed"
+use_small_heuristics = "Max"
+max_width = 100
+fn_single_line = true
+# I'd really love an option to control method chaining!

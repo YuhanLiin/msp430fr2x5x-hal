@@ -10,6 +10,7 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         rust_toolchain: [nightly, nightly-2024-09-01]
         device: [msp430fr2355, msp430fr2476, msp430fr2433, msp430fr2522]
@@ -52,4 +53,22 @@ jobs:
       - name: Build MSRV examples
         if: matrix.rust_toolchain != 'nightly'
         working-directory: device-examples/${{matrix.device}}
-        run: cargo build --examples --no-default-features
+        shell: bash
+        run: |
+          failed=0
+          for ex in examples/*.rs; do
+            # Skip examples that rely on non-MSRV features
+            case "$(basename $ex)" in
+              lpm0.rs|defmt.rs)
+                echo "Skipping $ex"
+                ;;
+              *)
+                echo "Building $ex"
+                if ! cargo +${{matrix.rust_toolchain}} build --example "$(basename $ex .rs)" --no-default-features; then
+                    echo "Failed to build $ex"
+                    failed=1
+                fi
+                ;;
+            esac
+          done
+          exit "$failed"

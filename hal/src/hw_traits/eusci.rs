@@ -256,7 +256,7 @@ pub trait EUsciI2C: Steal {
     fn brw_rd(&self) -> u16;
     fn brw_wr(&self, val: u16);
 
-    fn byte_count(&self) -> u8; 
+    fn byte_count(&self) -> u8;
 
     // Modify only when UCSWRST = 1
     fn tbcnt_rd(&self) -> u16;
@@ -367,16 +367,14 @@ macro_rules! eusci_steal_impl {
     ($EUsci:ident) => {
         impl Steal for $EUsci {
             #[inline(always)]
-            unsafe fn steal() -> Self {
-                $EUsci::steal()
-            }
+            unsafe fn steal() -> Self { $EUsci::steal() }
         }
     };
 }
 pub(crate) use eusci_steal_impl;
 
 macro_rules! eusci_spi_impl {
-    ($EUsci:ident, $ucxctlw0:ident, $ucxbrw:ident, $ucxstatw:ident, $ucxrxbuf:ident, 
+    ($EUsci:ident, $ucxctlw0:ident, $ucxbrw:ident, $ucxstatw:ident, $ucxrxbuf:ident,
     $ucxtxbuf:ident, $ucxie:ident, $ucxifg:ident, $ucxiv:ident, $StatwSpi:ty) => {
         impl EusciSPI for $EUsci {
             type Statw = $StatwSpi;
@@ -392,14 +390,10 @@ macro_rules! eusci_spi_impl {
             }
 
             #[inline(always)]
-            fn ctw0_wr(&self, reg: &UcxSpiCtw0) {
-                self.$ucxctlw0().write(UcxSpiCtw0_wr! {reg});
-            }
+            fn ctw0_wr(&self, reg: &UcxSpiCtw0) { self.$ucxctlw0().write(UcxSpiCtw0_wr! {reg}); }
 
             #[inline(always)]
-            fn brw_wr(&self, val: u16) {
-                self.$ucxbrw().write(|w| unsafe { w.bits(val) });
-            }
+            fn brw_wr(&self, val: u16) { self.$ucxbrw().write(|w| unsafe { w.bits(val) }); }
 
             #[inline(always)]
             fn uclisten_set(&self) {
@@ -411,9 +405,7 @@ macro_rules! eusci_spi_impl {
             }
 
             #[inline(always)]
-            fn rxbuf_rd(&self) -> u8 {
-                self.$ucxrxbuf().read().ucrxbuf().bits()
-            }
+            fn rxbuf_rd(&self) -> u8 { self.$ucxrxbuf().read().ucrxbuf().bits() }
 
             #[inline(always)]
             fn txbuf_wr(&self, val: u8) {
@@ -421,14 +413,10 @@ macro_rules! eusci_spi_impl {
             }
 
             #[inline(always)]
-            fn ie_rd(&self) -> u16 {
-                self.$ucxie().read().bits()
-            }
+            fn ie_rd(&self) -> u16 { self.$ucxie().read().bits() }
 
             #[inline(always)]
-            fn ie_wr(&self, reg: u16) {
-                self.$ucxie().write(|w| unsafe { w.bits(reg) });
-            }
+            fn ie_wr(&self, reg: u16) { self.$ucxie().write(|w| unsafe { w.bits(reg) }); }
 
             #[inline(always)]
             fn set_transmit_interrupt(&self) {
@@ -468,50 +456,32 @@ macro_rules! eusci_spi_impl {
             }
 
             #[inline(always)]
-            fn transmit_flag(&self) -> bool {
-                self.$ucxifg().read().uctxifg().bit()
-            }
+            fn transmit_flag(&self) -> bool { self.$ucxifg().read().uctxifg().bit() }
 
             #[inline(always)]
-            fn receive_flag(&self) -> bool {
-                self.$ucxifg().read().ucrxifg().bit()
-            }
+            fn receive_flag(&self) -> bool { self.$ucxifg().read().ucrxifg().bit() }
 
             #[inline(always)]
-            fn overrun_flag(&self) -> bool {
-                self.$ucxstatw().read().ucoe().bit()
-            }
+            fn overrun_flag(&self) -> bool { self.$ucxstatw().read().ucoe().bit() }
 
             #[inline(always)]
-            fn iv_rd(&self) -> u16 {
-                self.$ucxiv().read().bits()
-            }
+            fn iv_rd(&self) -> u16 { self.$ucxiv().read().bits() }
 
-            fn is_busy(&self) -> bool {
-                self.$ucxstatw().read().ucbusy().bit()
-            }
+            fn is_busy(&self) -> bool { self.$ucxstatw().read().ucbusy().bit() }
         }
 
         impl SpiStatw for $StatwSpi {
             #[inline(always)]
-            fn uclisten(&self) -> bool {
-                self.uclisten().bit()
-            }
+            fn uclisten(&self) -> bool { self.uclisten().bit() }
 
             #[inline(always)]
-            fn ucfe(&self) -> bool {
-                self.ucfe().bit()
-            }
+            fn ucfe(&self) -> bool { self.ucfe().bit() }
 
             #[inline(always)]
-            fn ucoe(&self) -> bool {
-                self.ucoe().bit()
-            }
+            fn ucoe(&self) -> bool { self.ucoe().bit() }
 
             #[inline(always)]
-            fn ucbusy(&self) -> bool {
-                self.ucbusy().bit()
-            }
+            fn ucbusy(&self) -> bool { self.ucbusy().bit() }
         }
     };
 }
@@ -547,14 +517,10 @@ macro_rules! eusci_uart_impl {
             }
 
             #[inline(always)]
-            fn statw_rd(&self) -> <Self as EUsciUart>::Statw {
-                self.$ucaxstatw().read()
-            }
+            fn statw_rd(&self) -> <Self as EUsciUart>::Statw { self.$ucaxstatw().read() }
 
             #[inline(always)]
-            fn txie_set(&self) {
-                unsafe { self.$ucaxie().set_bits(|w| w.uctxie().set_bit()) };
-            }
+            fn txie_set(&self) { unsafe { self.$ucaxie().set_bits(|w| w.uctxie().set_bit()) }; }
 
             #[inline(always)]
             fn txie_clear(&self) {
@@ -562,9 +528,7 @@ macro_rules! eusci_uart_impl {
             }
 
             #[inline(always)]
-            fn rxie_set(&self) {
-                unsafe { self.$ucaxie().set_bits(|w| w.ucrxie().set_bit()) };
-            }
+            fn rxie_set(&self) { unsafe { self.$ucaxie().set_bits(|w| w.ucrxie().set_bit()) }; }
 
             #[inline(always)]
             fn rxie_clear(&self) {
@@ -572,9 +536,7 @@ macro_rules! eusci_uart_impl {
             }
 
             #[inline(always)]
-            fn ctl0_reset(&self) {
-                self.$ucaxctlw0().write(|w| w.ucswrst().set_bit());
-            }
+            fn ctl0_reset(&self) { self.$ucaxctlw0().write(|w| w.ucswrst().set_bit()); }
 
             #[inline(always)]
             fn brw_settings(&self, ucbr: u16) {
@@ -587,57 +549,38 @@ macro_rules! eusci_uart_impl {
             }
 
             #[inline(always)]
-            fn rx_rd(&self) -> u8 {
-                self.$ucaxrxbuf().read().ucrxbuf().bits()
-            }
+            fn rx_rd(&self) -> u8 { self.$ucaxrxbuf().read().ucrxbuf().bits() }
 
             #[inline(always)]
             fn tx_wr(&self, bits: u8) {
-                self.$ucaxtxbuf()
-                    .write(|w| unsafe { w.uctxbuf().bits(bits) });
+                self.$ucaxtxbuf().write(|w| unsafe { w.uctxbuf().bits(bits) });
             }
 
             #[inline(always)]
-            fn txifg_rd(&self) -> bool {
-                self.$ucaxifg().read().uctxifg().bit()
-            }
+            fn txifg_rd(&self) -> bool { self.$ucaxifg().read().uctxifg().bit() }
 
             #[inline(always)]
-            fn rxifg_rd(&self) -> bool {
-                self.$ucaxifg().read().ucrxifg().bit()
-            }
+            fn rxifg_rd(&self) -> bool { self.$ucaxifg().read().ucrxifg().bit() }
 
             #[inline(always)]
-            fn iv_rd(&self) -> u16 {
-                self.$ucaxiv().read().bits()
-            }
+            fn iv_rd(&self) -> u16 { self.$ucaxiv().read().bits() }
         }
 
         impl UartUcxStatw for $Statw {
             #[inline(always)]
-            fn ucfe(&self) -> bool {
-                self.ucfe().bit()
-            }
+            fn ucfe(&self) -> bool { self.ucfe().bit() }
 
             #[inline(always)]
-            fn ucoe(&self) -> bool {
-                self.ucoe().bit()
-            }
+            fn ucoe(&self) -> bool { self.ucoe().bit() }
 
             #[inline(always)]
-            fn ucpe(&self) -> bool {
-                self.ucpe().bit()
-            }
+            fn ucpe(&self) -> bool { self.ucpe().bit() }
 
             #[inline(always)]
-            fn ucbrk(&self) -> bool {
-                self.ucbrk().bit()
-            }
+            fn ucbrk(&self) -> bool { self.ucbrk().bit() }
 
             #[inline(always)]
-            fn ucbusy(&self) -> bool {
-                self.ucbusy().bit()
-            }
+            fn ucbusy(&self) -> bool { self.ucbusy().bit() }
         }
     };
 }
@@ -653,9 +596,7 @@ macro_rules! eusci_i2c_impl {
             type IfgOut = $Ifg;
 
             #[inline(always)]
-            fn ctw0_rd_rst(&self) -> bool {
-                self.$ucbxctlw0().read().ucswrst().bit()
-            }
+            fn ctw0_rd_rst(&self) -> bool { self.$ucbxctlw0().read().ucswrst().bit() }
 
             #[inline(always)]
             fn ctw0_set_rst(&self) {
@@ -688,39 +629,33 @@ macro_rules! eusci_i2c_impl {
             }
 
             #[inline(always)]
-            fn uctxstt_rd(&self) -> bool {
-                self.$ucbxctlw0().read().uctxstt().bit()
-            }
+            fn uctxstt_rd(&self) -> bool { self.$ucbxctlw0().read().uctxstt().bit() }
 
             #[inline(always)]
-            fn uctxstp_rd(&self) -> bool {
-                self.$ucbxctlw0().read().uctxstp().bit()
-            }
+            fn uctxstp_rd(&self) -> bool { self.$ucbxctlw0().read().uctxstp().bit() }
 
             #[inline(always)]
-            fn start_received(&self) -> bool {
-                self.$ucbxifg().read().ucsttifg().bit()
-            }
+            fn start_received(&self) -> bool { self.$ucbxifg().read().ucsttifg().bit() }
 
             #[inline(always)]
-            fn stop_received(&self) -> bool {
-                self.$ucbxifg().read().ucstpifg().bit()
-            }
+            fn stop_received(&self) -> bool { self.$ucbxifg().read().ucstpifg().bit() }
 
             #[inline(always)]
             fn clear_start_flag(&self) {
-                unsafe{ self.$ucbxifg().clear_bits(|w| w.ucsttifg().clear_bit()) }
+                unsafe { self.$ucbxifg().clear_bits(|w| w.ucsttifg().clear_bit()) }
             }
 
             #[inline(always)]
             fn clear_start_stop_flags(&self) {
-                unsafe{ self.$ucbxifg().clear_bits(|w| w.ucstpifg().clear_bit().ucsttifg().clear_bit()) }
+                unsafe {
+                    self.$ucbxifg().clear_bits(|w| w
+                        .ucstpifg().clear_bit()
+                        .ucsttifg().clear_bit())
+                }
             }
 
             #[inline(always)]
-            fn set_master(&self) {
-                unsafe { self.$ucbxctlw0().set_bits(|w| w.ucmst().set_bit()) }
-            }
+            fn set_master(&self) { unsafe { self.$ucbxctlw0().set_bits(|w| w.ucmst().set_bit()) } }
 
             #[inline(always)]
             fn set_ucsla10(&self, bit: bool) {
@@ -739,67 +674,41 @@ macro_rules! eusci_i2c_impl {
             }
 
             #[inline(always)]
-            fn txifg0_rd(&self) -> bool {
-                self.$ucbxifg().read().uctxifg0().bit()
-            }
+            fn txifg0_rd(&self) -> bool { self.$ucbxifg().read().uctxifg0().bit() }
 
             #[inline(always)]
-            fn rxifg0_rd(&self) -> bool {
-                self.$ucbxifg().read().ucrxifg0().bit()
-            }
+            fn rxifg0_rd(&self) -> bool { self.$ucbxifg().read().ucrxifg0().bit() }
 
             #[inline(always)]
-            fn ctw0_wr(&self, reg: &UcbCtlw0) {
-                self.$ucbxctlw0().write(UcbCtlw0_wr! {reg});
-            }
-            
-            #[inline(always)]
-            fn is_master(&self) -> bool {
-                self.$ucbxctlw0().read().ucmst().bit_is_set()
-            }
+            fn ctw0_wr(&self, reg: &UcbCtlw0) { self.$ucbxctlw0().write(UcbCtlw0_wr! {reg}); }
 
             #[inline(always)]
-            fn is_bus_busy(&self) -> bool {
-                self.$ucbxstatw().read().ucbbusy().bit_is_set()
-            }
+            fn is_master(&self) -> bool { self.$ucbxctlw0().read().ucmst().bit_is_set() }
 
             #[inline(always)]
-            fn is_transmitter(&self) -> bool {
-                self.$ucbxctlw0().read().uctr().bit_is_set()
-            }
+            fn is_bus_busy(&self) -> bool { self.$ucbxstatw().read().ucbbusy().bit_is_set() }
 
             #[inline(always)]
-            fn ctw1_wr(&self, reg: &UcbCtlw1) {
-                self.$ucbxctlw1().write(UcbCtlw1_wr! {reg});
-            }
+            fn is_transmitter(&self) -> bool { self.$ucbxctlw0().read().uctr().bit_is_set() }
 
             #[inline(always)]
-            fn brw_rd(&self) -> u16 {
-                self.$ucbxbrw().read().bits()
-            }
-            #[inline(always)]
-            fn brw_wr(&self, val: u16) {
-                self.$ucbxbrw().write(|w| unsafe { w.bits(val) });
-            }
+            fn ctw1_wr(&self, reg: &UcbCtlw1) { self.$ucbxctlw1().write(UcbCtlw1_wr! {reg}); }
 
             #[inline(always)]
-            fn byte_count(&self) -> u8 {
-                self.$ucbxstatw().read().ucbcnt().bits()
-            }
+            fn brw_rd(&self) -> u16 { self.$ucbxbrw().read().bits() }
+            #[inline(always)]
+            fn brw_wr(&self, val: u16) { self.$ucbxbrw().write(|w| unsafe { w.bits(val) }); }
 
             #[inline(always)]
-            fn tbcnt_rd(&self) -> u16 {
-                self.$ucbxtbcnt().read().bits()
-            }
-            #[inline(always)]
-            fn tbcnt_wr(&self, val: u16) {
-                self.$ucbxtbcnt().write(|w| unsafe { w.bits(val) });
-            }
+            fn byte_count(&self) -> u8 { self.$ucbxstatw().read().ucbcnt().bits() }
 
             #[inline(always)]
-            fn ucrxbuf_rd(&self) -> u8 {
-                self.$ucbxrxbuf().read().bits() as u8
-            }
+            fn tbcnt_rd(&self) -> u16 { self.$ucbxtbcnt().read().bits() }
+            #[inline(always)]
+            fn tbcnt_wr(&self, val: u16) { self.$ucbxtbcnt().write(|w| unsafe { w.bits(val) }); }
+
+            #[inline(always)]
+            fn ucrxbuf_rd(&self) -> u8 { self.$ucbxrxbuf().read().bits() as u8 }
             #[inline(always)]
             fn uctxbuf_wr(&self, val: u8) {
                 self.$ucbxtxbuf().write(|w| unsafe { w.bits(val as u16) });
@@ -873,98 +782,62 @@ macro_rules! eusci_i2c_impl {
             }
 
             #[inline(always)]
-            fn addrx_rd(&self) -> u16 {
-                self.$ucbxaddrx().read().bits()
-            }
+            fn addrx_rd(&self) -> u16 { self.$ucbxaddrx().read().bits() }
 
             #[inline(always)]
-            fn addmask_rd(&self) -> u16 {
-                self.$ucbxaddmask().read().bits()
-            }
+            fn addmask_rd(&self) -> u16 { self.$ucbxaddmask().read().bits() }
             #[inline(always)]
             fn addmask_wr(&self, val: u16) {
                 self.$ucbxaddmask().write(|w| unsafe { w.bits(val) });
             }
 
             #[inline(always)]
-            fn i2csa_rd(&self) -> u16 {
-                self.$ucbxi2csa().read().bits()
-            }
+            fn i2csa_rd(&self) -> u16 { self.$ucbxi2csa().read().bits() }
             #[inline(always)]
-            fn i2csa_wr(&self, val: u16) {
-                self.$ucbxi2csa().write(|w| unsafe { w.bits(val) });
-            }
+            fn i2csa_wr(&self, val: u16) { self.$ucbxi2csa().write(|w| unsafe { w.bits(val) }); }
 
             #[inline(always)]
-            fn ie_wr(&self, reg: u16) {
-                self.$ucbxie().write(|w| unsafe { w.bits(reg) });
-            }
+            fn ie_wr(&self, reg: u16) { self.$ucbxie().write(|w| unsafe { w.bits(reg) }); }
 
             #[inline(always)]
-            fn ie_set(&self, mask: u16) {
-                unsafe{ self.$ucbxie().set_bits(|w| w.bits(mask)) };
-            }
+            fn ie_set(&self, mask: u16) { unsafe { self.$ucbxie().set_bits(|w| w.bits(mask)) }; }
             #[inline(always)]
-            fn ie_clr(&self, mask: u16) {
-                unsafe{ self.$ucbxie().clear_bits(|w| w.bits(mask)) };
-            }
+            fn ie_clr(&self, mask: u16) { unsafe { self.$ucbxie().clear_bits(|w| w.bits(mask)) }; }
 
             #[inline(always)]
-            fn ifg_rd(&self) -> Self::IfgOut {
-                self.$ucbxifg().read()
-            }
+            fn ifg_rd(&self) -> Self::IfgOut { self.$ucbxifg().read() }
 
             #[inline(always)]
-            fn ifg_wr(&self, reg: u16) {
-                self.$ucbxifg().write(|w| unsafe { w.bits(reg) });
-            }
+            fn ifg_wr(&self, reg: u16) { self.$ucbxifg().write(|w| unsafe { w.bits(reg) }); }
 
             #[inline(always)]
-            fn ifg_rst(&self) {
-                self.$ucbxifg().reset();
-            }
+            fn ifg_rst(&self) { self.$ucbxifg().reset(); }
 
             #[inline(always)]
-            fn iv_rd(&self) -> u16 {
-                self.$ucbxiv().read().bits()
-            }
+            fn iv_rd(&self) -> u16 { self.$ucbxiv().read().bits() }
         }
 
         impl I2CUcbIfgOut for $Ifg {
             #[inline(always)]
-            fn ucbcntifg(&self) -> bool {
-                self.ucbcntifg().bit()
-            }
+            fn ucbcntifg(&self) -> bool { self.ucbcntifg().bit() }
 
             #[inline(always)]
-            fn ucnackifg(&self) -> bool {
-                self.ucnackifg().bit()
-            }
+            fn ucnackifg(&self) -> bool { self.ucnackifg().bit() }
 
             #[inline(always)]
-            fn ucalifg(&self) -> bool {
-                self.ucalifg().bit()
-            }
+            fn ucalifg(&self) -> bool { self.ucalifg().bit() }
 
             #[inline(always)]
-            fn ucstpifg(&self) -> bool {
-                self.ucstpifg().bit()
-            }
+            fn ucstpifg(&self) -> bool { self.ucstpifg().bit() }
 
             #[inline(always)]
-            fn ucsttifg(&self) -> bool {
-                self.ucsttifg().bit()
-            }
+            fn ucsttifg(&self) -> bool { self.ucsttifg().bit() }
 
             #[inline(always)]
-            fn uctxifg0(&self) -> bool {
-                self.uctxifg0().bit()
-            }
+            fn uctxifg0(&self) -> bool { self.uctxifg0().bit() }
 
             #[inline(always)]
-            fn ucrxifg0(&self) -> bool {
-                self.ucrxifg0().bit()
-            }
+            fn ucrxifg0(&self) -> bool { self.ucrxifg0().bit() }
         }
     };
 }
