@@ -47,9 +47,17 @@ jobs:
       - name: Build all examples
         if: matrix.rust_toolchain == 'nightly'
         working-directory: device-examples/${{matrix.device}}
-        run: cargo build --examples
+        run: |
+          pwd
+          ls -la
+          cargo metadata --no-deps --format-version 1
+          cargo build --examples
 
       - name: Build MSRV examples
         if: matrix.rust_toolchain != 'nightly'
         working-directory: device-examples/${{matrix.device}}
-        run: cargo build --examples --no-default-features
+        run: |
+          pwd
+          ls -la
+          cargo metadata --no-deps --format-version 1
+          cargo build --examples --no-default-features
