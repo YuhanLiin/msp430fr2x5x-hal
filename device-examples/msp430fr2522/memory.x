@@ -4,7 +4,7 @@ MEMORY
      update accordingly for other devices. */
   RAM : ORIGIN = 0x2000, LENGTH = 0x800
   ROM : ORIGIN = 0xE300, LENGTH = 0x1C80
-  VECTORS : ORIGIN = 0xFF88, LENGTH = 0x78
+  VECTORS : ORIGIN = 0xFF80, LENGTH = 0x80
 }
 
 /* Stack begins at the end of RAM:
