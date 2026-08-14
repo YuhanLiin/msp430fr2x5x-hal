@@ -1,13 +1,13 @@
 [package]
-name = "msp430fr2x5x-hal"
+name = "msp430-hal"
 version = "0.7.0"
 authors = ["YuhanLiin <linyuhan0315@hotmail.com>, RossPorter506 <rossporter506@gmail.com>"]
 edition = "2018"
-description = "Implementation of embedded-hal for microcontrollers MSP430FR2475, MSP430FR2476, MSP430FR2355, MSP430FR2353, MSP430FR2153 and MSP430FR2155"
+description = "Implementation of embedded-hal for MSP430 microcontrollers"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/YuhanLiin/msp430fr2x5x-hal"
+repository = "https://github.com/YuhanLiin/msp430-hal"
 keywords = ["no-std", "msp430", "ti", "launchpad", "embedded-hal"]
-documentation = "https://docs.rs/msp430fr2x5x-hal"
+documentation = "https://docs.rs/msp430-hal"
 readme = "../README.md"
 
 [features]

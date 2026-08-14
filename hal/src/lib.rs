@@ -1,7 +1,7 @@
 //! A collection of peripheral drivers for the MSP430 family of microcontrollers (primarily the [MSP430FR2xxx/4xxx](http://www.ti.com/lit/ug/slau445i/slau445i.pdf)) with implementations of [`embedded_hal`] traits.
 //!
 //! The documentation on docs.rs is built for the MSP430FR2355. To build the documentation for your device
-//! add this crate as a dependency to your project (see: [Feature Flags](#feature-flags)) then run `cargo doc --open --package msp430fr2x5x-hal`.
+//! add this crate as a dependency to your project (see: [Feature Flags](#feature-flags)) then run `cargo doc --open --package msp430-hal`.
 //! The github repository contains such projects for various devices under `device_examples/`.
 //!
 //! [`embedded_hal`]: https://github.com/rust-embedded/embedded-hal
