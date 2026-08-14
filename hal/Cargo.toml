@@ -1,6 +1,6 @@
 [package]
 name = "msp430-hal"
-version = "0.7.0"
+version = "0.8.0"
 authors = ["YuhanLiin <linyuhan0315@hotmail.com>, RossPorter506 <rossporter506@gmail.com>"]
 edition = "2018"
 description = "Implementation of embedded-hal for MSP430 microcontrollers"
