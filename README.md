@@ -1,5 +1,11 @@
 # `msp430-hal`
 
+---
+
+*This project was previously called `msp430fr2x5x-hal`, recently renamed to better represent the scope of the project.*
+
+---
+
 > A high-level Hardware Abstraction Layer (HAL) for the MSP430 family of microcontrollers, principally targetting the FR2xxx / 4xxx family, but seeking to support the all MSP430 devices eventually.
 
 [![Crates.io](https://img.shields.io/crates/v/msp430fr2x5x-hal.svg)](https://crates.io/crates/msp430fr2x5x-hal)
