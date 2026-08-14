@@ -1,5 +1,7 @@
 # `msp430fr2x5x-hal`
 
+**NOTE: This project has been renamed to `msp430-hal`. This old `msp430fr2x5x-hal` crate is deprecated and will not receive updates. Update your cargo.toml file to use `map430-hal` instead.**
+
 > A high-level Hardware Abstraction Layer (HAL) for the MSP430FR2xxx / 4xxx series of microcontrollers.
 
 [![Crates.io](https://img.shields.io/crates/v/msp430fr2x5x-hal.svg)](https://crates.io/crates/msp430fr2x5x-hal)
