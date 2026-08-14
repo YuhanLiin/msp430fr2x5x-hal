@@ -3,7 +3,7 @@
 
 use embedded_hal::digital::*;
 use msp430_rt::entry;
-use msp430fr2x5x_hal::{bak_mem::BackupMemory, gpio::Batch, pmm::Pmm};
+use msp430_hal::{bak_mem::BackupMemory, gpio::Batch, pmm::Pmm};
 use panic_msp430 as _;
 
 // Use the value of backup memory to toggle the red onboard LED. The red LED should flash.

@@ -13,7 +13,7 @@ use core::cell::RefCell;
 use embedded_hal::digital::*;
 use msp430::{asm, interrupt::{enable as enable_interrupts, Mutex}};
 use msp430_rt::entry;
-use msp430fr2x5x_hal::{
+use msp430_hal::{
     gpio::{Batch, GpioVector, PxIV}, lpm::enter_lpm0, pmm::Pmm, watchdog::Wdt
 };
 use panic_msp430 as _;

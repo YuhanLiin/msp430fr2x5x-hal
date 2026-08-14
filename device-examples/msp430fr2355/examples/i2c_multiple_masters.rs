@@ -20,7 +20,7 @@ use embedded_hal::{delay::DelayNs, digital::OutputPin, i2c::I2c};
 use msp430::interrupt::enable as enable_interrupts;
 use msp430_rt::entry;
 use msp430fr2355::{interrupt, EUsciB1};
-use msp430fr2x5x_hal::{
+use msp430_hal::{
     clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv}, fram::Fram, gpio::Batch, 
     i2c::{GlitchFilter, I2cConfig, I2cInterruptFlags as Flags, I2cMasterSlave, I2cVector}, pmm::Pmm, prelude::*, watchdog::Wdt
 };

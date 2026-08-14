@@ -10,7 +10,7 @@ use embedded_hal::digital::StatefulOutputPin;
 use msp430::interrupt::{enable, Mutex};
 use msp430_rt::entry;
 use msp430fr247x::interrupt;
-use msp430fr2x5x_hal::{
+use msp430_hal::{
     capture::{
         CCR1, CapCmp, CapTrigger, Capture, CaptureParts3, CaptureVector, TBxIV, TimerConfig
     }, clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv}, fram::Fram, gpio::{Batch, *}, pin_mapping::*, pmm::Pmm, watchdog::Wdt

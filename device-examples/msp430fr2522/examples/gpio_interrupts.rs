@@ -9,7 +9,7 @@ use core::cell::RefCell;
 use embedded_hal::digital::*;
 use msp430::interrupt::{enable as enable_int, Mutex};
 use msp430_rt::entry;
-use msp430fr2x5x_hal::{
+use msp430_hal::{
     clock::{ClockConfig, MclkDiv, SmclkDiv},
     fram::Fram,
     gpio::{Batch, GpioVector, Output, Pin, Pin0, PxIV, P1, P2},

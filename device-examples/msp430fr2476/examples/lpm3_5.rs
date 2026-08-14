@@ -4,7 +4,7 @@
 use embedded_hal::digital::*;
 use msp430_rt::entry;
 use msp430fr247x::{P2, P3, P4, P5, P6};
-use msp430fr2x5x_hal::{
+use msp430_hal::{
     bak_mem::BackupMemory,
     clock::VLOCLK_FREQ_HZ,
     gpio::Batch,

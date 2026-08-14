@@ -3,7 +3,7 @@
 
 use embedded_hal::digital::*;
 use msp430_rt::entry;
-use msp430fr2x5x_hal::{
+use msp430_hal::{
     adc::{AdcConfig, ClockDivider, Predivider, Resolution, SampleTime, SamplingRate},
     gpio::Batch,
     pmm::{Pmm, ReferenceVoltage},

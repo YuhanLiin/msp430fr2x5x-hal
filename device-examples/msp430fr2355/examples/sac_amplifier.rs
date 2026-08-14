@@ -3,7 +3,7 @@
 
 use msp430::asm;
 use msp430_rt::entry;
-use msp430fr2x5x_hal::{
+use msp430_hal::{
     gpio::Batch, pmm::Pmm, sac::{NoninvertingGain, PositiveInput, PowerMode, SacConfig}, watchdog::Wdt
 };
 use panic_msp430 as _;

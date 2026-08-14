@@ -27,7 +27,7 @@ use embedded_hal::{delay::DelayNs, digital::{OutputPin, StatefulOutputPin}, i2c:
 use msp430_atomic::AtomicU8;
 use msp430_rt::entry;
 use msp430fr2355::{interrupt, EUsciB1};
-use msp430fr2x5x_hal::{
+use msp430_hal::{
     clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv},
     fram::Fram,
     gpio::Batch,

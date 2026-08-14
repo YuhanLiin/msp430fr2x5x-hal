@@ -4,7 +4,7 @@
 use embedded_hal::digital::OutputPin;
 use embedded_hal_nb::serial::{Read, Write};
 use msp430_rt::entry;
-use msp430fr2x5x_hal::{
+use msp430_hal::{
     clock::{ClockConfig, DcoclkFreqSel, MclkDiv, Smclk, SmclkDiv}, fram::Fram, gpio::Batch, pin_mapping::PinMap, pmm::Pmm, serial::*, watchdog::Wdt
 };
 use nb::block;

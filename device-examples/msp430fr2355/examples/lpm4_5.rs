@@ -9,7 +9,7 @@ use embedded_hal::digital::*;
 use msp430::asm::nop;
 use msp430_rt::entry;
 use msp430fr2355::{P3, P4, P5, P6};
-use msp430fr2x5x_hal::{gpio::Batch, lpm::{enter_lpm4_5, SvsState}, pmm::Pmm, watchdog::Wdt};
+use msp430_hal::{gpio::Batch, lpm::{enter_lpm4_5, SvsState}, pmm::Pmm, watchdog::Wdt};
 use panic_msp430 as _;
 
 #[entry]

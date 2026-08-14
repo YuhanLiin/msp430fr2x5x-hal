@@ -2,7 +2,7 @@
 #![no_std]
 
 use msp430_rt::entry;
-use msp430fr2x5x_hal::{
+use msp430_hal::{
     gpio::Batch, pmm::{Pmm, ReferenceVoltage}, sac::{LoadTrigger, PositiveInput, PowerMode, SacConfig, VRef}, watchdog::Wdt
 };
 use panic_msp430 as _;

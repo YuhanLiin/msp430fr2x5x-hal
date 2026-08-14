@@ -4,7 +4,7 @@
 use embedded_hal::digital::*;
 use embedded_hal_nb::serial::Write;
 use msp430_rt::entry;
-use msp430fr2x5x_hal::{
+use msp430_hal::{
     capture::{CapTrigger, CaptureParts3, OverCapture, TimerConfig},
     clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv},
     fram::Fram,

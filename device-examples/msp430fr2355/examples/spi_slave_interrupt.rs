@@ -21,8 +21,8 @@ use embedded_hal::digital::{OutputPin, StatefulOutputPin};
 use embedded_hal::spi::{SpiBus, MODE_0};
 use msp430_rt::entry;
 use msp430fr2355::{interrupt, EUsciA0};
-use msp430fr2x5x_hal::spi::{SpiConfig, SpiErr, SpiSlave, StePolarity};
-use msp430fr2x5x_hal::{
+use msp430_hal::spi::{SpiConfig, SpiErr, SpiSlave, StePolarity};
+use msp430_hal::{
     clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv}, fram::Fram, gpio::Batch, pmm::Pmm, watchdog::Wdt
 };
 

@@ -4,7 +4,7 @@
 use embedded_hal::digital::*;
 use msp430::asm;
 use msp430_rt::entry;
-use msp430fr2x5x_hal::{gpio::Batch, pmm::Pmm, watchdog::Wdt};
+use msp430_hal::{gpio::Batch, pmm::Pmm, watchdog::Wdt};
 use panic_msp430 as _;
 
 // Use the non-volatile information memory to toggle the red onboard LED.

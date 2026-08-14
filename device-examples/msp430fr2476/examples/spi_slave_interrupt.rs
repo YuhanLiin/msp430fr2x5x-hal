@@ -20,10 +20,10 @@ use embedded_hal::delay::DelayNs;
 use embedded_hal::digital::OutputPin;
 use embedded_hal::spi::{SpiBus, MODE_0};
 use msp430_rt::entry;
-use msp430fr2x5x_hal::pin_mapping::{DefaultMapping, RemappedMapping};
+use msp430_hal::pin_mapping::{DefaultMapping, RemappedMapping};
 use msp430fr247x::{interrupt, EUsciA0};
-use msp430fr2x5x_hal::spi::{Spi, SpiConfig, SpiErr, SpiSlave, StePolarity};
-use msp430fr2x5x_hal::{
+use msp430_hal::spi::{Spi, SpiConfig, SpiErr, SpiSlave, StePolarity};
+use msp430_hal::{
     clock::{ClockConfig, DcoclkFreqSel, MclkDiv, SmclkDiv}, fram::Fram, gpio::Batch, pmm::Pmm, watchdog::Wdt
 };
 

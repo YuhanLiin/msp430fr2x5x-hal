@@ -3,7 +3,7 @@
 
 use embedded_hal::digital::OutputPin;
 use msp430_rt::entry;
-use msp430fr2x5x_hal::{crc::Crc, gpio::Batch, pmm::Pmm, watchdog::Wdt};
+use msp430_hal::{crc::Crc, gpio::Batch, pmm::Pmm, watchdog::Wdt};
 use panic_msp430 as _;
 
 #[entry]
